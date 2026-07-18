@@ -28,6 +28,9 @@ pnpm dev
 pnpm test
 ```
 
+The API's tests need a database: `docker compose up -d db` then, once,
+`pnpm --filter api db:migrate`.
+
 ### Run with Docker
 
 `docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`

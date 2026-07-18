@@ -14,6 +14,23 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Matches the postgres service in the repo's compose.yaml.
+      DATABASE_URL: postgres://domainproof:domainproof@localhost:5432/domainproof
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: domainproof
+          POSTGRES_PASSWORD: domainproof
+          POSTGRES_DB: domainproof
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U domainproof"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +56,10 @@ jobs:
             ${{ runner.os }}-turbo-
 
       - run: pnpm install --frozen-lockfile
+
+      # Applies migrations against the service container above. This also
+      # doubles as a from-scratch migration proof on every CI run.
+      - run: pnpm --filter api db:migrate
 
       # Runs whatever tasks exist in each workspace package; turbo no-ops
       # cleanly on packages that don't define a given task.
