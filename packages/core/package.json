@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "tldts": "^7.4.9",
     "zod": "catalog:"
   },
   "devDependencies": {
