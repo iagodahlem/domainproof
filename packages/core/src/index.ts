@@ -18,3 +18,5 @@ export type DomainStatus = (typeof DOMAIN_STATUSES)[number];
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- placeholder, filled in once the verification engine lands
 export interface DnsResolver {}
+
+export * from "./token.js";
