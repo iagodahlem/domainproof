@@ -13,9 +13,9 @@ Requires the Playwright MCP server (`.mcp.json` at repo root registers it —
 run with `--headless --isolated`, no setup needed beyond `pnpm install`).
 
 > **Status:** the dashboard's "add domain" flow and the hosted verification
-> page don't exist yet (they land in FD-015 / FD-016). Steps below are
-> written as if they do, with `TODO` markers on anything that depends on UI
-> that isn't built. Once FD-015/FD-016 merge, remove the TODO markers and
+> page don't exist yet. Steps below are written as if they do, with `TODO`
+> markers on anything that depends on UI that isn't built. Once the
+> dashboard and hosted verification page ship, remove the TODO markers and
 > confirm selectors against the real DOM — this becomes fully runnable then.
 
 ## 1. Boot the stack

@@ -9,13 +9,20 @@ agent-driven verification.
 
 ```txt
 apps/
-  web/        # Next.js 15 (App Router) — dashboard + hosted verification page
-  api/        # Hono REST API (Node/TS)
-  docs/       # Fumadocs API reference (coming)
-  demo/       # Demo app consuming the SDK (coming)
+  web/        # Next.js 15 (App Router) — the only Next app. Serves:
+              #   - landing + dashboard at the apex domain (domainproof.dev)
+              #   - hosted verification portal at /v/[token]
+              #   - docs (Fumadocs) on docs.domainproof.dev via host-based routing
+              #   - a demo consumer app on demo.domainproof.dev via host-based
+              #     routing, deliberately distinct branding, consumes only the
+              #     public SDK/API — never imports server internals
+  api/        # Hono REST API on api.domainproof.dev
 packages/
-  core/       # Domain logic: state machine, DnsResolver interface, resolvers
-  sdk/        # Typed client SDK
+  core/       # Pure domain logic: state machine, verification checks, DNS
+              # resolver interfaces. Consumed by apps/api. Exports shared
+              # types (e.g. DomainStatus) that sdk/web may import.
+  sdk/        # Typed public-API client. Node/server-side, including Next
+              # server components and actions.
   cli/        # Command-line interface
   mcp/        # MCP server for agent integrations
 ```
@@ -42,9 +49,11 @@ the same command CI runs.
 - Conventional commits (`feat:`, `fix:`, `chore:`, ...). No AI-generated
   footers, no `Co-authored-by` trailers, no bold markdown (`**`) in commit
   messages.
-- One focused PR per FD sub-item — see `designs/FD-*.md` in the planning
-  workspace for the sub-item this PR maps to, and name the PR after it.
 - Tests are colocated next to source as `*.test.ts`, run with vitest.
+- Never reference internal planning or tracker identifiers (issue codes,
+  internal doc IDs, sub-item labels, or similar) in PR titles/bodies, commit
+  messages, code comments, or docs. Describe changes by what they do, not by
+  an internal reference.
 
 ## Architecture rules that matter
 
