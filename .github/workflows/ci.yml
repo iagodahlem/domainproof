@@ -28,7 +28,7 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # No remote cache token yet (see FD-012 A6); cache turbo's local
+      # No remote cache token yet (pending hosting/deploy setup); cache turbo's local
       # artifacts across runs instead, keyed on the commit so a re-run of
       # the same SHA hits full cache and other commits fall back to restore-keys.
       - uses: actions/cache@v4
