@@ -1,0 +1,50 @@
+# Local stack for full-container runs. Primary dev loop is still
+# `pnpm dev` (see README) — this is for testing the built API image
+# and, soon, wiring up the database.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3101:3001"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # Relies on the HEALTHCHECK baked into apps/api/Dockerfile.
+
+  # Postgres for the database work landing this week. The API doesn't
+  # consume it yet — its env validation has no DATABASE_URL — so this
+  # is pre-wired but not connected to the api service above.
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=domainproof
+      - POSTGRES_PASSWORD=domainproof
+      - POSTGRES_DB=domainproof
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U domainproof"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Local web dev uses `pnpm --filter web dev` for HMR — much faster
+  # than a container rebuild loop. Uncomment once full-stack container
+  # runs are needed (e.g. for a prod-like smoke test).
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/web/Dockerfile
+  #   ports:
+  #     - "3100:3000"
+  #   environment:
+  #     - NODE_ENV=production
+  #   restart: unless-stopped
+
+volumes:
+  db-data:
