@@ -27,3 +27,8 @@ pnpm install
 pnpm dev
 pnpm test
 ```
+
+### Run with Docker
+
+`docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`
+remains the primary dev loop.
