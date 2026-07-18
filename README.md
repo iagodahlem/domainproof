@@ -1,5 +1,7 @@
 # DomainProof
 
+[![CI](https://github.com/iagodahlem/domainproof/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iagodahlem/domainproof/actions/workflows/ci.yml)
+
 Prove ownership of a domain — domain verification as an API-first product.
 
 ## Monorepo
