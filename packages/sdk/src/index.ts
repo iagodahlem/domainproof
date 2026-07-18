@@ -12,7 +12,8 @@ export interface DomainProofConfig {
 
 /**
  * DomainProof API client stub. Constructor only stores config for now —
- * the real request/verification surface lands in FD-017.
+ * the real request/verification surface lands once the SDK talks to the
+ * live API.
  */
 export class DomainProof {
   private readonly config: DomainProofConfig;
