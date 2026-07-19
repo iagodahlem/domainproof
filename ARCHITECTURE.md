@@ -102,17 +102,32 @@ explicitly rather than papered over:
 
 ## Tooling
 
-- **Extensionless imports.** `packages/core`, `apps/api`, and the
-  `packages/sdk|cli|mcp` stubs build with [tsup](https://tsup.egoist.dev/)
-  (esbuild) under `moduleResolution: "bundler"`. Relative imports never
-  carry a `.js` suffix — that was only ever needed for `tsc`'s NodeNext
-  resolution, which nothing in this repo uses anymore. `pnpm --filter <pkg> dev`
-  still runs source directly via `tsx` (api) or `vitest` (tests); only
-  `build` goes through tsup.
-- **`@domainproof/core` exports.** The package root (`.`) is the domain
-  surface; `@domainproof/core/testing` is a separate subpath for the
-  fixture `DnsResolver`/`HttpFetcher` test doubles, so a production import
-  of the package root never pulls in test-only code.
+- **Extensionless imports.** Every package builds (or typechecks) under
+  `moduleResolution: "bundler"`. Relative imports never carry a `.js`
+  suffix — that was only ever needed for `tsc`'s NodeNext resolution,
+  which nothing in this repo uses anymore.
+- **Internal packages export source, not a build.** `packages/core` has no
+  build step — its `package.json` `exports` point straight at
+  `./src/index.ts` (and `./src/testing/index.ts` for the
+  `@domainproof/core/testing` subpath). With `moduleResolution: "bundler"`,
+  editors, `tsc`, `vitest`, and `tsx` all resolve types and runtime
+  directly from source: no build ordering to get right, no stale dist to
+  go stale, go-to-definition lands in the real file. This is deliberate —
+  a package that's never published and only consumed inside this
+  workspace doesn't need a compiled artifact of its own.
+- **Deployable artifacts bundle their workspace dependencies.** `apps/api`
+  builds with [tsup](https://tsup.egoist.dev/) (esbuild) and sets
+  `noExternal: [/^@domainproof\//]`, so `@domainproof/core`'s source gets
+  bundled straight into `apps/api/dist/index.js` — the built output has no
+  runtime import of the package, which is what makes the Docker image
+  self-contained regardless of core having no dist of its own. The
+  `packages/sdk|cli|mcp` stubs keep their own tsup builds (they're future
+  publishable/executable artifacts), but none of them depend on a
+  workspace package yet; the day one does, its build needs the same
+  `noExternal` treatment. `apps/web` doesn't import `@domainproof/core`
+  yet either — when it does, add `transpilePackages: ["@domainproof/core"]`
+  to `next.config.ts`, since Next's own bundler needs the same "resolve
+  this workspace package from source" opt-in tsup gets from `noExternal`.
 
 ## Planned: events
 

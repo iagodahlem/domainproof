@@ -3,20 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js"
-    }
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
-    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
@@ -29,7 +20,6 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "eslint": "^10.7.0",
-    "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.64.0",
     "vitest": "catalog:"
