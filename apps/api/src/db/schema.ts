@@ -67,7 +67,7 @@ export const projects = pgTable("projects", {
 /**
  * API keys are shown once at creation time. Only a SHA-256 hash of the
  * secret is ever persisted; `last4` is kept so the dashboard can render a
- * recognizable identifier ("sk_live_...ab12") without holding the secret.
+ * recognizable identifier ("dp_live_...ab12") without holding the secret.
  */
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").defaultRandom().primaryKey(),

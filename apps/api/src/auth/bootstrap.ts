@@ -18,25 +18,38 @@ export interface BootstrapResult {
  * user can both run this concurrently — exactly one insert succeeds, and
  * the loser reads back the winner's row instead of throwing or double
  * creating a project.
+ *
+ * The account insert and its default-project insert happen inside a
+ * single transaction: if the process crashes (or the project insert
+ * fails) between the two, the transaction rolls back rather than leaving
+ * an account row with no default project behind.
  */
 export async function bootstrapAccount(
   db: Database,
   clerkUserId: string,
 ): Promise<BootstrapResult> {
-  const inserted = await db
-    .insert(accounts)
-    .values({ clerkUserId })
-    .onConflictDoNothing({ target: accounts.clerkUserId })
-    .returning({ id: accounts.id });
+  const insertedAccountId = await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(accounts)
+      .values({ clerkUserId })
+      .onConflictDoNothing({ target: accounts.clerkUserId })
+      .returning({ id: accounts.id });
 
-  const insertedAccount = inserted[0];
-  if (insertedAccount) {
-    await db.insert(projects).values({
+    const insertedAccount = inserted[0];
+    if (!insertedAccount) {
+      return null;
+    }
+
+    await tx.insert(projects).values({
       accountId: insertedAccount.id,
       name: "Default",
     });
 
-    return { accountId: insertedAccount.id, created: true };
+    return insertedAccount.id;
+  });
+
+  if (insertedAccountId) {
+    return { accountId: insertedAccountId, created: true };
   }
 
   const [existing] = await db
