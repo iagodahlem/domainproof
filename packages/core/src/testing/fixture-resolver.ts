@@ -1,4 +1,4 @@
-import type { DnsResolver, TxtResolution, TxtResolutionFailureReason } from "../resolver.js";
+import type { DnsResolver, TxtResolution, TxtResolutionFailureReason } from "../resolver";
 
 /**
  * Simulates a resolver failure for a fixture hostname. `no_records` isn't

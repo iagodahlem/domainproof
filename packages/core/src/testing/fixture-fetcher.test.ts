@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createFixtureFetcher } from "./fixture.js";
+import { createFixtureFetcher } from "./fixture-fetcher";
 
 const URL = "https://example.com/.well-known/domainproof-challenge";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { challengeHost, normalizeDomain, registrableDomain } from "./domain.js";
+import { normalizeDomain, registrableDomain } from "./domain";
 
 describe("normalizeDomain", () => {
   it("accepts a plain domain", () => {
@@ -135,27 +135,5 @@ describe("registrableDomain", () => {
 
   it("reduces a subdomain of a .test sandbox domain to <label>.test", () => {
     expect(registrableDomain("sub.verified.test")).toBe("verified.test");
-  });
-});
-
-describe("challengeHost", () => {
-  it("returns the TXT challenge host for a plain domain", () => {
-    expect(challengeHost("example.com")).toBe("_domainproof-challenge.example.com");
-  });
-
-  it("returns the TXT challenge host rooted at the registrable domain", () => {
-    expect(challengeHost("sub.acme.co.uk")).toBe("_domainproof-challenge.acme.co.uk");
-  });
-
-  it("returns the TXT challenge host for a .test sandbox domain", () => {
-    expect(challengeHost("verified.test")).toBe("_domainproof-challenge.verified.test");
-  });
-
-  it("returns a brand-labeled challenge host when a brand slug is given", () => {
-    expect(challengeHost("sub.acme.co.uk", "skylane")).toBe("_skylane-challenge.acme.co.uk");
-  });
-
-  it("uses a different label per brand for the same domain", () => {
-    expect(challengeHost("example.com", "skylane")).not.toBe(challengeHost("example.com"));
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createFixtureResolver } from "./fixture.js";
+import { createFixtureResolver } from "./fixture-resolver";
 
 const HOST = "_domainproof-challenge.example.com";
 

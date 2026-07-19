@@ -1,4 +1,4 @@
-import type { HttpFetcher, HttpFetchResult } from "../fetcher.js";
+import type { HttpFetcher, HttpFetchResult } from "../fetcher";
 
 /**
  * In-memory {@link HttpFetcher} for tests. Never touches real network IO —

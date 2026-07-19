@@ -1,6 +1,6 @@
-import { DEFAULT_BRAND_SLUG } from "./brand.js";
-import type { HttpFetcher } from "./fetcher.js";
-import { parseRecordValue, tokensMatch } from "./token.js";
+import type { HttpFetcher } from "./fetcher";
+import { parseRecordValue, wellKnownUrl } from "./record";
+import { tokensMatch } from "./token";
 
 /**
  * How many `wrong_value` records to surface for the expected/detected diff
@@ -8,15 +8,6 @@ import { parseRecordValue, tokensMatch } from "./token.js";
  * with many stray or stale lines doesn't blow up the response.
  */
 const MAX_DETECTED_VALUES = 10;
-
-export interface CheckHttpOptions {
-  /**
-   * Overrides {@link DEFAULT_BRAND_SLUG} in the well-known file path. Lets a
-   * white-labeled deployment ask for its own challenge filename instead of
-   * `domainproof-challenge`, while still reusing this same check function.
-   */
-  brandSlug?: string;
-}
 
 /**
  * Outcome of checking a domain's well-known challenge file against an
@@ -81,21 +72,6 @@ function isSuccessStatus(status: number): boolean {
 }
 
 /**
- * Builds the well-known URL a domain owner is asked to publish the
- * challenge file at. HTTPS only, never `http://`: an ownership proof
- * fetched over plaintext HTTP can be forged or substituted by anyone on the
- * network path between the checker and the domain (a coffee-shop Wi-Fi
- * operator, a compromised router, a transparent proxy) — they'd simply
- * inject the response they want us to see. HTTPS's certificate validation
- * is what ties the response back to a party who actually controls the
- * domain (or at least holds a CA-issued cert for it), which is the entire
- * point of the check.
- */
-function wellKnownUrl(domain: string, brandSlug: string): string {
-  return `https://${domain}/.well-known/${brandSlug}-challenge`;
-}
-
-/**
  * Splits a well-known file body into candidate record lines. Each line is
  * parsed the same way a TXT record value is (see {@link parseRecordValue}),
  * so the file supports the same whitespace/quoting tolerance and the same
@@ -110,6 +86,10 @@ function candidateLines(body: string): string[] {
  * Checks whether `domain` serves a well-known challenge file proving
  * `expectedToken`.
  *
+ * `brandSlug` selects the well-known filename and the record prefix to
+ * parse against — see {@link checkTxt}'s doc comment; core has no default
+ * brand, the caller always supplies one.
+ *
  * Pure aside from the injected `fetcher` call: given the same fetch result,
  * this always produces the same outcome. All network IO happens behind
  * {@link HttpFetcher}, so this function never throws — fetch failures are
@@ -120,9 +100,8 @@ export async function checkHttp(
   fetcher: HttpFetcher,
   domain: string,
   expectedToken: string,
-  options: CheckHttpOptions = {},
+  brandSlug: string,
 ): Promise<HttpCheckResult> {
-  const brandSlug = options.brandSlug ?? DEFAULT_BRAND_SLUG;
   const url = wellKnownUrl(domain, brandSlug);
   const result = await fetcher.fetchText(url);
 
@@ -141,7 +120,7 @@ export async function checkHttp(
   const detected: string[] = [];
 
   for (const line of candidateLines(result.body)) {
-    const parsed = parseRecordValue(line);
+    const parsed = parseRecordValue(line, brandSlug);
     if (!parsed.ok) {
       continue;
     }
