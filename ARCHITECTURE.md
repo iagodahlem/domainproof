@@ -26,14 +26,29 @@ apps/api/src/
   env.ts                    # environment schema/parsing
   shared/                     # cross-module helpers (e.g. the { error: { code, message } } shape)
   infra/                        # concrete adapters — implements core/module ports
+    auth/                          #   Clerk JWKS client — implements accounts' SessionVerifier
     db/                           #   drizzle client + schema
     dns/                           #   node:dns resolver, .test sandbox resolver
     http/                           #   fetch-based HttpFetcher
   modules/                          # feature modules — domain rules, services, routes
-    accounts/                         #   Clerk auth middleware, account bootstrap
+    accounts/                         #   session auth middleware + SessionVerifier port, account bootstrap
     projects/                          #   brand slug policy (validation, reserved list, default)
     keys/                                #   API key encoding/parsing/service, api-key auth, rate limit, routes
 ```
+
+### Route planes
+
+`apps/api` mounts two path prefixes, and every new route picks one:
+
+- **`/v1/*`** — the public, API-key-authenticated plane (`dp_test_.../dp_live_...`).
+  Reserved for the endpoints an integration calls — domain verification
+  lands here next. Versioned because it's a contract external callers
+  depend on.
+- **`/dashboard/*`** — the session-authenticated backend of the dashboard
+  app (e.g. `/dashboard/keys`). Unversioned — we control its only
+  consumer, so there's no external contract to version.
+
+See README's API section for the current endpoints under each.
 
 `apps/web`, `packages/sdk`, `packages/cli`, `packages/mcp` are out of scope
 for this map today — they're thin/stub packages that consume `@domainproof/core`
@@ -50,6 +65,17 @@ and the public API, not participants in the api's internal layering.
    client directly. A service takes its dependencies (a `Database`, a
    `DnsResolver`, an `HttpFetcher`) as function arguments; it never reaches
    into `infra/` to construct one itself.
+
+   This includes vendors: **any external API or service — Clerk today,
+   Resend and DNS-provider APIs next — is an infra adapter sitting behind
+   a port.** A module never imports a vendor SDK or calls a vendor's
+   endpoint directly. A port doesn't have to be core-owned like
+   `DnsResolver`/`HttpFetcher` — when the concept is specific to one
+   module rather than domain-wide, the module that owns the concept owns
+   the port. `SessionVerifier` (`modules/accounts/session-verifier.ts`,
+   implemented by `infra/auth/clerk.ts`) is the example: "verify a login
+   session" is accounts-module business, not something `packages/core`
+   needs to know about, so the port lives with the module instead of core.
 3. **Route files only parse/validate input, call services, and map results
    to HTTP.** No query building, no business rules, no direct db/infra
    access in a route handler — that's what the service layer is for.
@@ -67,7 +93,7 @@ explicitly rather than papered over:
   don't import hono" framing in rule 2 is about domain/service code, not
   route files.
 - **`modules/keys/routes.ts` imports `modules/projects`** (`getDefaultProjectId`)
-  and the `ClerkAuthVariables` type from `modules/accounts`, rather than
+  and the `SessionAuthVariables` type from `modules/accounts`, rather than
   having project resolution injected from `app.ts`. The project lookup
   itself is not a route-file exception — it's a real service function in
   `modules/projects/service.ts`, called the same way `keys/routes.ts`
@@ -94,8 +120,9 @@ explicitly rather than papered over:
 |---|---|
 | New DNS/HTTP record type logic (new record shape, new parsing rule) | `packages/core/src/record.ts` (+ `check-txt.ts`/`check-http.ts` if it changes what counts as a pass) |
 | New verification state or transition | `packages/core/src/states.ts` |
-| New public API endpoint | `apps/api/src/modules/<module>/routes.ts` (parsing/HTTP only) + a service function in the same module |
-| New external service integration (email, webhooks delivery, a new DNS provider) | `apps/api/src/infra/<area>/`, wired into `app.ts` and injected into whichever module's service needs it |
+| New public (API-key) endpoint | `apps/api/src/modules/<module>/routes.ts`, mounted under `/v1/*` in `app.ts` (parsing/HTTP only) + a service function in the same module |
+| New dashboard (session) endpoint | Same as above, mounted under `/dashboard/*` instead |
+| New vendor/external service integration (email, webhooks delivery, a new DNS provider, a new auth provider) | Define the port where the concept belongs (core if domain-wide, the owning module if module-specific — see rule 2), implement the adapter in `apps/api/src/infra/<area>/`, wire it in `app.ts` and inject it into whichever module's service needs it |
 | New tenant/account/project policy (quotas, plan limits, slug rules) | `apps/api/src/modules/projects/` (or a new module, if it doesn't fit an existing one) |
 | New cross-module helper (error shape, pagination, result types) | `apps/api/src/shared/` |
 | A test double for a core port | `packages/core/src/testing/` — export it from `testing/index.ts` so it's available via `@domainproof/core/testing` |
@@ -171,7 +198,8 @@ written today can anticipate it instead of needing a rewrite.
   `eslint.config.mjs`) mechanically enforces: no `.js`-suffixed relative
   imports anywhere; `packages/core` cannot import from `apps/`;
   `apps/api/src/modules/**` (excluding tests) cannot import from
-  `infra/dns/` or `infra/http/`.
+  `infra/dns/`, `infra/http/`, or `infra/auth/` — relative or via the
+  `@infra/dns`, `@infra/http`, `@infra/auth` path aliases.
 - **Known enforcement gap:** the `infra/db` carve-out (schema tables + the
   `Database` type), the `modules/keys` → `modules/accounts` route-wiring
   import, and "route files may use hono" are documented exceptions above,

@@ -17,19 +17,50 @@ pnpm workspaces + Turborepo. Planned layout:
 - `packages/cli` — command-line interface (coming up)
 - `packages/mcp` — MCP server for agent integrations (coming up)
 
-Production URLs: `app.domainproof.dev` (web), `api.domainproof.dev` (api),
-`docs.domainproof.dev` (docs).
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the layer map and dependency
+rules.
 
-## Development
+## Environments
+
+| | URL |
+| --- | --- |
+| Web (production) | <https://domainproof.dev> |
+| API (production) | <https://api.domainproof.dev> |
+| Docs (production) | <https://docs.domainproof.dev> — host-routed by the web app |
+| Demo (production) | <https://demo.domainproof.dev> — host-routed by the web app |
+
+| | Local (`pnpm dev`) | Local (`docker compose up`) |
+| --- | --- | --- |
+| Web | <http://localhost:3000> | — (not in `compose.yaml` yet) |
+| API | <http://localhost:3001> | <http://localhost:3101> |
+| Postgres | `localhost:5432` | `localhost:5432` |
+
+## Local development
+
+Prerequisites: Node 22, pnpm via [corepack](https://pnpm.io/installation#using-corepack)
+(pinned to 9.7.0 by `packageManager` in `package.json`), Docker (for a local
+Postgres).
 
 ```bash
 pnpm install
-pnpm dev
-pnpm test
+cp apps/api/.env.example apps/api/.env
 ```
 
-The API's tests need a database: `docker compose up -d db` then, once,
-`pnpm --filter api db:migrate`.
+`apps/api/.env` (`tsx` loads it automatically in dev):
+
+| Var | Required? | For |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service. |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER` | No | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
+| `PORT` | No | Defaults to `3001`. |
+
+```bash
+docker compose up -d db
+pnpm --filter api db:migrate
+pnpm dev
+```
+
+`pnpm test` also needs the database up and migrated, same as above.
 
 ### Run with Docker
 
@@ -41,25 +72,26 @@ remains the primary dev loop.
 Base URL: `api.domainproof.dev`. Every non-2xx response is
 `{ error: { code, message } }`.
 
-The API has two authentication planes:
+The API has two authentication planes, split by path prefix (see
+[ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)):
 
-- **Dashboard API** — authenticated by the builder's login session
-  (`Authorization: Bearer <session token>`). This is what the DomainProof
-  dashboard calls on the signed-in builder's behalf; it's not meant to be
-  called directly by integrations.
-- **Public API** — authenticated with a project API key
+- **Dashboard API** (`/dashboard/*`) — authenticated by the builder's login
+  session (`Authorization: Bearer <session token>`). This is what the
+  DomainProof dashboard calls on the signed-in builder's behalf; it's not
+  meant to be called directly by integrations.
+- **Public API** (`/v1/*`) — authenticated with a project API key
   (`Authorization: Bearer dp_test_...` / `dp_live_...`). This is the plane
   the SDK, CLI, MCP server, and direct integrations use. No endpoints live
   here yet — domain verification (creating a domain, checking its status,
   triggering a recheck) is next.
 
-| Method | Path                      | Plane     | Description                                    |
-| ------ | ------------------------- | --------- | ----------------------------------------------- |
-| GET    | `/health`                 | none      | Liveness check; returns `{ status, version }`.  |
-| POST   | `/v1/keys`                | Dashboard | Creates an API key for the caller's project.    |
-| GET    | `/v1/keys`                | Dashboard | Lists the caller's project's API keys.          |
-| POST   | `/v1/keys/:keyId/revoke`  | Dashboard | Revokes an API key.                             |
-| POST   | `/v1/keys/:keyId/rotate`  | Dashboard | Revokes an API key and issues its replacement.  |
+| Method | Path                          | Plane     | Description                                    |
+| ------ | ----------------------------- | --------- | ----------------------------------------------- |
+| GET    | `/health`                     | none      | Liveness check; returns `{ status, version }`.  |
+| POST   | `/dashboard/keys`             | Dashboard | Creates an API key for the caller's project.    |
+| GET    | `/dashboard/keys`             | Dashboard | Lists the caller's project's API keys.          |
+| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                           |
+| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement. |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
