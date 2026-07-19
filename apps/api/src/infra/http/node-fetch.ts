@@ -1,5 +1,9 @@
-import type { HttpFetcher, HttpFetchFailureReason, HttpFetchResult } from "../fetcher.js";
-import { MAX_FETCH_BODY_BYTES } from "../fetcher.js";
+import {
+  MAX_FETCH_BODY_BYTES,
+  type HttpFetcher,
+  type HttpFetchFailureReason,
+  type HttpFetchResult,
+} from "@domainproof/core";
 
 /**
  * The only file in this package allowed to perform real network IO for the

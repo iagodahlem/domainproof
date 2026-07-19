@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { checkTxt } from "../check-txt.js";
-import { challengeHost } from "../domain.js";
-import { recordValue } from "../token.js";
+import { challengeHost, checkTxt, recordValue } from "@domainproof/core";
+
 import {
   createSandboxResolver,
   isSandboxDomain,
   type SandboxChallenge,
   sandboxJourneyFor,
-} from "./sandbox.js";
+} from "./sandbox";
 
 const CREATED_AT = new Date("2026-01-01T00:00:00.000Z");
 const TOKEN = "expectedtoken1234567890abcd";
-const RECORD_VALUE = recordValue(TOKEN);
+const BRAND_SLUG = "domainproof";
+const RECORD_VALUE = recordValue(TOKEN, BRAND_SLUG);
 
 function clockAt(elapsedMs: number): () => Date {
   return () => new Date(CREATED_AT.getTime() + elapsedMs);
@@ -20,8 +20,9 @@ function clockAt(elapsedMs: number): () => Date {
 
 function makeChallenge(domain: string): SandboxChallenge {
   return {
-    recordHost: challengeHost(domain),
+    recordHost: challengeHost(domain, BRAND_SLUG),
     recordValue: RECORD_VALUE,
+    brandSlug: BRAND_SLUG,
     createdAt: CREATED_AT,
   };
 }
@@ -266,26 +267,26 @@ describe("checkTxt over a sandbox resolver (full outcome taxonomy from elapsed t
     const challenge = makeChallenge("verified.test");
     const resolver = createSandboxResolver(challenge, clockAt(0));
 
-    expect(await checkTxt(resolver, challenge.recordHost, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkTxt(resolver, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
   });
 
   it("pending-then-verified: not_found before propagation, found after", async () => {
     const challenge = makeChallenge("pending-then-verified.test");
 
     const before = createSandboxResolver(challenge, clockAt(44_000));
-    expect(await checkTxt(before, challenge.recordHost, TOKEN)).toEqual({
+    expect(await checkTxt(before, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "not_found",
     });
 
     const after = createSandboxResolver(challenge, clockAt(45_000));
-    expect(await checkTxt(after, challenge.recordHost, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkTxt(after, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
   });
 
   it("wrong-value: wrong_value with the detected fake token", async () => {
     const challenge = makeChallenge("wrong-value.test");
     const resolver = createSandboxResolver(challenge, clockAt(0));
 
-    expect(await checkTxt(resolver, challenge.recordHost, TOKEN)).toEqual({
+    expect(await checkTxt(resolver, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "wrong_value",
       detected: ["wrongwrongwrongwrongwrongw"],
     });
@@ -295,7 +296,7 @@ describe("checkTxt over a sandbox resolver (full outcome taxonomy from elapsed t
     const challenge = makeChallenge("nxdomain.test");
     const resolver = createSandboxResolver(challenge, clockAt(10_000_000));
 
-    expect(await checkTxt(resolver, challenge.recordHost, TOKEN)).toEqual({
+    expect(await checkTxt(resolver, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "not_found",
     });
   });
@@ -304,26 +305,26 @@ describe("checkTxt over a sandbox resolver (full outcome taxonomy from elapsed t
     const challenge = makeChallenge("flaky.test");
 
     const oddWindow = createSandboxResolver(challenge, clockAt(30_000));
-    expect(await checkTxt(oddWindow, challenge.recordHost, TOKEN)).toEqual({
+    expect(await checkTxt(oddWindow, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "unreachable",
     });
 
     const evenWindow = createSandboxResolver(challenge, clockAt(60_000));
-    expect(await checkTxt(evenWindow, challenge.recordHost, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkTxt(evenWindow, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
   });
 
   it("conflict: found immediately, like verified (claim conflict is enforced elsewhere)", async () => {
     const challenge = makeChallenge("conflict.test");
     const resolver = createSandboxResolver(challenge, clockAt(0));
 
-    expect(await checkTxt(resolver, challenge.recordHost, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkTxt(resolver, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
   });
 
   it("unknown journey: not_found, same as nxdomain", async () => {
     const challenge = makeChallenge("random-name.test");
     const resolver = createSandboxResolver(challenge, clockAt(0));
 
-    expect(await checkTxt(resolver, challenge.recordHost, TOKEN)).toEqual({
+    expect(await checkTxt(resolver, challenge.recordHost, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "not_found",
     });
   });

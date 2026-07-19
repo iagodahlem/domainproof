@@ -5,7 +5,7 @@ import {
   RESERVED_BRAND_SLUGS,
   slugFromName,
   validateBrandSlug,
-} from "./brand.js";
+} from "./brand";
 
 describe("validateBrandSlug", () => {
   it("accepts the default brand slug", () => {

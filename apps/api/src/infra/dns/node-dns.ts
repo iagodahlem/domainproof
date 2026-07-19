@@ -1,7 +1,11 @@
 import { Resolver } from "node:dns/promises";
 
-import { registrableDomain } from "../domain.js";
-import type { DnsResolver, TxtResolution, TxtResolutionFailureReason } from "../resolver.js";
+import {
+  registrableDomain,
+  type DnsResolver,
+  type TxtResolution,
+  type TxtResolutionFailureReason,
+} from "@domainproof/core";
 
 /**
  * The production {@link DnsResolver}. This is the only file in the package

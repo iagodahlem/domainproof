@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { TxtResolutionFailureReason } from "../resolver.js";
-import type { CreateNodeDnsClient, NodeDnsClient } from "./node-dns.js";
-import { createNodeDnsResolver, discoverAuthoritativeNameservers } from "./node-dns.js";
+import type { TxtResolutionFailureReason } from "@domainproof/core";
+
+import type { CreateNodeDnsClient, NodeDnsClient } from "./node-dns";
+import { createNodeDnsResolver, discoverAuthoritativeNameservers } from "./node-dns";
 
 const HOST = "_domainproof-challenge.example.com";
 

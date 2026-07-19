@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createNodeFetchFetcher } from "./node-fetch.js";
+import { createNodeFetchFetcher } from "./node-fetch";
 
 const URL = "https://example.com/.well-known/domainproof-challenge";
 

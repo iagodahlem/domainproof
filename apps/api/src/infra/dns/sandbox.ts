@@ -1,6 +1,10 @@
-import { normalizeDomain, registrableDomain } from "../domain.js";
-import type { DnsResolver, TxtResolution } from "../resolver.js";
-import { recordValue } from "../token.js";
+import {
+  normalizeDomain,
+  registrableDomain,
+  recordValue,
+  type DnsResolver,
+  type TxtResolution,
+} from "@domainproof/core";
 
 // RFC 6761 permanently reserves `.test` for documentation and testing, so it
 // can never be delegated in real DNS or collide with a real owner's domain
@@ -139,19 +143,22 @@ export function sandboxJourneyFor(domain: string): SandboxJourneyResult {
 /**
  * The challenge a sandbox resolver answers for: the exact TXT hostname it
  * will respond to, the record value that counts as "correct" for that
- * challenge, and when the challenge was issued (the clock origin every
- * journey's elapsed-time behavior is measured from).
+ * challenge, the brand the challenge was issued under (used to fabricate a
+ * syntactically valid but wrong record for the `wrong-value` journey — see
+ * {@link resolveForJourney}), and when the challenge was issued (the clock
+ * origin every journey's elapsed-time behavior is measured from).
  */
 export interface SandboxChallenge {
   recordHost: string;
   recordValue: string;
+  brandSlug: string;
   createdAt: Date;
 }
 
 /**
- * A `recordHost` is always `_domainproof-challenge.<domain>` (see
- * `challengeHost` in domain.ts) — everything after the first label is the
- * domain the journey is parsed from.
+ * A `recordHost` is always `_<brandSlug>-challenge.<domain>` (see
+ * `challengeHost` in core's record.ts) — everything after the first label
+ * is the domain the journey is parsed from.
  */
 function domainFromRecordHost(recordHost: string): string {
   const firstDotIndex = recordHost.indexOf(".");
@@ -183,7 +190,7 @@ function resolveForJourney(
         : { ok: false, reason: "nxdomain" };
 
     case "wrong-value":
-      return { ok: true, records: [recordValue(WRONG_VALUE_TOKEN)] };
+      return { ok: true, records: [recordValue(WRONG_VALUE_TOKEN, challenge.brandSlug)] };
 
     case "nxdomain":
       return { ok: false, reason: "nxdomain" };
