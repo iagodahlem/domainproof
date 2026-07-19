@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { generateToken } from "@domainproof/core";
 import { and, eq } from "drizzle-orm";
-import type { Database } from "../db/client.js";
-import { apiKeys } from "../db/schema.js";
-import { generateKeyId } from "./encoding.js";
-import { formatApiKey, type ApiKeyMode } from "./parse.js";
+import type { Database } from "../../infra/db/client";
+import { apiKeys } from "../../infra/db/schema";
+import { generateKeyId } from "./encoding";
+import { formatApiKey, type ApiKeyMode } from "./parse";
 
 type ApiKeyRow = typeof apiKeys.$inferSelect;
 

@@ -9,7 +9,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { createClerkAuthMiddleware } from "./clerk.js";
+import { createClerkAuthMiddleware } from "./clerk";
 
 const JWKS_URL = "https://clerk.test/.well-known/jwks.json";
 const ISSUER = "https://clerk.test";

@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
-import { createClerkAuthMiddleware, type ClerkAuthConfig } from "./auth/clerk.js";
-import { createDb, type Database } from "./db/client.js";
-import { env } from "./env.js";
-import { createKeysRoutes } from "./routes/keys.js";
+import { createClerkAuthMiddleware, type ClerkAuthConfig } from "./modules/accounts/clerk";
+import { createDb, type Database } from "./infra/db/client";
+import { env } from "./env";
+import { createKeysRoutes } from "./modules/keys/routes";
+import { apiError } from "./shared/http-errors";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -40,18 +41,12 @@ export function createApp(deps: AppDependencies = {}) {
   app.route("/v1/keys", createKeysRoutes(db, clerkAuth));
 
   app.notFound((c) => {
-    return c.json(
-      { error: { code: "not_found", message: "Route not found" } },
-      404,
-    );
+    return c.json(apiError("not_found", "Route not found"), 404);
   });
 
   app.onError((err, c) => {
     console.error(err);
-    return c.json(
-      { error: { code: "internal_error", message: "Internal server error" } },
-      500,
-    );
+    return c.json(apiError("internal_error", "Internal server error"), 500);
   });
 
   return app;

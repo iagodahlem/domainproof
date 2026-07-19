@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "../db/client.js";
-import { accounts, projects } from "../db/schema.js";
-import { createKey, revokeKey } from "../keys/service.js";
-import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from "./api-key.js";
+import { createDb, type Database } from "../../infra/db/client";
+import { accounts, projects } from "../../infra/db/schema";
+import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from "./api-key";
+import { createKey, revokeKey } from "./service";
 
 // Runs against the real local Postgres, following the same pattern as
 // auth/bootstrap.test.ts.

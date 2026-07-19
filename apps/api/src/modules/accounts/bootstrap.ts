@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import type { Database } from "../db/client.js";
-import { accounts, projects } from "../db/schema.js";
+import type { Database } from "../../infra/db/client";
+import { accounts, projects } from "../../infra/db/schema";
 
 export interface BootstrapResult {
   accountId: string;

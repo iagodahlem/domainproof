@@ -1,9 +1,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import type { Database } from "../db/client.js";
-import { apiKeys } from "../db/schema.js";
-import { parseApiKey, type ApiKeyMode } from "../keys/parse.js";
+import type { Database } from "../../infra/db/client";
+import { apiKeys } from "../../infra/db/schema";
+import { apiError } from "../../shared/http-errors";
+import { parseApiKey, type ApiKeyMode } from "./parse";
 
 /**
  * Hono context variables set by {@link createApiKeyAuthMiddleware} for any
@@ -17,9 +18,7 @@ export interface ApiKeyAuthVariables {
 
 function invalidApiKey() {
   return {
-    body: {
-      error: { code: "invalid_api_key", message: "Invalid API key" },
-    },
+    body: apiError("invalid_api_key", "Invalid API key"),
     status: 401 as const,
   };
 }

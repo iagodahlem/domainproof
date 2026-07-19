@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { generateKeyId } from "./encoding.js";
-import { formatApiKey, parseApiKey } from "./parse.js";
+import { generateKeyId } from "./encoding";
+import { formatApiKey, parseApiKey } from "./parse";
 
 const SECRET = "a".repeat(26);
 

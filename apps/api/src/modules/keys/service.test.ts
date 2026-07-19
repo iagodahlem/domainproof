@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "../db/client.js";
-import { accounts, apiKeys, projects } from "../db/schema.js";
-import { parseApiKey } from "./parse.js";
-import { createKey, listKeys, revokeKey, rotateKey } from "./service.js";
+import { createDb, type Database } from "../../infra/db/client";
+import { accounts, apiKeys, projects } from "../../infra/db/schema";
+import { parseApiKey } from "./parse";
+import { createKey, listKeys, revokeKey, rotateKey } from "./service";
 
 // Runs against the postgres service defined in the repo's compose.yaml
 // (started with `docker compose up -d db`, migrated with

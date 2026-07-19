@@ -1,4 +1,4 @@
-import { KEY_ID_LENGTH } from "./encoding.js";
+import { KEY_ID_LENGTH } from "./encoding";
 
 export type ApiKeyMode = "test" | "live";
 

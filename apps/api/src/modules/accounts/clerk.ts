@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import type { MiddlewareHandler } from "hono";
+import { apiError } from "../../shared/http-errors";
 
 /**
  * Hono context variable holding the verified Clerk user id, available to
@@ -18,7 +19,7 @@ export interface ClerkAuthConfig {
 
 function unauthorized(message: string) {
   return {
-    body: { error: { code: "unauthorized", message } },
+    body: apiError("unauthorized", message),
     status: 401 as const,
   };
 }
@@ -43,13 +44,10 @@ export function createClerkAuthMiddleware(
   return async (c, next) => {
     if (!jwks || !config.issuer) {
       return c.json(
-        {
-          error: {
-            code: "auth_not_configured",
-            message:
-              "Clerk authentication is not configured (missing CLERK_JWKS_URL or CLERK_ISSUER)",
-          },
-        },
+        apiError(
+          "auth_not_configured",
+          "Clerk authentication is not configured (missing CLERK_JWKS_URL or CLERK_ISSUER)",
+        ),
         500,
       );
     }

@@ -2,11 +2,12 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import type { ClerkAuthVariables } from "../auth/clerk.js";
-import { bootstrapAccount } from "../auth/bootstrap.js";
-import type { Database } from "../db/client.js";
-import { projects } from "../db/schema.js";
-import { createKey, listKeys, revokeKey, rotateKey } from "../keys/service.js";
+import type { ClerkAuthVariables } from "../accounts/clerk";
+import { bootstrapAccount } from "../accounts/bootstrap";
+import type { Database } from "../../infra/db/client";
+import { projects } from "../../infra/db/schema";
+import { apiError } from "../../shared/http-errors";
+import { createKey, listKeys, revokeKey, rotateKey } from "./service";
 
 const createKeyBodySchema = z.object({
   mode: z.enum(["test", "live"]),
@@ -15,14 +16,14 @@ const createKeyBodySchema = z.object({
 
 function notFound() {
   return {
-    body: { error: { code: "not_found", message: "API key not found" } },
+    body: apiError("not_found", "API key not found"),
     status: 404 as const,
   };
 }
 
 function invalidRequest(message: string) {
   return {
-    body: { error: { code: "invalid_request", message } },
+    body: apiError("invalid_request", message),
     status: 400 as const,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateKeyId, KEY_ID_LENGTH } from "./encoding.js";
+import { generateKeyId, KEY_ID_LENGTH } from "./encoding";
 
 describe("generateKeyId", () => {
   it("produces ids matching the expected alphabet and length", () => {

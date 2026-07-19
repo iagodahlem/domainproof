@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import type { ApiKeyAuthVariables } from "./api-key.js";
-import { createRateLimitMiddleware } from "./rate-limit.js";
+import type { ApiKeyAuthVariables } from "./api-key";
+import { createRateLimitMiddleware } from "./rate-limit";
 
 /**
  * Builds a minimal app that stands in for the real pipeline: a fake

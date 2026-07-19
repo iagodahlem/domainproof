@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import type { ApiKeyAuthVariables } from "./api-key.js";
+import type { ApiKeyAuthVariables } from "./api-key";
 
 export interface RateLimitConfig {
   /** Max requests allowed per key within the window. Default 100. */
