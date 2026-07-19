@@ -5,4 +5,8 @@ export * from "./resolver.js";
 export * from "./check-txt.js";
 export * from "./resolvers/fixture.js";
 export * from "./resolvers/sandbox.js";
+export * from "./fetcher.js";
+export * from "./check-http.js";
+export * from "./fetchers/fixture.js";
+export * from "./fetchers/node-fetch.js";
 export * from "./token.js";
