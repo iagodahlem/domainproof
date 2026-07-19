@@ -1,5 +1,7 @@
 import { parse } from "tldts";
 
+import { DEFAULT_BRAND_SLUG } from "./brand.js";
+
 /**
  * Failure reasons returned by {@link normalizeDomain}. Kept as a closed set
  * of string codes so callers (API error taxonomy, UI copy) can switch on them
@@ -99,7 +101,18 @@ export function registrableDomain(domain: string): string {
 /**
  * The TXT record host a domain owner must publish to prove control, e.g.
  * `_domainproof-challenge.acme.co.uk` for `sub.acme.co.uk`.
+ *
+ * `brandSlug` lets a builder white-label the label with their own brand
+ * (e.g. `_skylane-challenge.acme.co.uk`) instead of ours — the person
+ * publishing the record is the builder's customer, not ours, so the record
+ * should read as coming from the product they know. Defaults to
+ * {@link DEFAULT_BRAND_SLUG}, preserving the original behavior.
+ *
+ * Trust boundary: this function does not validate `brandSlug` beyond
+ * trusting its type. Validation (format, reserved-word checks) happens at
+ * the edge — via {@link validateBrandSlug} — before a slug is ever stored
+ * or reaches this function, so it stays a pure string-formatting step.
  */
-export function challengeHost(domain: string): string {
-  return `_domainproof-challenge.${registrableDomain(domain)}`;
+export function challengeHost(domain: string, brandSlug: string = DEFAULT_BRAND_SLUG): string {
+  return `_${brandSlug}-challenge.${registrableDomain(domain)}`;
 }

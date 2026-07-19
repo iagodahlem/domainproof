@@ -1,5 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
+import { DEFAULT_BRAND_SLUG } from "./brand.js";
+
 /**
  * Verification tokens embed 128 bits of cryptographically random entropy —
  * enough that guessing or brute-forcing a valid token is computationally
@@ -57,17 +59,32 @@ export function generateToken(): string {
 }
 
 /**
- * Shared prefix for the TXT record value. Exported so every parser or
- * checker that needs to recognize a DomainProof challenge value agrees on
- * the exact string, instead of each call site duplicating a literal.
+ * Builds the TXT record value prefix for a given brand, e.g.
+ * `skylane-verify=` for the brand slug `skylane`. Defaults to
+ * {@link DEFAULT_BRAND_SLUG}.
  */
-export const RECORD_VALUE_PREFIX = "domainproof-verify=";
+export function recordValuePrefix(brandSlug: string = DEFAULT_BRAND_SLUG): string {
+  return `${brandSlug}-verify=`;
+}
+
+/**
+ * Shared prefix for the TXT record value under the default brand. Exported
+ * so every parser or checker that needs to recognize an unbranded
+ * DomainProof challenge value agrees on the exact string, instead of each
+ * call site duplicating a literal. Derived from {@link recordValuePrefix}'s
+ * default so it always matches what an unbranded {@link recordValue} /
+ * {@link parseRecordValue} call produces.
+ */
+export const RECORD_VALUE_PREFIX = recordValuePrefix();
 
 /**
  * Builds the full TXT record value a domain owner is asked to publish.
+ * `brandSlug` white-labels the value under a builder's brand instead of
+ * ours — a branded record is a distinct namespace, not decoration: it only
+ * matches {@link parseRecordValue} calls made with the same brand slug.
  */
-export function recordValue(token: string): string {
-  return `${RECORD_VALUE_PREFIX}${token}`;
+export function recordValue(token: string, brandSlug: string = DEFAULT_BRAND_SLUG): string {
+  return `${recordValuePrefix(brandSlug)}${token}`;
 }
 
 export type ParsedRecordValue = { ok: true; token: string } | { ok: false };
@@ -82,19 +99,27 @@ export type ParsedRecordValue = { ok: true; token: string } | { ok: false };
  * this module generates are always lowercase, so a case mismatch signals a
  * hand-edited or corrupted record, which should fail to parse rather than
  * silently succeed.
+ *
+ * `brandSlug` selects which brand's prefix to parse against, defaulting to
+ * {@link DEFAULT_BRAND_SLUG}. A record published under one brand does not
+ * parse under a different brand's prefix — brands are namespaces.
  */
-export function parseRecordValue(value: string): ParsedRecordValue {
+export function parseRecordValue(
+  value: string,
+  brandSlug: string = DEFAULT_BRAND_SLUG,
+): ParsedRecordValue {
+  const prefix = recordValuePrefix(brandSlug);
   let trimmed = value.trim();
 
   if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
     trimmed = trimmed.slice(1, -1).trim();
   }
 
-  if (!trimmed.startsWith(RECORD_VALUE_PREFIX)) {
+  if (!trimmed.startsWith(prefix)) {
     return { ok: false };
   }
 
-  const token = trimmed.slice(RECORD_VALUE_PREFIX.length);
+  const token = trimmed.slice(prefix.length);
 
   if (token.length === 0) {
     return { ok: false };
