@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DOMAIN_STATUSES, type DomainStatus, transition, type VerificationEvent } from "./states.js";
+import { DOMAIN_STATUSES, type DomainStatus, transition, type VerificationEvent } from "./states";
 
 const EVENT_TYPES: VerificationEvent["type"][] = [
   "verification_started",

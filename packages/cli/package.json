@@ -7,7 +7,7 @@
     "domainproof": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
@@ -16,6 +16,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "eslint": "^10.7.0",
+    "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.64.0",
     "vitest": "catalog:"

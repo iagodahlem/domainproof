@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DomainProof } from "./index.js";
+import { DomainProof } from "./index";
 
 describe("DomainProof", () => {
   it("stores the api key from the constructor", () => {

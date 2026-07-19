@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { main } from "./index.js";
+import { main } from "./index";
 
 describe("main", () => {
   it("runs without throwing", () => {
