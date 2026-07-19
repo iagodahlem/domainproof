@@ -11,7 +11,7 @@ FROM base AS build
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter=api build
+RUN pnpm exec turbo run build --filter=api...
 RUN pnpm --filter=api deploy /prod/api --prod
 
 # ---- runtime: minimal image, non-root user, only the deployed output ----
