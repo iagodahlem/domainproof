@@ -66,12 +66,16 @@ explicitly rather than papered over:
   etc.) — that's what "map results to HTTP" means in practice. The "modules
   don't import hono" framing in rule 2 is about domain/service code, not
   route files.
-- **`modules/keys/routes.ts` imports `modules/accounts`** (`bootstrapAccount`,
-  `ClerkAuthVariables`) directly for now, rather than having every piece of
-  auth/account resolution injected from `app.ts`. This is route-wiring
-  coupling, not domain-logic coupling, and it's a known follow-up once a
-  second module needs the same "resolve the caller's project" pattern —
-  see the PR's tradeoffs note.
+- **`modules/keys/routes.ts` imports `modules/projects`** (`getDefaultProjectId`)
+  and the `ClerkAuthVariables` type from `modules/accounts`, rather than
+  having project resolution injected from `app.ts`. The project lookup
+  itself is not a route-file exception — it's a real service function in
+  `modules/projects/service.ts`, called the same way `keys/routes.ts`
+  calls its own module's `createKey`/`listKeys`/etc. The exception is
+  narrower than it looks: one module's routes calling another module's
+  service function directly, instead of every cross-module call being
+  injected from `app.ts`. That's a known follow-up once a third module
+  needs the same "resolve the caller's project" pattern.
 - **Modules import the `Database` type and Drizzle table objects from
   `infra/db`.** Drizzle's query builder is table-object-driven
   (`db.select().from(accounts)...`), so services need the schema to build

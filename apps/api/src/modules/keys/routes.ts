@@ -1,11 +1,9 @@
-import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { ClerkAuthVariables } from "../accounts/clerk";
-import { bootstrapAccount } from "../accounts/bootstrap";
+import { getDefaultProjectId } from "../projects/service";
 import type { Database } from "../../infra/db/client";
-import { projects } from "../../infra/db/schema";
 import { apiError } from "../../shared/http-errors";
 import { createKey, listKeys, revokeKey, rotateKey } from "./service";
 
@@ -29,36 +27,9 @@ function invalidRequest(message: string) {
 }
 
 /**
- * Resolves the caller's project. Every account currently has exactly one
- * ("Default") project — created atomically alongside the account in
- * {@link bootstrapAccount} — so this is a stand-in for real project
- * selection until the dashboard supports multiple projects per account.
- */
-async function resolveProjectId(
-  db: Database,
-  clerkUserId: string,
-): Promise<string> {
-  const { accountId } = await bootstrapAccount(db, clerkUserId);
-
-  const [project] = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.accountId, accountId))
-    .limit(1);
-
-  if (!project) {
-    // Cannot happen: bootstrapAccount guarantees a default project exists
-    // for every account (created atomically in the same transaction).
-    throw new Error(`No project found for account ${accountId}`);
-  }
-
-  return project.id;
-}
-
-/**
  * Dashboard-facing key management routes, mounted under `/v1/keys`.
  * Every route is scoped to the caller's account -> project (resolved via
- * Clerk auth + {@link bootstrapAccount}): a `keyId` belonging to another
+ * Clerk auth + {@link getDefaultProjectId}): a `keyId` belonging to another
  * account's project always 404s, matching the anti-enumeration stance
  * used by the public-API key auth middleware — a caller should never be
  * able to distinguish "not yours" from "doesn't exist".
@@ -80,7 +51,7 @@ export function createKeysRoutes(
       return c.json(body, status);
     }
 
-    const projectId = await resolveProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
     const result = await createKey(
       db,
       projectId,
@@ -92,14 +63,14 @@ export function createKeysRoutes(
   });
 
   router.get("/", async (c) => {
-    const projectId = await resolveProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
     const items = await listKeys(db, projectId);
 
     return c.json({ apiKeys: items });
   });
 
   router.post("/:keyId/revoke", async (c) => {
-    const projectId = await resolveProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
     const keyId = c.req.param("keyId");
 
     const revoked = await revokeKey(db, projectId, keyId);
@@ -112,7 +83,7 @@ export function createKeysRoutes(
   });
 
   router.post("/:keyId/rotate", async (c) => {
-    const projectId = await resolveProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
     const keyId = c.req.param("keyId");
 
     const result = await rotateKey(db, projectId, keyId);
