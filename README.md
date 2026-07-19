@@ -41,19 +41,25 @@ remains the primary dev loop.
 Base URL: `api.domainproof.dev`. Every non-2xx response is
 `{ error: { code, message } }`.
 
-| Method | Path                    | Auth                  | Description                              |
-| ------ | ----------------------- | ---------------------- | ----------------------------------------- |
-| GET    | `/health`                | none                    | Liveness check; returns `{ status, version }`. |
-| POST   | `/v1/keys`                | Clerk (dashboard)       | Creates an API key for the caller's project. |
-| GET    | `/v1/keys`                | Clerk (dashboard)       | Lists the caller's project's API keys.    |
-| POST   | `/v1/keys/:keyId/revoke`  | Clerk (dashboard)       | Revokes an API key.                       |
-| POST   | `/v1/keys/:keyId/rotate`  | Clerk (dashboard)       | Revokes an API key and issues its replacement. |
+The API has two authentication planes:
 
-"Clerk (dashboard)" means a `Authorization: Bearer <Clerk session JWT>`
-header, verified against the configured Clerk JWKS/issuer — this is the
-dashboard calling on behalf of a signed-in user, not the public verification
-API (which will authenticate with `dp_<mode>_<keyId>_<secret>` API keys once
-its endpoints land).
+- **Dashboard API** — authenticated by the builder's login session
+  (`Authorization: Bearer <session token>`). This is what the DomainProof
+  dashboard calls on the signed-in builder's behalf; it's not meant to be
+  called directly by integrations.
+- **Public API** — authenticated with a project API key
+  (`Authorization: Bearer dp_test_...` / `dp_live_...`). This is the plane
+  the SDK, CLI, MCP server, and direct integrations use. No endpoints live
+  here yet — domain verification (creating a domain, checking its status,
+  triggering a recheck) is next.
+
+| Method | Path                      | Plane     | Description                                    |
+| ------ | ------------------------- | --------- | ----------------------------------------------- |
+| GET    | `/health`                 | none      | Liveness check; returns `{ status, version }`.  |
+| POST   | `/v1/keys`                | Dashboard | Creates an API key for the caller's project.    |
+| GET    | `/v1/keys`                | Dashboard | Lists the caller's project's API keys.          |
+| POST   | `/v1/keys/:keyId/revoke`  | Dashboard | Revokes an API key.                             |
+| POST   | `/v1/keys/:keyId/rotate`  | Dashboard | Revokes an API key and issues its replacement.  |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
