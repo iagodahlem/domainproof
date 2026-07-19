@@ -35,3 +35,26 @@ The API's tests need a database: `docker compose up -d db` then, once,
 
 `docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`
 remains the primary dev loop.
+
+## API
+
+Base URL: `api.domainproof.dev`. Every non-2xx response is
+`{ error: { code, message } }`.
+
+| Method | Path                    | Auth                  | Description                              |
+| ------ | ----------------------- | ---------------------- | ----------------------------------------- |
+| GET    | `/health`                | none                    | Liveness check; returns `{ status, version }`. |
+| POST   | `/v1/keys`                | Clerk (dashboard)       | Creates an API key for the caller's project. |
+| GET    | `/v1/keys`                | Clerk (dashboard)       | Lists the caller's project's API keys.    |
+| POST   | `/v1/keys/:keyId/revoke`  | Clerk (dashboard)       | Revokes an API key.                       |
+| POST   | `/v1/keys/:keyId/rotate`  | Clerk (dashboard)       | Revokes an API key and issues its replacement. |
+
+"Clerk (dashboard)" means a `Authorization: Bearer <Clerk session JWT>`
+header, verified against the configured Clerk JWKS/issuer — this is the
+dashboard calling on behalf of a signed-in user, not the public verification
+API (which will authenticate with `dp_<mode>_<keyId>_<secret>` API keys once
+its endpoints land).
+
+This table is maintained by hand until an OpenAPI spec exists — any PR that
+adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
+for the layer map and dependency rules.

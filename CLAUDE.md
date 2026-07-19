@@ -60,13 +60,13 @@ the same command CI runs.
 These aren't style preferences — breaking them breaks the testability and
 trust story the product is graded on.
 
-- **All DNS and HTTP IO behind injected interfaces.** `DnsResolver` (and any
-  HTTP-fetch equivalent for the well-known-file check) is an interface
-  defined in `packages/core`. The only concrete implementation that talks to
-  real DNS/HTTP lives in `packages/core/src/resolvers/`. Everything else —
-  API routes, the state machine, tests — takes the interface as a
-  dependency. This is what makes the failure/recovery UX demoable without
-  waiting on real TTLs.
+- **All DNS and HTTP IO behind injected interfaces.** `DnsResolver` and
+  `HttpFetcher` are interfaces defined in `packages/core` (zero IO). The
+  concrete implementations that talk to real DNS/HTTP live in
+  `apps/api/src/infra/dns/` and `apps/api/src/infra/http/` — core only
+  knows the port, never a concrete adapter. Everything else — API routes,
+  the state machine, tests — takes the interface as a dependency. This is
+  what makes the failure/recovery UX demoable without waiting on real TTLs.
 - **`.test` sandbox domains never hit real DNS.** Domains ending in `.test`
   are routed to an in-memory fixture resolver that simulates
   pending/verified/wrong-value/conflicting-record scenarios on demand. If
@@ -80,6 +80,36 @@ trust story the product is graded on.
   Every non-2xx response from `apps/api` follows this shape (plus
   `docs_url` where useful). No ad-hoc error strings, no bare
   `{ message }`, no throwing raw error objects across the API boundary.
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full layer map, dependency
+rules, and a "where does X go?" decision table. The short version:
+
+- `packages/core` is pure domain logic — zero IO, never imports from `apps/`.
+- `apps/api/src/modules/*` owns domain rules, services, and routes for its
+  feature area; it depends on core and its own module, never on a concrete
+  `infra/` adapter or the db client directly.
+- `apps/api/src/infra/*` implements core/module ports (DB, DNS, HTTP) and is
+  only wired up from `apps/api/src/app.ts` (the composition root).
+- Route files parse/validate input, call services, and map results to HTTP —
+  nothing else.
+
+These are enforced by eslint (`no-restricted-imports`, see
+`eslint.base.mjs`) and reviewed by the `architecture-reviewer` agent
+(`.claude/agents/architecture-reviewer.md`) on every PR.
+
+Standing rules for every PR, regardless of size:
+
+- **Any PR that adds or changes API endpoints must update the endpoints
+  table in `README.md`** — there's no OpenAPI spec yet, so that table is
+  the source of truth for what the API exposes.
+- **PR titles follow conventional commits** (`feat:`, `fix:`, `refactor:`,
+  ...), same as commit messages.
+- **PR descriptions are written in the author's own voice, addressed to a
+  reviewer** — no "you asked for X" / assistant-narration framing, no
+  restating the prompt. Write it the way you'd write it if you'd typed
+  every line yourself.
 
 ## Agent skills
 
