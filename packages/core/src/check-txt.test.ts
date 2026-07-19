@@ -93,4 +93,26 @@ describe("checkTxt", () => {
 
     expect(await checkTxt(resolver, HOST, TOKEN)).toEqual({ outcome: "unreachable" });
   });
+
+  it("returns found for a branded record checked under the same brand", async () => {
+    const resolver = createFixtureResolver({ [HOST]: [recordValue(TOKEN, "skylane")] });
+
+    expect(await checkTxt(resolver, HOST, TOKEN, { brandSlug: "skylane" })).toEqual({
+      outcome: "found",
+    });
+  });
+
+  it("does not match a branded record when checked under the default brand", async () => {
+    const resolver = createFixtureResolver({ [HOST]: [recordValue(TOKEN, "skylane")] });
+
+    expect(await checkTxt(resolver, HOST, TOKEN)).toEqual({ outcome: "not_found" });
+  });
+
+  it("does not match a default-brand record when checked under another brand", async () => {
+    const resolver = createFixtureResolver({ [HOST]: [recordValue(TOKEN)] });
+
+    expect(await checkTxt(resolver, HOST, TOKEN, { brandSlug: "skylane" })).toEqual({
+      outcome: "not_found",
+    });
+  });
 });

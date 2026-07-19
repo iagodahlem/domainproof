@@ -63,6 +63,20 @@ function resultForFailure(reason: TxtResolutionFailureReason): TxtCheckResult {
 }
 
 /**
+ * Options for {@link checkTxt}.
+ */
+export type CheckTxtOptions = {
+  /**
+   * Which brand's record prefix to parse against, defaulting to the
+   * DomainProof brand. Must match the brand slug used to generate the
+   * challenge (via {@link recordValue}) — brands are namespaces, so a
+   * record published under one brand is invisible to a check made under
+   * another.
+   */
+  brandSlug?: string;
+};
+
+/**
  * Checks whether `hostname` publishes a TXT record proving `expectedToken`.
  *
  * Pure aside from the injected `resolver` call: given the same resolution,
@@ -75,6 +89,7 @@ export async function checkTxt(
   resolver: DnsResolver,
   hostname: string,
   expectedToken: string,
+  options?: CheckTxtOptions,
 ): Promise<TxtCheckResult> {
   const resolution = await resolver.resolveTxt(hostname);
 
@@ -85,7 +100,7 @@ export async function checkTxt(
   const detected: string[] = [];
 
   for (const record of resolution.records) {
-    const parsed = parseRecordValue(record);
+    const parsed = parseRecordValue(record, options?.brandSlug);
     if (!parsed.ok) {
       continue;
     }

@@ -7,6 +7,7 @@ import {
   isExpired,
   parseRecordValue,
   recordValue,
+  recordValuePrefix,
   tokensMatch,
 } from "./token.js";
 
@@ -67,6 +68,32 @@ describe("recordValue / parseRecordValue", () => {
 
   it("rejects an empty string", () => {
     expect(parseRecordValue("")).toEqual({ ok: false });
+  });
+
+  it("builds a brand-specific prefix", () => {
+    expect(recordValuePrefix("skylane")).toBe("skylane-verify=");
+  });
+
+  it("round-trips a branded token under its own brand", () => {
+    const token = generateToken();
+    const value = recordValue(token, "skylane");
+
+    expect(value).toBe(`skylane-verify=${token}`);
+    expect(parseRecordValue(value, "skylane")).toEqual({ ok: true, token });
+  });
+
+  it("does not match a branded record under the default brand", () => {
+    const token = generateToken();
+    const value = recordValue(token, "skylane");
+
+    expect(parseRecordValue(value)).toEqual({ ok: false });
+  });
+
+  it("does not match a default-brand record under a different brand", () => {
+    const token = generateToken();
+    const value = recordValue(token);
+
+    expect(parseRecordValue(value, "skylane")).toEqual({ ok: false });
   });
 });
 
