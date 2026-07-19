@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import type { ClerkAuthVariables } from "@modules/accounts/clerk";
+import type { SessionAuthVariables } from "@modules/accounts/session-auth";
 import { getDefaultProjectId } from "@modules/projects/service";
 import type { Database } from "@infra/db/client";
 import { apiError } from "@shared/http-errors";
@@ -27,20 +27,20 @@ function invalidRequest(message: string) {
 }
 
 /**
- * Dashboard-facing key management routes, mounted under `/v1/keys`.
+ * Dashboard-facing key management routes, mounted under `/dashboard/keys`.
  * Every route is scoped to the caller's account -> project (resolved via
- * Clerk auth + {@link getDefaultProjectId}): a `keyId` belonging to another
- * account's project always 404s, matching the anti-enumeration stance
- * used by the public-API key auth middleware — a caller should never be
- * able to distinguish "not yours" from "doesn't exist".
+ * session auth + {@link getDefaultProjectId}): a `keyId` belonging to
+ * another account's project always 404s, matching the anti-enumeration
+ * stance used by the public-API key auth middleware — a caller should
+ * never be able to distinguish "not yours" from "doesn't exist".
  */
 export function createKeysRoutes(
   db: Database,
-  clerkAuth: MiddlewareHandler<{ Variables: ClerkAuthVariables }>,
+  sessionAuth: MiddlewareHandler<{ Variables: SessionAuthVariables }>,
 ) {
-  const router = new Hono<{ Variables: ClerkAuthVariables }>();
+  const router = new Hono<{ Variables: SessionAuthVariables }>();
 
-  router.use("*", clerkAuth);
+  router.use("*", sessionAuth);
 
   router.post("/", async (c) => {
     const json = await c.req.json().catch(() => undefined);
@@ -51,7 +51,7 @@ export function createKeysRoutes(
       return c.json(body, status);
     }
 
-    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("userId"));
     const result = await createKey(
       db,
       projectId,
@@ -63,14 +63,14 @@ export function createKeysRoutes(
   });
 
   router.get("/", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("userId"));
     const items = await listKeys(db, projectId);
 
     return c.json({ apiKeys: items });
   });
 
   router.post("/:keyId/revoke", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("userId"));
     const keyId = c.req.param("keyId");
 
     const revoked = await revokeKey(db, projectId, keyId);
@@ -83,7 +83,7 @@ export function createKeysRoutes(
   });
 
   router.post("/:keyId/rotate", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("clerkUserId"));
+    const projectId = await getDefaultProjectId(db, c.get("userId"));
     const keyId = c.req.param("keyId");
 
     const result = await rotateKey(db, projectId, keyId);

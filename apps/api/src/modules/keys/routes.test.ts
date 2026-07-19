@@ -1,55 +1,32 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
+import type { SessionVerifier } from "@modules/accounts/session-verifier";
 import { createDb, type Database } from "@infra/db/client";
 import { accounts } from "@infra/db/schema";
 
-// Drives the real Clerk middleware (not a stub) the same way
-// auth/clerk.test.ts does: a locally generated RS256 keypair served as
-// the JWKS, with `globalThis.fetch` stubbed so `createRemoteJWKSet` never
-// makes a real network call. This exercises the actual auth path the
-// production app mounts, rather than a faked "assume authenticated"
-// context — chosen over stubbing because these tests are also the only
-// coverage of `/v1/keys` wiring end to end (route mounting, project
-// resolution, cross-account scoping).
-const JWKS_URL = "https://clerk.test/.well-known/jwks.json";
-const ISSUER = "https://clerk.test";
-
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  "postgres://domainproof:domainproof@localhost:5432/domainproof";
-
-const db: Database = createDb(DATABASE_URL);
+// Auth here is a fake SessionVerifier implementing the port directly,
+// mapping "token-for-<userId>" straight to that user id — the real Clerk
+// verifier's own behavior is covered by infra/auth/clerk.test.ts. This file
+// is the only coverage of /dashboard/keys wiring end to end (route
+// mounting, project resolution, cross-account scoping), not of session
+// verification itself.
+const db: Database =
+  createDb(
+    process.env.DATABASE_URL ??
+      "postgres://domainproof:domainproof@localhost:5432/domainproof",
+  );
 const createdClerkUserIds: string[] = [];
 
-let privateKey: CryptoKey;
-let jwk: JWK & { kid: string };
-
-beforeAll(async () => {
-  const { privateKey: priv, publicKey } = await generateKeyPair("RS256");
-  privateKey = priv;
-  jwk = { ...(await exportJWK(publicKey)), kid: "test-key" };
-});
-
-async function tokenFor(clerkUserId: string) {
-  return new SignJWT({})
-    .setProtectedHeader({ alg: "RS256", kid: jwk.kid })
-    .setIssuedAt()
-    .setIssuer(ISSUER)
-    .setSubject(clerkUserId)
-    .setExpirationTime("1h")
-    .sign(privateKey);
-}
+const fakeSessionVerifier: SessionVerifier = {
+  async verify(token) {
+    if (!token.startsWith("token-for-")) {
+      return { ok: false, reason: "invalid_or_expired" };
+    }
+    return { ok: true, claims: { userId: token.slice("token-for-".length) } };
+  },
+};
 
 function freshClerkUserId() {
   const id = `user_${randomUUID()}`;
@@ -58,34 +35,26 @@ function freshClerkUserId() {
 }
 
 function buildApp() {
-  return createApp({ db, clerkConfig: { jwksUrl: JWKS_URL, issuer: ISSUER } });
+  return createApp({ db, sessionVerifier: fakeSessionVerifier });
 }
 
-async function asUser(app: ReturnType<typeof buildApp>, clerkUserId: string, path: string, init: RequestInit = {}) {
-  const token = await tokenFor(clerkUserId);
+async function asUser(
+  app: ReturnType<typeof buildApp>,
+  clerkUserId: string,
+  path: string,
+  init: RequestInit = {},
+) {
   return app.request(path, {
     ...init,
     headers: {
       ...init.headers,
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer token-for-${clerkUserId}`,
     },
   });
 }
 
-describe("/v1/keys", () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
-      return new Response(JSON.stringify({ keys: [jwk] }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    });
-  });
-
+describe("/dashboard/keys", () => {
   afterEach(async () => {
-    fetchSpy.mockRestore();
     while (createdClerkUserIds.length > 0) {
       const clerkUserId = createdClerkUserIds.pop();
       if (clerkUserId) {
@@ -96,7 +65,7 @@ describe("/v1/keys", () => {
 
   it("rejects unauthenticated requests", async () => {
     const app = buildApp();
-    const res = await app.request("/v1/keys");
+    const res = await app.request("/dashboard/keys");
     expect(res.status).toBe(401);
   });
 
@@ -104,7 +73,7 @@ describe("/v1/keys", () => {
     const app = buildApp();
     const clerkUserId = freshClerkUserId();
 
-    const createRes = await asUser(app, clerkUserId, "/v1/keys", {
+    const createRes = await asUser(app, clerkUserId, "/dashboard/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "live", name: "Production" }),
@@ -118,7 +87,7 @@ describe("/v1/keys", () => {
     expect(created.key).toMatch(/^dp_live_[a-z2-7]{12}_[a-z2-7]{26}$/);
     expect(created.apiKey.name).toBe("Production");
 
-    const listRes = await asUser(app, clerkUserId, "/v1/keys");
+    const listRes = await asUser(app, clerkUserId, "/dashboard/keys");
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as { apiKeys: Array<Record<string, unknown>> };
     expect(listBody.apiKeys).toHaveLength(1);
@@ -134,7 +103,7 @@ describe("/v1/keys", () => {
     const app = buildApp();
     const clerkUserId = freshClerkUserId();
 
-    const res = await asUser(app, clerkUserId, "/v1/keys", {
+    const res = await asUser(app, clerkUserId, "/dashboard/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "not-a-mode" }),
@@ -148,7 +117,7 @@ describe("/v1/keys", () => {
     const app = buildApp();
     const clerkUserId = freshClerkUserId();
 
-    const createRes = await asUser(app, clerkUserId, "/v1/keys", {
+    const createRes = await asUser(app, clerkUserId, "/dashboard/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "test" }),
@@ -158,7 +127,7 @@ describe("/v1/keys", () => {
     const revokeRes = await asUser(
       app,
       clerkUserId,
-      `/v1/keys/${created.apiKey.keyId}/revoke`,
+      `/dashboard/keys/${created.apiKey.keyId}/revoke`,
       { method: "POST" },
     );
     expect(revokeRes.status).toBe(200);
@@ -170,7 +139,7 @@ describe("/v1/keys", () => {
     const app = buildApp();
     const clerkUserId = freshClerkUserId();
 
-    const createRes = await asUser(app, clerkUserId, "/v1/keys", {
+    const createRes = await asUser(app, clerkUserId, "/dashboard/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "live", name: "Rotate target" }),
@@ -183,7 +152,7 @@ describe("/v1/keys", () => {
     const rotateRes = await asUser(
       app,
       clerkUserId,
-      `/v1/keys/${created.apiKey.keyId}/rotate`,
+      `/dashboard/keys/${created.apiKey.keyId}/rotate`,
       { method: "POST" },
     );
     expect(rotateRes.status).toBe(200);
@@ -195,7 +164,7 @@ describe("/v1/keys", () => {
     expect(rotated.apiKey.name).toBe("Rotate target");
     expect(rotated.apiKey.keyId).not.toBe(created.apiKey.keyId);
 
-    const listRes = await asUser(app, clerkUserId, "/v1/keys");
+    const listRes = await asUser(app, clerkUserId, "/dashboard/keys");
     const listBody = (await listRes.json()) as {
       apiKeys: Array<{ keyId: string; revokedAt: string | null }>;
     };
@@ -210,7 +179,7 @@ describe("/v1/keys", () => {
     const ownerId = freshClerkUserId();
     const otherId = freshClerkUserId();
 
-    const createRes = await asUser(app, ownerId, "/v1/keys", {
+    const createRes = await asUser(app, ownerId, "/dashboard/keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "test" }),
@@ -220,7 +189,7 @@ describe("/v1/keys", () => {
     const revokeAsOther = await asUser(
       app,
       otherId,
-      `/v1/keys/${created.apiKey.keyId}/revoke`,
+      `/dashboard/keys/${created.apiKey.keyId}/revoke`,
       { method: "POST" },
     );
     expect(revokeAsOther.status).toBe(404);
@@ -230,13 +199,13 @@ describe("/v1/keys", () => {
     const rotateAsOther = await asUser(
       app,
       otherId,
-      `/v1/keys/${created.apiKey.keyId}/rotate`,
+      `/dashboard/keys/${created.apiKey.keyId}/rotate`,
       { method: "POST" },
     );
     expect(rotateAsOther.status).toBe(404);
 
     // And it's untouched from the owner's perspective.
-    const listRes = await asUser(app, ownerId, "/v1/keys");
+    const listRes = await asUser(app, ownerId, "/dashboard/keys");
     const listBody = (await listRes.json()) as {
       apiKeys: Array<{ keyId: string; revokedAt: string | null }>;
     };
@@ -250,7 +219,7 @@ describe("/v1/keys", () => {
     const res = await asUser(
       app,
       clerkUserId,
-      "/v1/keys/doesnotexist1/revoke",
+      "/dashboard/keys/doesnotexist1/revoke",
       { method: "POST" },
     );
     expect(res.status).toBe(404);

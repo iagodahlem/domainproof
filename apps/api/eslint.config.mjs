@@ -26,19 +26,22 @@ export default [
             ...EXTENSIONLESS_IMPORT_PATTERNS,
             {
               // Both the relative form (any depth of ../) and the
-              // @infra/dns|http path-alias form are restricted — an alias
-              // is still an import of the same concrete adapter, and
+              // @infra/dns|http|auth path-alias form are restricted — an
+              // alias is still an import of the same concrete adapter, and
               // shouldn't be a way to quietly route around this rule.
               group: [
                 "**/infra/dns/**",
                 "**/infra/http/**",
+                "**/infra/auth/**",
                 "@infra/dns",
                 "@infra/dns/**",
                 "@infra/http",
                 "@infra/http/**",
+                "@infra/auth",
+                "@infra/auth/**",
               ],
               message:
-                "modules/* must depend on core's DnsResolver/HttpFetcher ports, not a concrete infra adapter. Wire the adapter in app.ts and inject it as an argument.",
+                "modules/* must depend on a port (DnsResolver, HttpFetcher, SessionVerifier, ...), not a concrete infra adapter. Wire the adapter in app.ts and inject it as an argument.",
             },
           ],
         },
