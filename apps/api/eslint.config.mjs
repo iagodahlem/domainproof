@@ -1,19 +1,37 @@
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
+import baseConfig, { EXTENSIONLESS_IMPORT_PATTERNS } from "../../eslint.base.mjs";
 
-export default tseslint.config(
+export default [
+  ...baseConfig(import.meta.dirname),
   {
-    ignores: ["dist/**", "node_modules/**"],
-  },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-  {
-    files: ["src/**/*.ts"],
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
+    // `modules/*` owns domain rules, services, and routes — it depends on
+    // core and its own module, never on a concrete infra adapter (see
+    // ARCHITECTURE.md's dependency rules). Infra is wired in app.ts (the
+    // composition root) and injected into modules as an argument.
+    //
+    // This block re-declares `no-restricted-imports` (flat config doesn't
+    // merge rule values across matching config objects, it overrides), so
+    // it repeats the extensionless-import patterns alongside the
+    // module-specific ones below.
+    //
+    // Scoped to non-test files: tests under modules/ legitimately spin up
+    // a real db client (infra/db) as test setup, which isn't the "domain
+    // logic reaching into infra" this rule exists to catch.
+    files: ["src/modules/**/*.ts"],
+    ignores: ["src/modules/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...EXTENSIONLESS_IMPORT_PATTERNS,
+            {
+              group: ["**/infra/dns/**", "**/infra/http/**"],
+              message:
+                "modules/* must depend on core's DnsResolver/HttpFetcher ports, not a concrete infra adapter. Wire the adapter in app.ts and inject it as an argument.",
+            },
+          ],
+        },
+      ],
     },
   },
-);
+];
