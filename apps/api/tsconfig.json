@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@infra/*": ["src/infra/*"],
+      "@modules/*": ["src/modules/*"],
+      "@shared/*": ["src/shared/*"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

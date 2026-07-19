@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import type { MiddlewareHandler } from "hono";
-import { apiError } from "../../shared/http-errors";
+import { apiError } from "@shared/http-errors";
 
 /**
  * Hono context variable holding the verified Clerk user id, available to

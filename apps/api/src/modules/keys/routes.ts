@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import type { ClerkAuthVariables } from "../accounts/clerk";
-import { getDefaultProjectId } from "../projects/service";
-import type { Database } from "../../infra/db/client";
-import { apiError } from "../../shared/http-errors";
+import type { ClerkAuthVariables } from "@modules/accounts/clerk";
+import { getDefaultProjectId } from "@modules/projects/service";
+import type { Database } from "@infra/db/client";
+import { apiError } from "@shared/http-errors";
 import { createKey, listKeys, revokeKey, rotateKey } from "./service";
 
 const createKeyBodySchema = z.object({

@@ -1,9 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import type { Database } from "../../infra/db/client";
-import { apiKeys } from "../../infra/db/schema";
-import { apiError } from "../../shared/http-errors";
+import type { Database } from "@infra/db/client";
+import { apiKeys } from "@infra/db/schema";
+import { apiError } from "@shared/http-errors";
 import { parseApiKey, type ApiKeyMode } from "./parse";
 
 /**

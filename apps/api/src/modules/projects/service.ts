@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { bootstrapAccount } from "../accounts/bootstrap";
-import type { Database } from "../../infra/db/client";
-import { projects } from "../../infra/db/schema";
+import { bootstrapAccount } from "@modules/accounts/bootstrap";
+import type { Database } from "@infra/db/client";
+import { projects } from "@infra/db/schema";
 
 /**
  * Resolves the project a Clerk-authenticated caller is acting on,

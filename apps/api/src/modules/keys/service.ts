@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { generateToken } from "@domainproof/core";
 import { and, eq } from "drizzle-orm";
-import type { Database } from "../../infra/db/client";
-import { apiKeys } from "../../infra/db/schema";
+import type { Database } from "@infra/db/client";
+import { apiKeys } from "@infra/db/schema";
 import { generateKeyId } from "./encoding";
 import { formatApiKey, type ApiKeyMode } from "./parse";
 

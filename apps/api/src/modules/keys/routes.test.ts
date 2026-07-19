@@ -11,8 +11,8 @@ import {
   vi,
 } from "vitest";
 import { createApp } from "../../app";
-import { createDb, type Database } from "../../infra/db/client";
-import { accounts } from "../../infra/db/schema";
+import { createDb, type Database } from "@infra/db/client";
+import { accounts } from "@infra/db/schema";
 
 // Drives the real Clerk middleware (not a stub) the same way
 // auth/clerk.test.ts does: a locally generated RS256 keypair served as

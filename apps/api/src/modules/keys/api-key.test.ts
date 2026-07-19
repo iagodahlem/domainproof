@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "../../infra/db/client";
-import { accounts, projects } from "../../infra/db/schema";
+import { createDb, type Database } from "@infra/db/client";
+import { accounts, projects } from "@infra/db/schema";
 import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from "./api-key";
 import { createKey, revokeKey } from "./service";
 

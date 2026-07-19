@@ -128,6 +128,14 @@ explicitly rather than papered over:
   yet either — when it does, add `transpilePackages: ["@domainproof/core"]`
   to `next.config.ts`, since Next's own bundler needs the same "resolve
   this workspace package from source" opt-in tsup gets from `noExternal`.
+- **Path aliases in `apps/api`.** `@infra/*`, `@modules/*`, and `@shared/*`
+  map to `apps/api/src/{infra,modules,shared}/*` for imports that cross
+  out of the current directory; an import that stays inside the same
+  module or directory (e.g. `./service`, `./parse`) stays relative. `tsc`,
+  `tsup`/esbuild, and `tsx` all read this straight from `tsconfig.json`'s
+  `paths`; `vitest` needs `resolve.tsconfigPaths: true` set explicitly
+  (`apps/api/vitest.config.ts`) to see the same mapping, since Vite doesn't
+  read tsconfig `paths` on its own by default.
 
 ## Planned: events
 

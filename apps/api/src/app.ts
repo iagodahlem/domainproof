@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
-import { createClerkAuthMiddleware, type ClerkAuthConfig } from "./modules/accounts/clerk";
-import { createDb, type Database } from "./infra/db/client";
+import { createClerkAuthMiddleware, type ClerkAuthConfig } from "@modules/accounts/clerk";
+import { createDb, type Database } from "@infra/db/client";
 import { env } from "./env";
-import { createKeysRoutes } from "./modules/keys/routes";
-import { apiError } from "./shared/http-errors";
+import { createKeysRoutes } from "@modules/keys/routes";
+import { apiError } from "@shared/http-errors";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

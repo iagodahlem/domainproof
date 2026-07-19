@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "../../infra/db/client";
-import { accounts, projects } from "../../infra/db/schema";
+import { createDb, type Database } from "@infra/db/client";
+import { accounts, projects } from "@infra/db/schema";
 import { bootstrapAccount } from "./bootstrap";
 
 // These tests run against the postgres service defined in the repo's
