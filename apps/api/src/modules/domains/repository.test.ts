@@ -1,0 +1,267 @@
+import { randomUUID } from 'node:crypto'
+import { eq } from 'drizzle-orm'
+import { afterEach, describe, expect, it } from 'vitest'
+import { createDb, type Database } from '@infra/db/client'
+import {
+  accounts,
+  challenges,
+  projects,
+  verificationEvents,
+} from '@infra/db/schema'
+import { createDomainsRepository } from './repository'
+
+const DATABASE_URL =
+  process.env.DATABASE_URL ??
+  'postgres://domainproof:domainproof@localhost:5432/domainproof'
+
+const db: Database = createDb(DATABASE_URL)
+const repository = createDomainsRepository(db)
+const createdClerkUserIds: string[] = []
+
+async function createTestProject(): Promise<string> {
+  const clerkUserId = `user_${randomUUID()}`
+  createdClerkUserIds.push(clerkUserId)
+
+  const [account] = await db
+    .insert(accounts)
+    .values({ clerkUserId })
+    .returning({ id: accounts.id })
+  if (!account) throw new Error('failed to create test account')
+
+  const [project] = await db
+    .insert(projects)
+    .values({ accountId: account.id, name: 'Test project', slug: 'test' })
+    .returning({ id: projects.id })
+  if (!project) throw new Error('failed to create test project')
+
+  return project.id
+}
+
+function claimValues(
+  projectId: string,
+  overrides: Partial<{
+    domain: string
+    mode: 'test' | 'live'
+  }> = {},
+) {
+  return {
+    projectId,
+    mode: overrides.mode ?? ('live' as const),
+    domain: overrides.domain ?? `example-${randomUUID()}.test`,
+    status: 'pending' as const,
+    challenge: {
+      method: 'dns_txt' as const,
+      token: `token-${randomUUID()}`,
+      recordHost: '_test-challenge.example.test',
+      recordValue: 'test-verify=abc123',
+      expiresAt: new Date(Date.now() + 60_000),
+    },
+    event: {
+      type: 'domain_claimed',
+      detail: { method: 'dns_txt' },
+    },
+  }
+}
+
+afterEach(async () => {
+  while (createdClerkUserIds.length > 0) {
+    const clerkUserId = createdClerkUserIds.pop()
+    if (clerkUserId) {
+      await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId))
+    }
+  }
+})
+
+describe('claim', () => {
+  it('persists a domain, its challenge, and a claim timeline event', async () => {
+    const projectId = await createTestProject()
+    const domain = `example-${randomUUID()}.test`
+
+    const result = await repository.claim(claimValues(projectId, { domain }))
+
+    expect(result).toBeDefined()
+    if (!result) return
+
+    expect(result.domain.projectId).toBe(projectId)
+    expect(result.domain.domain).toBe(domain)
+    expect(result.domain.status).toBe('pending')
+    expect(result.challenge.domainId).toBe(result.domain.id)
+    expect(result.challenge.recordHost).toBe('_test-challenge.example.test')
+
+    const events = await db
+      .select()
+      .from(verificationEvents)
+      .where(eq(verificationEvents.domainId, result.domain.id))
+    expect(events).toHaveLength(1)
+    expect(events[0]?.type).toBe('domain_claimed')
+  })
+
+  it('returns undefined on a (project, domain, mode) conflict', async () => {
+    const projectId = await createTestProject()
+    const domain = `example-${randomUUID()}.test`
+
+    const first = await repository.claim(claimValues(projectId, { domain }))
+    expect(first).toBeDefined()
+
+    const second = await repository.claim(claimValues(projectId, { domain }))
+    expect(second).toBeUndefined()
+
+    const rows = await repository.listByProject(projectId, 'live')
+    expect(rows).toHaveLength(1)
+  })
+
+  it('allows the same domain to be claimed by a different project', async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const domain = `example-${randomUUID()}.test`
+
+    const first = await repository.claim(claimValues(projectA, { domain }))
+    const second = await repository.claim(claimValues(projectB, { domain }))
+
+    expect(first).toBeDefined()
+    expect(second).toBeDefined()
+  })
+
+  it('allows the same domain to be claimed twice under different modes', async () => {
+    const projectId = await createTestProject()
+    const domain = `example-${randomUUID()}.test`
+
+    const live = await repository.claim(
+      claimValues(projectId, { domain, mode: 'live' }),
+    )
+    const test = await repository.claim(
+      claimValues(projectId, { domain, mode: 'test' }),
+    )
+
+    expect(live).toBeDefined()
+    expect(test).toBeDefined()
+  })
+})
+
+describe('listByProject', () => {
+  it('only returns domains for the given project and mode', async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+
+    await repository.claim(claimValues(projectA, { mode: 'live' }))
+    await repository.claim(claimValues(projectA, { mode: 'test' }))
+    await repository.claim(claimValues(projectB, { mode: 'live' }))
+
+    expect(await repository.listByProject(projectA, 'live')).toHaveLength(1)
+    expect(await repository.listByProject(projectA, 'test')).toHaveLength(1)
+    expect(await repository.listByProject(projectB, 'live')).toHaveLength(1)
+    expect(await repository.listByProject(projectB, 'test')).toHaveLength(0)
+  })
+})
+
+describe('findById', () => {
+  it('finds a domain scoped to its project and mode', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const found = await repository.findById(
+      projectId,
+      'live',
+      created.domain.id,
+    )
+    expect(found?.id).toBe(created.domain.id)
+  })
+
+  it("returns undefined for another project's domain", async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const created = await repository.claim(claimValues(projectA))
+    if (!created) throw new Error('setup failed')
+
+    expect(
+      await repository.findById(projectB, 'live', created.domain.id),
+    ).toBeUndefined()
+  })
+
+  it('returns undefined when the mode does not match', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(
+      claimValues(projectId, { mode: 'live' }),
+    )
+    if (!created) throw new Error('setup failed')
+
+    expect(
+      await repository.findById(projectId, 'test', created.domain.id),
+    ).toBeUndefined()
+  })
+})
+
+describe('findLatestChallenge', () => {
+  it('returns the most recently created challenge for a domain', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const [newerChallenge] = await db
+      .insert(challenges)
+      .values({
+        domainId: created.domain.id,
+        method: 'dns_txt',
+        token: 'newer-token',
+        recordHost: created.challenge.recordHost,
+        recordValue: 'test-verify=newer',
+        expiresAt: new Date(Date.now() + 120_000),
+        createdAt: new Date(Date.now() + 1_000),
+      })
+      .returning()
+
+    const latest = await repository.findLatestChallenge(created.domain.id)
+    expect(latest?.id).toBe(newerChallenge?.id)
+  })
+
+  it('returns undefined for a domain with no challenges', async () => {
+    expect(await repository.findLatestChallenge(randomUUID())).toBeUndefined()
+  })
+})
+
+describe('release', () => {
+  it('deletes the domain and cascades its challenge and timeline event', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const released = await repository.release(
+      projectId,
+      'live',
+      created.domain.id,
+    )
+    expect(released?.id).toBe(created.domain.id)
+
+    expect(
+      await repository.findById(projectId, 'live', created.domain.id),
+    ).toBeUndefined()
+
+    const remainingChallenges = await db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.domainId, created.domain.id))
+    expect(remainingChallenges).toHaveLength(0)
+
+    const remainingEvents = await db
+      .select()
+      .from(verificationEvents)
+      .where(eq(verificationEvents.domainId, created.domain.id))
+    expect(remainingEvents).toHaveLength(0)
+  })
+
+  it("returns undefined for a domain id that doesn't belong to the project", async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const created = await repository.claim(claimValues(projectA))
+    if (!created) throw new Error('setup failed')
+
+    expect(
+      await repository.release(projectB, 'live', created.domain.id),
+    ).toBeUndefined()
+
+    expect(
+      await repository.findById(projectA, 'live', created.domain.id),
+    ).toBeDefined()
+  })
+})
