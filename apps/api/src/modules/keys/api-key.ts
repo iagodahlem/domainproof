@@ -1,10 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import type { Database } from "@infra/db/client";
-import { apiKeys } from "@infra/db/schema";
 import { apiError } from "@shared/http-errors";
-import { parseApiKey, type ApiKeyMode } from "./parse";
+import { parseApiKey, type ApiKeyMode } from "./domain/parse";
+import type { KeysRepository } from "./repository";
 
 /**
  * Hono context variables set by {@link createApiKeyAuthMiddleware} for any
@@ -45,7 +43,7 @@ function invalidApiKey() {
  * trail, only as an approximate "last seen" for dashboards.
  */
 export function createApiKeyAuthMiddleware(
-  db: Database,
+  repository: KeysRepository,
 ): MiddlewareHandler<{ Variables: ApiKeyAuthVariables }> {
   return async (c, next) => {
     const header = c.req.header("Authorization");
@@ -63,11 +61,7 @@ export function createApiKeyAuthMiddleware(
 
     const { mode, keyId, secret } = parsed.value;
 
-    const [row] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.keyId, keyId))
-      .limit(1);
+    const row = await repository.findByKeyId(keyId);
 
     if (!row || row.revokedAt || row.mode !== mode) {
       const { body, status } = invalidApiKey();
@@ -86,16 +80,9 @@ export function createApiKeyAuthMiddleware(
       return c.json(body, status);
     }
 
-    void (async () => {
-      try {
-        await db
-          .update(apiKeys)
-          .set({ lastUsedAt: new Date() })
-          .where(eq(apiKeys.id, row.id));
-      } catch (err) {
-        console.error("Failed to update api key last_used_at", err);
-      }
-    })();
+    void repository.touchLastUsed(row.id).catch((err: unknown) => {
+      console.error("Failed to update api key last_used_at", err);
+    });
 
     c.set("projectId", row.projectId);
     c.set("mode", row.mode);

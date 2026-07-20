@@ -1,55 +1,88 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "@infra/db/client";
-import { accounts, apiKeys, projects } from "@infra/db/schema";
-import { parseApiKey } from "./parse";
-import { createKey, listKeys, revokeKey, rotateKey } from "./service";
+import { describe, expect, it } from "vitest";
+import type { ApiKeyInsert, ApiKeyMaterial, ApiKeyRow, KeysRepository, RotateResult } from "./repository";
+import { parseApiKey } from "./domain/parse";
+import { createKeysService } from "./service";
 
-// Runs against the postgres service defined in the repo's compose.yaml
-// (started with `docker compose up -d db`, migrated with
-// `pnpm --filter api db:migrate`), following the same real-db pattern as
-// auth/bootstrap.test.ts.
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  "postgres://domainproof:domainproof@localhost:5432/domainproof";
+/**
+ * A fake KeysRepository implementing the port directly, in memory — no
+ * real db. The repository's own persistence behavior (constraints,
+ * transactions, cross-project scoping) is covered by repository.test.ts
+ * against a real db; this file only tests the service's own logic: secret
+ * generation, hashing, masking, and what rotate carries over from the
+ * existing key.
+ */
+function fakeRepository(): KeysRepository {
+  const rows = new Map<string, ApiKeyRow>();
 
-const db: Database = createDb(DATABASE_URL);
-const createdClerkUserIds: string[] = [];
-
-async function createTestProject(): Promise<string> {
-  const clerkUserId = `user_${randomUUID()}`;
-  createdClerkUserIds.push(clerkUserId);
-
-  const [account] = await db
-    .insert(accounts)
-    .values({ clerkUserId })
-    .returning({ id: accounts.id });
-  if (!account) throw new Error("failed to create test account");
-
-  const [project] = await db
-    .insert(projects)
-    .values({ accountId: account.id, name: "Test project" })
-    .returning({ id: projects.id });
-  if (!project) throw new Error("failed to create test project");
-
-  return project.id;
-}
-
-afterEach(async () => {
-  while (createdClerkUserIds.length > 0) {
-    const clerkUserId = createdClerkUserIds.pop();
-    if (clerkUserId) {
-      await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId));
-    }
+  function toRow(id: string, values: ApiKeyInsert): ApiKeyRow {
+    return {
+      id,
+      projectId: values.projectId,
+      mode: values.mode,
+      keyId: values.keyId,
+      secretHash: values.secretHash,
+      last4: values.last4,
+      name: values.name,
+      revokedAt: null,
+      lastUsedAt: null,
+      createdAt: new Date(),
+    };
   }
-});
+
+  return {
+    async insert(values) {
+      const row = toRow(randomUUID(), values);
+      rows.set(row.id, row);
+      return row;
+    },
+    async listByProject(projectId) {
+      return [...rows.values()].filter((row) => row.projectId === projectId);
+    },
+    async revoke(projectId, keyId) {
+      const row = [...rows.values()].find((r) => r.projectId === projectId && r.keyId === keyId);
+      if (!row) return undefined;
+      const updated = { ...row, revokedAt: new Date() };
+      rows.set(row.id, updated);
+      return updated;
+    },
+    async findByKeyId(keyId) {
+      return [...rows.values()].find((r) => r.keyId === keyId);
+    },
+    async touchLastUsed(id) {
+      const row = rows.get(id);
+      if (row) rows.set(id, { ...row, lastUsedAt: new Date() });
+    },
+    async rotate(
+      projectId: string,
+      keyId: string,
+      newKeyMaterial: ApiKeyMaterial,
+    ): Promise<RotateResult | undefined> {
+      const existing = [...rows.values()].find(
+        (r) => r.projectId === projectId && r.keyId === keyId,
+      );
+      if (!existing) return undefined;
+      const revoked = { ...existing, revokedAt: existing.revokedAt ?? new Date() };
+      rows.set(existing.id, revoked);
+      const replacement = toRow(randomUUID(), {
+        projectId,
+        mode: existing.mode,
+        keyId: newKeyMaterial.keyId,
+        secretHash: newKeyMaterial.secretHash,
+        last4: newKeyMaterial.last4,
+        name: existing.name,
+      });
+      rows.set(replacement.id, replacement);
+      return { previous: revoked, replacement };
+    },
+  };
+}
 
 describe("createKey", () => {
   it("returns a parseable key and a display-safe row with no secret material", async () => {
-    const projectId = await createTestProject();
+    const service = createKeysService(fakeRepository());
 
-    const result = await createKey(db, projectId, "live", "CI key");
+    const result = await service.createKey("project_1", "live", "CI key");
 
     const parsed = parseApiKey(result.key);
     expect(parsed.ok).toBe(true);
@@ -63,29 +96,22 @@ describe("createKey", () => {
     expect(result.apiKey.mode).toBe("live");
     expect(result.apiKey.maskedKey).not.toContain(parsed.ok ? parsed.value.secret : "");
     expect(Object.keys(result.apiKey)).not.toContain("secretHash");
-
-    const [row] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.keyId, result.apiKey.keyId));
-    expect(row?.secretHash).toBeTruthy();
-    expect(row?.last4).toBe(result.key.slice(-4));
   });
 
   it("defaults name to null when omitted", async () => {
-    const projectId = await createTestProject();
-    const result = await createKey(db, projectId, "test");
+    const service = createKeysService(fakeRepository());
+    const result = await service.createKey("project_1", "test");
     expect(result.apiKey.name).toBeNull();
   });
 });
 
 describe("listKeys", () => {
   it("never includes hashes or full keys", async () => {
-    const projectId = await createTestProject();
-    await createKey(db, projectId, "test", "first");
-    await createKey(db, projectId, "live", "second");
+    const service = createKeysService(fakeRepository());
+    await service.createKey("project_1", "test", "first");
+    await service.createKey("project_1", "live", "second");
 
-    const items = await listKeys(db, projectId);
+    const items = await service.listKeys("project_1");
     expect(items).toHaveLength(2);
 
     for (const item of items) {
@@ -97,48 +123,43 @@ describe("listKeys", () => {
   });
 
   it("only returns keys for the given project", async () => {
-    const projectA = await createTestProject();
-    const projectB = await createTestProject();
+    const service = createKeysService(fakeRepository());
+    await service.createKey("project_a", "test");
+    await service.createKey("project_b", "test");
 
-    await createKey(db, projectA, "test");
-    await createKey(db, projectB, "test");
-
-    expect(await listKeys(db, projectA)).toHaveLength(1);
-    expect(await listKeys(db, projectB)).toHaveLength(1);
+    expect(await service.listKeys("project_a")).toHaveLength(1);
+    expect(await service.listKeys("project_b")).toHaveLength(1);
   });
 });
 
 describe("revokeKey", () => {
-  it("sets revokedAt and returns the updated row", async () => {
-    const projectId = await createTestProject();
-    const created = await createKey(db, projectId, "test");
+  it("sets revokedAt and returns the updated item", async () => {
+    const service = createKeysService(fakeRepository());
+    const created = await service.createKey("project_1", "test");
 
-    const revoked = await revokeKey(db, projectId, created.apiKey.keyId);
+    const revoked = await service.revokeKey("project_1", created.apiKey.keyId);
     expect(revoked?.revokedAt).toBeInstanceOf(Date);
   });
 
   it("returns null for a key id that doesn't belong to the project", async () => {
-    const projectA = await createTestProject();
-    const projectB = await createTestProject();
-    const created = await createKey(db, projectA, "test");
+    const service = createKeysService(fakeRepository());
+    const created = await service.createKey("project_a", "test");
 
-    const result = await revokeKey(db, projectB, created.apiKey.keyId);
-    expect(result).toBeNull();
+    expect(await service.revokeKey("project_b", created.apiKey.keyId)).toBeNull();
   });
 
   it("returns null for an unknown key id", async () => {
-    const projectId = await createTestProject();
-    const result = await revokeKey(db, projectId, "doesnotexist1");
-    expect(result).toBeNull();
+    const service = createKeysService(fakeRepository());
+    expect(await service.revokeKey("project_1", "doesnotexist1")).toBeNull();
   });
 });
 
 describe("rotateKey", () => {
-  it("revokes the old key and returns a new working one with the same name", async () => {
-    const projectId = await createTestProject();
-    const original = await createKey(db, projectId, "live", "Rotate me");
+  it("revokes the old key and returns a new working one with the same name and mode", async () => {
+    const service = createKeysService(fakeRepository());
+    const original = await service.createKey("project_1", "live", "Rotate me");
 
-    const rotated = await rotateKey(db, projectId, original.apiKey.keyId);
+    const rotated = await service.rotateKey("project_1", original.apiKey.keyId);
     expect(rotated).not.toBeNull();
     if (!rotated) return;
 
@@ -146,28 +167,20 @@ describe("rotateKey", () => {
     expect(rotated.apiKey.mode).toBe("live");
     expect(rotated.apiKey.keyId).not.toBe(original.apiKey.keyId);
 
-    const [oldRow] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.keyId, original.apiKey.keyId));
-    expect(oldRow?.revokedAt).toBeInstanceOf(Date);
-
-    const [newRow] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.keyId, rotated.apiKey.keyId));
-    expect(newRow?.revokedAt).toBeNull();
-
     const parsedNewKey = parseApiKey(rotated.key);
     expect(parsedNewKey.ok).toBe(true);
+
+    const items = await service.listKeys("project_1");
+    const oldItem = items.find((i) => i.keyId === original.apiKey.keyId);
+    const newItem = items.find((i) => i.keyId === rotated.apiKey.keyId);
+    expect(oldItem?.revokedAt).not.toBeNull();
+    expect(newItem?.revokedAt).toBeNull();
   });
 
   it("returns null for a key id that doesn't belong to the project", async () => {
-    const projectA = await createTestProject();
-    const projectB = await createTestProject();
-    const created = await createKey(db, projectA, "test");
+    const service = createKeysService(fakeRepository());
+    const created = await service.createKey("project_a", "test");
 
-    const result = await rotateKey(db, projectB, created.apiKey.keyId);
-    expect(result).toBeNull();
+    expect(await service.rotateKey("project_b", created.apiKey.keyId)).toBeNull();
   });
 });

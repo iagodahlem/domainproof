@@ -1,11 +1,10 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import type { SessionAuthVariables } from "@modules/accounts/session-auth";
-import { getDefaultProjectId } from "@modules/projects/service";
-import type { Database } from "@infra/db/client";
+import type { SessionAuthVariables } from "@modules/accounts/middleware";
+import type { ProjectsService } from "@modules/projects/service";
 import { apiError } from "@shared/http-errors";
-import { createKey, listKeys, revokeKey, rotateKey } from "./service";
+import type { KeysService } from "./service";
 
 const createKeyBodySchema = z.object({
   mode: z.enum(["test", "live"]),
@@ -29,13 +28,19 @@ function invalidRequest(message: string) {
 /**
  * Dashboard-facing key management routes, mounted under `/dashboard/keys`.
  * Every route is scoped to the caller's account -> project (resolved via
- * session auth + {@link getDefaultProjectId}): a `keyId` belonging to
- * another account's project always 404s, matching the anti-enumeration
- * stance used by the public-API key auth middleware — a caller should
- * never be able to distinguish "not yours" from "doesn't exist".
+ * session auth + {@link ProjectsService.getDefaultProjectId}): a `keyId`
+ * belonging to another account's project always 404s, matching the
+ * anti-enumeration stance used by the public-API key auth middleware — a
+ * caller should never be able to distinguish "not yours" from "doesn't
+ * exist".
+ *
+ * Parses/validates input, calls the injected services, and maps the
+ * result to HTTP — no db or schema access here; that's `keysService` and
+ * `projectsService`'s job (each backed by its own module's repository).
  */
 export function createKeysRoutes(
-  db: Database,
+  keysService: KeysService,
+  projectsService: ProjectsService,
   sessionAuth: MiddlewareHandler<{ Variables: SessionAuthVariables }>,
 ) {
   const router = new Hono<{ Variables: SessionAuthVariables }>();
@@ -51,9 +56,8 @@ export function createKeysRoutes(
       return c.json(body, status);
     }
 
-    const projectId = await getDefaultProjectId(db, c.get("userId"));
-    const result = await createKey(
-      db,
+    const projectId = await projectsService.getDefaultProjectId(c.get("userId"));
+    const result = await keysService.createKey(
       projectId,
       parsed.data.mode,
       parsed.data.name,
@@ -63,17 +67,17 @@ export function createKeysRoutes(
   });
 
   router.get("/", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("userId"));
-    const items = await listKeys(db, projectId);
+    const projectId = await projectsService.getDefaultProjectId(c.get("userId"));
+    const items = await keysService.listKeys(projectId);
 
     return c.json({ apiKeys: items });
   });
 
   router.post("/:keyId/revoke", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("userId"));
+    const projectId = await projectsService.getDefaultProjectId(c.get("userId"));
     const keyId = c.req.param("keyId");
 
-    const revoked = await revokeKey(db, projectId, keyId);
+    const revoked = await keysService.revokeKey(projectId, keyId);
     if (!revoked) {
       const { body, status } = notFound();
       return c.json(body, status);
@@ -83,10 +87,10 @@ export function createKeysRoutes(
   });
 
   router.post("/:keyId/rotate", async (c) => {
-    const projectId = await getDefaultProjectId(db, c.get("userId"));
+    const projectId = await projectsService.getDefaultProjectId(c.get("userId"));
     const keyId = c.req.param("keyId");
 
-    const result = await rotateKey(db, projectId, keyId);
+    const result = await keysService.rotateKey(projectId, keyId);
     if (!result) {
       const { body, status } = notFound();
       return c.json(body, status);

@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { SessionVerifier, SessionVerifyResult } from "@modules/accounts/session-verifier";
+import type { SessionVerifier, SessionVerifyResult } from "@modules/accounts/ports";
 
 export interface ClerkSessionVerifierConfig {
   /** JWKS endpoint for the Clerk instance, e.g. env `CLERK_JWKS_URL`. */

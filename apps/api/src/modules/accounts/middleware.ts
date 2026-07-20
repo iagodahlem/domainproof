@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { apiError } from "@shared/http-errors";
-import type { SessionVerifier, SessionVerifyResult } from "./session-verifier";
+import type { SessionVerifier, SessionVerifyResult } from "./ports";
 
 /**
  * Hono context variable holding the verified session's user id, available

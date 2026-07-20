@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
-import type { SessionVerifier } from "@modules/accounts/session-verifier";
+import type { SessionVerifier } from "@modules/accounts/ports";
 import { createDb, type Database } from "@infra/db/client";
 import { accounts } from "@infra/db/schema";
 

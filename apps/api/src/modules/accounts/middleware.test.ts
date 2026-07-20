@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { createSessionAuthMiddleware } from "./session-auth";
-import type { SessionVerifier, SessionVerifyResult } from "./session-verifier";
+import { createSessionAuthMiddleware } from "./middleware";
+import type { SessionVerifier, SessionVerifyResult } from "./ports";
 
 /**
  * A fake {@link SessionVerifier} implementing the port directly — no real

@@ -1,61 +1,42 @@
-import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
-import { createDb, type Database } from "@infra/db/client";
-import { accounts, projects } from "@infra/db/schema";
-import { getDefaultProjectId } from "./service";
+import { describe, expect, it } from "vitest";
+import type { AccountsService } from "@modules/accounts/service";
+import type { ProjectsRepository } from "./repository";
+import { createProjectsService } from "./service";
 
-// Runs against the postgres service defined in the repo's compose.yaml
-// (started with `docker compose up -d db`, migrated with
-// `pnpm --filter api db:migrate`), following the same real-db pattern as
-// accounts/bootstrap.test.ts and keys/service.test.ts.
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  "postgres://domainproof:domainproof@localhost:5432/domainproof";
-
-const db: Database = createDb(DATABASE_URL);
-const createdClerkUserIds: string[] = [];
-
-function freshClerkUserId() {
-  const id = `user_${randomUUID()}`;
-  createdClerkUserIds.push(id);
-  return id;
+function fakeAccountsService(accountId = "account_1"): AccountsService {
+  return {
+    async ensureAccount() {
+      return { accountId, created: false };
+    },
+  };
 }
 
-afterEach(async () => {
-  while (createdClerkUserIds.length > 0) {
-    const clerkUserId = createdClerkUserIds.pop();
-    if (clerkUserId) {
-      await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId));
-    }
-  }
-});
+function fakeProjectsRepository(byAccountId: Record<string, string> = {}): ProjectsRepository {
+  return {
+    async findDefaultProjectId(accountId) {
+      return byAccountId[accountId];
+    },
+  };
+}
 
 describe("getDefaultProjectId", () => {
-  it("bootstraps a new account and returns its default project id", async () => {
-    const clerkUserId = freshClerkUserId();
+  it("resolves the account then returns its default project id", async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository({ account_1: "project_1" }),
+      fakeAccountsService("account_1"),
+    );
 
-    const projectId = await getDefaultProjectId(db, clerkUserId);
-
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId));
-    expect(project?.name).toBe("Default");
-
-    const [account] = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.clerkUserId, clerkUserId));
-    expect(project?.accountId).toBe(account?.id);
+    expect(await service.getDefaultProjectId("user_123")).toBe("project_1");
   });
 
-  it("returns the same project id on repeated calls for the same user", async () => {
-    const clerkUserId = freshClerkUserId();
+  it("throws if the account has no default project", async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository({}),
+      fakeAccountsService("account_1"),
+    );
 
-    const first = await getDefaultProjectId(db, clerkUserId);
-    const second = await getDefaultProjectId(db, clerkUserId);
-
-    expect(second).toBe(first);
+    await expect(service.getDefaultProjectId("user_123")).rejects.toThrow(
+      /No project found for account/,
+    );
   });
 });
