@@ -2,6 +2,19 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* Design-system package source, scanned for Tailwind utility classes since
+   it lives outside apps/web's own directory tree. */
+@source '../../../packages/ui/src';
+
+/* Design-system tokens + focus-ring utility — the source of truth for the
+   /design-system showcase and every component built against it. Some
+   variable names (--border, --accent, --accent-foreground, --radius-sm,
+   --radius-lg, --radius-xl) overlap with the shadcn placeholder theme below;
+   these declarations win since they load later in the cascade. That's
+   expected — the shadcn block is a placeholder pending full migration. */
+@import '@domainproof/ui/tokens.css';
+@import '@domainproof/ui/focus-ring.css';
+
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------

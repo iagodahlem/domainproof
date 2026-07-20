@@ -1,0 +1,17 @@
+/* focus ring — universal so every real interactive element (a, button,
+   summary, [tabindex]) picks it up automatically; :focus-visible only ever
+   matches elements that are actually focusable, so this is a no-op on
+   everything else. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
+/* explicit utility for elements that need the ring applied manually — e.g.
+   inside an ancestor with clipped overflow (table rows, scrollable tab
+   strips) where the universal rule above still applies but a component
+   wants to opt into the same treatment on a non-focusable wrapper. */
+@utility focus-ring {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}

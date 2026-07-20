@@ -1,0 +1,177 @@
+/* =========================================================================
+   DESIGN TOKENS (board v4.1)
+   Transcribed from the approved design-synthesis board. Dark is the default
+   (primary presentation). Light overrides live under [data-theme="light"].
+   Same variable names both ways — swap the block, nothing else changes.
+   ========================================================================= */
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg: oklch(0.13 0.006 235);
+  --surface: oklch(0.17 0.008 235);
+  --surface-2: oklch(0.21 0.01 235);
+  --surface-3: oklch(0.25 0.012 235);
+  --border: oklch(1 0 0 / 8%);
+  --border-strong: oklch(1 0 0 / 16%);
+
+  /* text */
+  --text: oklch(0.96 0.004 235);
+  --text-muted: oklch(0.66 0.01 235);
+  --text-faint: oklch(0.48 0.01 235);
+
+  /* accent — also doubles as "success". the product's whole job is proving
+     something true; brand and verified share one color on purpose. */
+  --accent: oklch(0.76 0.16 152);
+  --accent-strong: oklch(0.68 0.18 152);
+  --accent-soft: oklch(0.76 0.16 152 / 14%);
+  --accent-foreground: oklch(0.14 0.03 152);
+
+  --success: oklch(0.76 0.16 152);
+  --success-soft: oklch(0.76 0.16 152 / 14%);
+  --success-foreground: oklch(0.14 0.03 152);
+
+  /* warning — a true amber/gold, deliberately kept apart from any brand's
+     terracotta. hue 96 sits in yellow-gold territory, not red-orange. */
+  --warning: oklch(0.82 0.175 96);
+  --warning-strong: oklch(0.74 0.185 92);
+  --warning-soft: oklch(0.82 0.175 96 / 14%);
+
+  --danger: oklch(0.68 0.19 25);
+  --danger-soft: oklch(0.68 0.19 25 / 14%);
+  /* --danger-foreground and --warning-foreground (text-on-filled-danger/warning)
+     were defined but never consumed — no component fills a solid danger/warning
+     surface today. Re-introduce them here, paired with their -soft counterparts
+     above, whenever a filled warning/danger surface (e.g. a solid status chip)
+     needs a guaranteed-legible label color. */
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* spacing rhythm — base 4px. Steps 7/9/11/13-15/17-19/21-23 are skipped on
+     purpose (8pt-ish curation, not a typo) — add a step only when a real
+     component needs that exact rhythm. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* semantic padding tokens — every bordered/filled container draws its
+     inner padding from one of these, never a bare value. */
+  --pad-card: var(--space-5); /* cards, panels, banners, pills */
+  --pad-row: var(--space-4) var(--space-5); /* table/record/log rows, banners, topbar strips */
+
+  /* type — family */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  /* type — size ramp. --text-2xs (0.6875rem) is the single most-reused size
+     in the file (labels, meta, badges); --text-base matches body copy (15px).
+     Fluid heading/lede sizes stay as named clamp() tokens rather than atomic
+     steps, since they're one-off responsive rules, not a scale. */
+  --text-3xs: 0.625rem;
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-base: 0.9375rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.375rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-fluid-h1: clamp(1.9rem, 5vw, 2.5rem);
+  --text-fluid-h2: clamp(1.4rem, 3.4vw, 1.75rem);
+  --text-fluid-lede: clamp(0.95rem, 2vw, 1.0625rem);
+  --text-fluid-ask: clamp(0.9375rem, 2vw, 1.0625rem);
+
+  /* type — weight. 650 is the house heading weight: heavier than a normal
+     semibold, lighter than true bold, used on nearly every h1-h4/title/label. */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-heading: 650;
+  --font-weight-bold: 700;
+
+  /* type — line-height. Headings and monospace code keep their own values
+     since they visibly need different rhythm from body copy. */
+  --leading-heading-tight: 1.12; /* h1 */
+  --leading-heading: 1.2; /* h2 */
+  --leading-heading-loose: 1.35; /* h3 */
+  --leading-caption: 1.4; /* path-chooser-sub */
+  --leading-relaxed: 1.5; /* verify-header .ask, assist-card-desc */
+  --leading-body: 1.6; /* body default + every muted description/lede */
+  --leading-code: 1.7; /* code-block */
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 24%), 0 12px 32px oklch(0 0 0 / 32%);
+
+  /* motion */
+  --duration-fast: 0.15s;
+  --duration-base: 0.2s;
+
+  /* alpha scale — color-mix(...N%, transparent) border strengths. Fill-
+     percentage color-mixes (highlight backgrounds, glass-blur tints) are a
+     different family and are not part of this border scale. */
+  --alpha-border-soft: 30%;
+  --alpha-border: 35%;
+  --alpha-border-strong: 45%;
+
+  /* focus ring — inset so it never gets clipped by an ancestor's overflow
+     (table rows, scrollable tab strips), accent-based so it stays visible on
+     both themes. */
+  --focus-ring-width: 2px;
+  --focus-ring-color: var(--accent);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: oklch(0.99 0.002 235);
+  --surface: oklch(0.975 0.004 235);
+  --surface-2: oklch(0.955 0.006 235);
+  --surface-3: oklch(0.925 0.008 235);
+  --border: oklch(0.13 0.01 235 / 10%);
+  --border-strong: oklch(0.13 0.01 235 / 20%);
+
+  --text: oklch(0.18 0.01 235);
+  --text-muted: oklch(0.42 0.012 235);
+  --text-faint: oklch(0.58 0.01 235);
+
+  --accent: oklch(0.52 0.15 152);
+  --accent-strong: oklch(0.44 0.16 152);
+  --accent-soft: oklch(0.52 0.15 152 / 10%);
+  --accent-foreground: oklch(0.99 0.005 152);
+
+  --success: oklch(0.5 0.15 152);
+  --success-soft: oklch(0.5 0.15 152 / 10%);
+  --success-foreground: oklch(0.99 0.005 152);
+
+  --warning: oklch(0.64 0.165 88);
+  --warning-strong: oklch(0.56 0.17 86);
+  --warning-soft: oklch(0.64 0.165 88 / 10%);
+
+  --danger: oklch(0.55 0.19 25);
+  --danger-soft: oklch(0.55 0.19 25 / 10%);
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 6%), 0 12px 32px oklch(0 0 0 / 8%);
+}
+
+/* fallback for browsers without a prefers-color-scheme aware toggle: still dark */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+  }
+}
