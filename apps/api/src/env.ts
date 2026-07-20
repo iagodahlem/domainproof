@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+// A bare hostname — no scheme, no path, no port. Rejects `https://...` and
+// `api.domainproof.dev/` by construction: neither `/` nor `:` is in the
+// allowed character set.
+const bareHostnamePattern =
+  /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i
+
+const bareHostname = z
+  .string()
+  .min(1)
+  .regex(bareHostnamePattern, 'must be a bare hostname, not a URL')
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   NODE_ENV: z
@@ -11,6 +22,12 @@ const envSchema = z.object({
   // refusing to boot before Clerk is wired up everywhere.
   CLERK_JWKS_URL: z.string().url().optional(),
   CLERK_ISSUER: z.string().min(1).optional(),
+  // Both optional: unset means no host restriction, which is what keeps
+  // local dev, tests, and the Railway service domain unrestricted (both
+  // planes reachable on one origin). See
+  // `shared/middlewares/host-restriction.ts`.
+  PUBLIC_API_HOST: bareHostname.optional(),
+  DASHBOARD_API_HOST: bareHostname.optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
