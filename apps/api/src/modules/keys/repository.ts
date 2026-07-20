@@ -1,25 +1,25 @@
-import { and, eq } from "drizzle-orm";
-import type { Database } from "@infra/db/client";
-import { apiKeys } from "@infra/db/schema";
-import type { ApiKeyMode } from "./domain/parse";
+import { and, eq } from 'drizzle-orm'
+import type { Database } from '@infra/db/client'
+import { apiKeys } from '@infra/db/schema'
+import type { ApiKeyMode } from './domain/parse'
 
-export type ApiKeyRow = typeof apiKeys.$inferSelect;
+export type ApiKeyRow = typeof apiKeys.$inferSelect
 
 export interface ApiKeyMaterial {
-  keyId: string;
-  secretHash: string;
-  last4: string;
+  keyId: string
+  secretHash: string
+  last4: string
 }
 
 export interface ApiKeyInsert extends ApiKeyMaterial {
-  projectId: string;
-  mode: ApiKeyMode;
-  name: string | null;
+  projectId: string
+  mode: ApiKeyMode
+  name: string | null
 }
 
 export interface RotateResult {
-  previous: ApiKeyRow;
-  replacement: ApiKeyRow;
+  previous: ApiKeyRow
+  replacement: ApiKeyRow
 }
 
 /**
@@ -29,23 +29,23 @@ export interface RotateResult {
  * this interface, never on the `api_keys` schema or a `Database` directly.
  */
 export interface KeysRepository {
-  insert(values: ApiKeyInsert): Promise<ApiKeyRow>;
+  insert(values: ApiKeyInsert): Promise<ApiKeyRow>
 
   /** All keys (any mode, any status) belonging to a project. */
-  listByProject(projectId: string): Promise<ApiKeyRow[]>;
+  listByProject(projectId: string): Promise<ApiKeyRow[]>
 
   /**
    * Revokes a key scoped to `projectId`, so a key belonging to a different
    * project is treated as not found rather than acted upon. Idempotent:
    * revoking an already-revoked key just refreshes `revokedAt`.
    */
-  revoke(projectId: string, keyId: string): Promise<ApiKeyRow | undefined>;
+  revoke(projectId: string, keyId: string): Promise<ApiKeyRow | undefined>
 
   /** Looks up a key by its public id alone — for the public-API auth middleware. */
-  findByKeyId(keyId: string): Promise<ApiKeyRow | undefined>;
+  findByKeyId(keyId: string): Promise<ApiKeyRow | undefined>
 
   /** Fire-and-forget "last seen" timestamp update; errors are the caller's to handle. */
-  touchLastUsed(id: string): Promise<void>;
+  touchLastUsed(id: string): Promise<void>
 
   /**
    * Atomically revokes the key at `keyId` (scoped to `projectId`) and
@@ -58,21 +58,21 @@ export interface KeysRepository {
     projectId: string,
     keyId: string,
     newKeyMaterial: ApiKeyMaterial,
-  ): Promise<RotateResult | undefined>;
+  ): Promise<RotateResult | undefined>
 }
 
 export function createKeysRepository(db: Database): KeysRepository {
   return {
     async insert(values) {
-      const [row] = await db.insert(apiKeys).values(values).returning();
+      const [row] = await db.insert(apiKeys).values(values).returning()
       if (!row) {
-        throw new Error("Failed to create API key: insert returned no row");
+        throw new Error('Failed to create API key: insert returned no row')
       }
-      return row;
+      return row
     },
 
     async listByProject(projectId) {
-      return db.select().from(apiKeys).where(eq(apiKeys.projectId, projectId));
+      return db.select().from(apiKeys).where(eq(apiKeys.projectId, projectId))
     },
 
     async revoke(projectId, keyId) {
@@ -80,8 +80,8 @@ export function createKeysRepository(db: Database): KeysRepository {
         .update(apiKeys)
         .set({ revokedAt: new Date() })
         .where(and(eq(apiKeys.projectId, projectId), eq(apiKeys.keyId, keyId)))
-        .returning();
-      return row;
+        .returning()
+      return row
     },
 
     async findByKeyId(keyId) {
@@ -89,12 +89,15 @@ export function createKeysRepository(db: Database): KeysRepository {
         .select()
         .from(apiKeys)
         .where(eq(apiKeys.keyId, keyId))
-        .limit(1);
-      return row;
+        .limit(1)
+      return row
     },
 
     async touchLastUsed(id) {
-      await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, id));
+      await db
+        .update(apiKeys)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(apiKeys.id, id))
     },
 
     async rotate(projectId, keyId, newKeyMaterial) {
@@ -102,18 +105,20 @@ export function createKeysRepository(db: Database): KeysRepository {
         const [existing] = await tx
           .select()
           .from(apiKeys)
-          .where(and(eq(apiKeys.projectId, projectId), eq(apiKeys.keyId, keyId)))
-          .limit(1);
+          .where(
+            and(eq(apiKeys.projectId, projectId), eq(apiKeys.keyId, keyId)),
+          )
+          .limit(1)
 
         if (!existing) {
-          return undefined;
+          return undefined
         }
 
         const [revoked] = await tx
           .update(apiKeys)
           .set({ revokedAt: existing.revokedAt ?? new Date() })
           .where(eq(apiKeys.id, existing.id))
-          .returning();
+          .returning()
 
         const [replacement] = await tx
           .insert(apiKeys)
@@ -125,14 +130,16 @@ export function createKeysRepository(db: Database): KeysRepository {
             last4: newKeyMaterial.last4,
             name: existing.name,
           })
-          .returning();
+          .returning()
 
         if (!revoked || !replacement) {
-          throw new Error("Failed to rotate API key: update or insert returned no row");
+          throw new Error(
+            'Failed to rotate API key: update or insert returned no row',
+          )
         }
 
-        return { previous: revoked, replacement };
-      });
+        return { previous: revoked, replacement }
+      })
     },
-  };
+  }
 }

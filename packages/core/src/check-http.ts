@@ -1,13 +1,13 @@
-import type { HttpFetcher } from "./fetcher";
-import { parseRecordValue, wellKnownUrl } from "./record";
-import { tokensMatch } from "./token";
+import type { HttpFetcher } from './fetcher'
+import { parseRecordValue, wellKnownUrl } from './record'
+import { tokensMatch } from './token'
 
 /**
  * How many `wrong_value` records to surface for the expected/detected diff
  * shown to the user. Mirrors {@link checkTxt}'s cap so a well-known file
  * with many stray or stale lines doesn't blow up the response.
  */
-const MAX_DETECTED_VALUES = 10;
+const MAX_DETECTED_VALUES = 10
 
 /**
  * Outcome of checking a domain's well-known challenge file against an
@@ -60,15 +60,15 @@ const MAX_DETECTED_VALUES = 10;
  * get an authoritative answer from this domain".
  */
 export type HttpCheckResult =
-  | { outcome: "found" }
-  | { outcome: "wrong_value"; detected: string[] }
-  | { outcome: "not_found" }
-  | { outcome: "unreachable" };
+  | { outcome: 'found' }
+  | { outcome: 'wrong_value'; detected: string[] }
+  | { outcome: 'not_found' }
+  | { outcome: 'unreachable' }
 
-const NOT_FOUND_STATUSES = new Set([404, 410]);
+const NOT_FOUND_STATUSES = new Set([404, 410])
 
 function isSuccessStatus(status: number): boolean {
-  return status >= 200 && status < 300;
+  return status >= 200 && status < 300
 }
 
 /**
@@ -79,7 +79,7 @@ function isSuccessStatus(status: number): boolean {
  * records at the same hostname.
  */
 function candidateLines(body: string): string[] {
-  return body.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  return body.split(/\r?\n/).filter((line) => line.trim().length > 0)
 }
 
 /**
@@ -102,39 +102,39 @@ export async function checkHttp(
   expectedToken: string,
   brandSlug: string,
 ): Promise<HttpCheckResult> {
-  const url = wellKnownUrl(domain, brandSlug);
-  const result = await fetcher.fetchText(url);
+  const url = wellKnownUrl(domain, brandSlug)
+  const result = await fetcher.fetchText(url)
 
   if (!result.ok) {
-    return { outcome: "unreachable" };
+    return { outcome: 'unreachable' }
   }
 
   if (NOT_FOUND_STATUSES.has(result.status)) {
-    return { outcome: "not_found" };
+    return { outcome: 'not_found' }
   }
 
   if (!isSuccessStatus(result.status)) {
-    return { outcome: "unreachable" };
+    return { outcome: 'unreachable' }
   }
 
-  const detected: string[] = [];
+  const detected: string[] = []
 
   for (const line of candidateLines(result.body)) {
-    const parsed = parseRecordValue(line, brandSlug);
+    const parsed = parseRecordValue(line, brandSlug)
     if (!parsed.ok) {
-      continue;
+      continue
     }
     if (tokensMatch(parsed.token, expectedToken)) {
-      return { outcome: "found" };
+      return { outcome: 'found' }
     }
     if (detected.length < MAX_DETECTED_VALUES) {
-      detected.push(parsed.token);
+      detected.push(parsed.token)
     }
   }
 
   if (detected.length > 0) {
-    return { outcome: "wrong_value", detected };
+    return { outcome: 'wrong_value', detected }
   }
 
-  return { outcome: "not_found" };
+  return { outcome: 'not_found' }
 }

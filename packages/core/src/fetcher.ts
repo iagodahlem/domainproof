@@ -15,10 +15,7 @@
  *   being read.
  */
 export type HttpFetchFailureReason =
-  | "timeout"
-  | "connection_failed"
-  | "tls_error"
-  | "too_large";
+  'timeout' | 'connection_failed' | 'tls_error' | 'too_large'
 
 /**
  * Result of fetching a single URL's body as text. Mirrors the shape of
@@ -27,7 +24,7 @@ export type HttpFetchFailureReason =
  */
 export type HttpFetchResult =
   | { ok: true; status: number; body: string }
-  | { ok: false; reason: HttpFetchFailureReason };
+  | { ok: false; reason: HttpFetchFailureReason }
 
 /**
  * The maximum response body size a fetcher will hand back, in bytes. The
@@ -36,7 +33,7 @@ export type HttpFetchResult =
  * capping how much of a possibly-huge or misconfigured response a check has
  * to buffer in memory.
  */
-export const MAX_FETCH_BODY_BYTES = 64 * 1024;
+export const MAX_FETCH_BODY_BYTES = 64 * 1024
 
 /**
  * The injected HTTP boundary for the well-known-file verification method —
@@ -72,5 +69,5 @@ export const MAX_FETCH_BODY_BYTES = 64 * 1024;
  *   "connection_failed" }` rather than being followed.
  */
 export interface HttpFetcher {
-  fetchText(url: string): Promise<HttpFetchResult>;
+  fetchText(url: string): Promise<HttpFetchResult>
 }

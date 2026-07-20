@@ -1,24 +1,24 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-import type { MiddlewareHandler } from "hono";
-import { apiError } from "@shared/http-errors";
-import { parseApiKey, type ApiKeyMode } from "@modules/keys/domain/parse";
-import type { KeysRepository } from "@modules/keys/repository";
+import { createHash, timingSafeEqual } from 'node:crypto'
+import type { MiddlewareHandler } from 'hono'
+import { apiError } from '@shared/http-errors'
+import { parseApiKey, type ApiKeyMode } from '@modules/keys/domain/parse'
+import type { KeysRepository } from '@modules/keys/repository'
 
 /**
  * Hono context variables set by {@link createApiKeyAuthMiddleware} for any
  * handler downstream of it.
  */
 export interface ApiKeyAuthVariables {
-  projectId: string;
-  mode: ApiKeyMode;
-  keyId: string;
+  projectId: string
+  mode: ApiKeyMode
+  keyId: string
 }
 
 function invalidApiKey() {
   return {
-    body: apiError("invalid_api_key", "Invalid API key"),
+    body: apiError('invalid_api_key', 'Invalid API key'),
     status: 401 as const,
-  };
+  }
 }
 
 /**
@@ -46,47 +46,47 @@ export function createApiKeyAuthMiddleware(
   repository: KeysRepository,
 ): MiddlewareHandler<{ Variables: ApiKeyAuthVariables }> {
   return async (c, next) => {
-    const header = c.req.header("Authorization");
-    if (!header || !header.startsWith("Bearer ")) {
-      const { body, status } = invalidApiKey();
-      return c.json(body, status);
+    const header = c.req.header('Authorization')
+    if (!header || !header.startsWith('Bearer ')) {
+      const { body, status } = invalidApiKey()
+      return c.json(body, status)
     }
 
-    const presented = header.slice("Bearer ".length).trim();
-    const parsed = parseApiKey(presented);
+    const presented = header.slice('Bearer '.length).trim()
+    const parsed = parseApiKey(presented)
     if (!parsed.ok) {
-      const { body, status } = invalidApiKey();
-      return c.json(body, status);
+      const { body, status } = invalidApiKey()
+      return c.json(body, status)
     }
 
-    const { mode, keyId, secret } = parsed.value;
+    const { mode, keyId, secret } = parsed.value
 
-    const row = await repository.findByKeyId(keyId);
+    const row = await repository.findByKeyId(keyId)
 
     if (!row || row.revokedAt || row.mode !== mode) {
-      const { body, status } = invalidApiKey();
-      return c.json(body, status);
+      const { body, status } = invalidApiKey()
+      return c.json(body, status)
     }
 
-    const presentedHash = createHash("sha256").update(secret).digest();
-    const storedHash = Buffer.from(row.secretHash, "hex");
+    const presentedHash = createHash('sha256').update(secret).digest()
+    const storedHash = Buffer.from(row.secretHash, 'hex')
 
     const matches =
       presentedHash.length === storedHash.length &&
-      timingSafeEqual(presentedHash, storedHash);
+      timingSafeEqual(presentedHash, storedHash)
 
     if (!matches) {
-      const { body, status } = invalidApiKey();
-      return c.json(body, status);
+      const { body, status } = invalidApiKey()
+      return c.json(body, status)
     }
 
     void repository.touchLastUsed(row.id).catch((err: unknown) => {
-      console.error("Failed to update api key last_used_at", err);
-    });
+      console.error('Failed to update api key last_used_at', err)
+    })
 
-    c.set("projectId", row.projectId);
-    c.set("mode", row.mode);
-    c.set("keyId", row.keyId);
-    await next();
-  };
+    c.set('projectId', row.projectId)
+    c.set('mode', row.mode)
+    c.set('keyId', row.keyId)
+    await next()
+  }
 }

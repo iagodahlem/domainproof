@@ -2,14 +2,14 @@
  * Domain verification statuses tracked across the DomainProof pipeline.
  */
 export const DOMAIN_STATUSES = [
-  "not_started",
-  "pending",
-  "verified",
-  "temporarily_failed",
-  "failed",
-] as const;
+  'not_started',
+  'pending',
+  'verified',
+  'temporarily_failed',
+  'failed',
+] as const
 
-export type DomainStatus = (typeof DOMAIN_STATUSES)[number];
+export type DomainStatus = (typeof DOMAIN_STATUSES)[number]
 
 /**
  * Meaningful events the caller feeds into the state machine. This module
@@ -19,20 +19,19 @@ export type DomainStatus = (typeof DOMAIN_STATUSES)[number];
  * arrives here as an event, not as a Date or timer.
  */
 export type VerificationEvent =
-  | { type: "verification_started" }
-  | { type: "check_passed" }
-  | { type: "check_hard_failed" }
-  | { type: "recheck_passed" }
-  | { type: "recheck_record_lost" }
-  | { type: "grace_expired" }
-  | { type: "challenge_regenerated" };
+  | { type: 'verification_started' }
+  | { type: 'check_passed' }
+  | { type: 'check_hard_failed' }
+  | { type: 'recheck_passed' }
+  | { type: 'recheck_record_lost' }
+  | { type: 'grace_expired' }
+  | { type: 'challenge_regenerated' }
 
 export type TransitionResult =
-  | { ok: true; next: DomainStatus }
-  | { ok: false; error: "invalid_transition" };
+  { ok: true; next: DomainStatus } | { ok: false; error: 'invalid_transition' }
 
 function invalidTransition(): TransitionResult {
-  return { ok: false, error: "invalid_transition" };
+  return { ok: false, error: 'invalid_transition' }
 }
 
 /**
@@ -42,7 +41,7 @@ function invalidTransition(): TransitionResult {
  * mismatch. Not part of {@link transition}'s public (non-throwing) contract.
  */
 function assertNever(value: never): never {
-  throw new Error(`Unhandled case in state machine: ${JSON.stringify(value)}`);
+  throw new Error(`Unhandled case in state machine: ${JSON.stringify(value)}`)
 }
 
 /**
@@ -65,88 +64,91 @@ function assertNever(value: never): never {
  * Never throws for a bad (status, event) pair — returns
  * `{ ok: false, error: 'invalid_transition' }` instead.
  */
-export function transition(status: DomainStatus, event: VerificationEvent): TransitionResult {
+export function transition(
+  status: DomainStatus,
+  event: VerificationEvent,
+): TransitionResult {
   switch (status) {
-    case "not_started":
+    case 'not_started':
       switch (event.type) {
-        case "verification_started":
-          return { ok: true, next: "pending" };
-        case "check_passed":
-        case "check_hard_failed":
-        case "recheck_passed":
-        case "recheck_record_lost":
-        case "grace_expired":
-        case "challenge_regenerated":
-          return invalidTransition();
+        case 'verification_started':
+          return { ok: true, next: 'pending' }
+        case 'check_passed':
+        case 'check_hard_failed':
+        case 'recheck_passed':
+        case 'recheck_record_lost':
+        case 'grace_expired':
+        case 'challenge_regenerated':
+          return invalidTransition()
         default:
-          return assertNever(event);
+          return assertNever(event)
       }
 
-    case "pending":
+    case 'pending':
       switch (event.type) {
-        case "check_passed":
-          return { ok: true, next: "verified" };
-        case "check_hard_failed":
-          return { ok: true, next: "failed" };
-        case "challenge_regenerated":
-          return { ok: true, next: "pending" };
-        case "verification_started":
-        case "recheck_passed":
-        case "recheck_record_lost":
-        case "grace_expired":
-          return invalidTransition();
+        case 'check_passed':
+          return { ok: true, next: 'verified' }
+        case 'check_hard_failed':
+          return { ok: true, next: 'failed' }
+        case 'challenge_regenerated':
+          return { ok: true, next: 'pending' }
+        case 'verification_started':
+        case 'recheck_passed':
+        case 'recheck_record_lost':
+        case 'grace_expired':
+          return invalidTransition()
         default:
-          return assertNever(event);
+          return assertNever(event)
       }
 
-    case "verified":
+    case 'verified':
       switch (event.type) {
-        case "recheck_passed":
-          return { ok: true, next: "verified" };
-        case "recheck_record_lost":
-          return { ok: true, next: "temporarily_failed" };
-        case "verification_started":
-        case "check_passed":
-        case "check_hard_failed":
-        case "grace_expired":
-        case "challenge_regenerated":
-          return invalidTransition();
+        case 'recheck_passed':
+          return { ok: true, next: 'verified' }
+        case 'recheck_record_lost':
+          return { ok: true, next: 'temporarily_failed' }
+        case 'verification_started':
+        case 'check_passed':
+        case 'check_hard_failed':
+        case 'grace_expired':
+        case 'challenge_regenerated':
+          return invalidTransition()
         default:
-          return assertNever(event);
+          return assertNever(event)
       }
 
-    case "temporarily_failed":
+    case 'temporarily_failed':
       switch (event.type) {
-        case "recheck_passed":
-          return { ok: true, next: "verified" };
-        case "grace_expired":
-          return { ok: true, next: "failed" };
-        case "verification_started":
-        case "check_passed":
-        case "check_hard_failed":
-        case "recheck_record_lost":
-        case "challenge_regenerated":
-          return invalidTransition();
+        case 'recheck_passed':
+          return { ok: true, next: 'verified' }
+        case 'grace_expired':
+          return { ok: true, next: 'failed' }
+        case 'verification_started':
+        case 'check_passed':
+        case 'check_hard_failed':
+        case 'recheck_record_lost':
+        case 'challenge_regenerated':
+          return invalidTransition()
         default:
-          return assertNever(event);
+          return assertNever(event)
       }
 
-    case "failed":
+    case 'failed':
       switch (event.type) {
-        case "challenge_regenerated":
-          return { ok: true, next: "pending" };
-        case "verification_started":
-        case "check_passed":
-        case "check_hard_failed":
-        case "recheck_passed":
-        case "recheck_record_lost":
-        case "grace_expired":
-          return invalidTransition();
+        case 'challenge_regenerated':
+          return { ok: true, next: 'pending' }
+        case 'verification_started':
+        case 'check_passed':
+        case 'check_hard_failed':
+        case 'recheck_passed':
+        case 'recheck_record_lost':
+        case 'grace_expired':
+          return invalidTransition()
         default:
-          return assertNever(event);
+          return assertNever(event)
       }
 
     default:
-      return assertNever(status);
+      return assertNever(status)
   }
 }

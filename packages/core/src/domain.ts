@@ -1,4 +1,4 @@
-import { parse } from "tldts";
+import { parse } from 'tldts'
 
 /**
  * Failure reasons returned by {@link normalizeDomain}. Kept as a closed set
@@ -6,14 +6,11 @@ import { parse } from "tldts";
  * without parsing free-text messages.
  */
 export type NormalizeDomainFailureReason =
-  | "empty"
-  | "invalid_format"
-  | "is_ip"
-  | "no_public_suffix";
+  'empty' | 'invalid_format' | 'is_ip' | 'no_public_suffix'
 
 export type NormalizeDomainResult =
   | { ok: true; domain: string }
-  | { ok: false; reason: NormalizeDomainFailureReason };
+  | { ok: false; reason: NormalizeDomainFailureReason }
 
 // RFC 6761 permanently reserves `.test` (alongside `.example`, `.invalid`,
 // `.localhost`) for documentation and testing: it is guaranteed to never be
@@ -21,20 +18,23 @@ export type NormalizeDomainResult =
 // makes it a safe, stable sandbox namespace — `<label>.test` domains are
 // accepted and treated as their own registrable domain without ever being
 // looked up against real DNS or the PSL.
-const SANDBOX_SUFFIX = ".test";
+const SANDBOX_SUFFIX = '.test'
 
 // Sandbox labels allow "+" (in addition to the usual letters/digits/hyphen/
 // underscore) so scenario fixtures can compose variants without colliding,
 // e.g. `pending-then-verified+run1.test`.
-const SANDBOX_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9_+-]*[a-z0-9])?$/;
+const SANDBOX_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9_+-]*[a-z0-9])?$/
 
 function isSandboxHostname(hostname: string): boolean {
-  return hostname.endsWith(SANDBOX_SUFFIX);
+  return hostname.endsWith(SANDBOX_SUFFIX)
 }
 
 function isValidSandboxHostname(hostname: string): boolean {
-  const labels = hostname.split(".");
-  return labels.length >= 2 && labels.every((label) => SANDBOX_LABEL_PATTERN.test(label));
+  const labels = hostname.split('.')
+  return (
+    labels.length >= 2 &&
+    labels.every((label) => SANDBOX_LABEL_PATTERN.test(label))
+  )
 }
 
 /**
@@ -44,39 +44,39 @@ function isValidSandboxHostname(hostname: string): boolean {
  * Never throws — malformed input comes back as `{ ok: false, reason }`.
  */
 export function normalizeDomain(input: string): NormalizeDomainResult {
-  if (typeof input !== "string" || input.trim().length === 0) {
-    return { ok: false, reason: "empty" };
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    return { ok: false, reason: 'empty' }
   }
 
   // Loose pass: let tldts strip scheme/userinfo/port/path and lowercase the
   // hostname, without its stricter per-label character validation (sandbox
   // labels use "+", which that validation rejects).
-  const loose = parse(input, { validateHostname: false });
+  const loose = parse(input, { validateHostname: false })
 
   if (loose.hostname === null) {
-    return { ok: false, reason: "invalid_format" };
+    return { ok: false, reason: 'invalid_format' }
   }
   if (loose.isIp) {
-    return { ok: false, reason: "is_ip" };
+    return { ok: false, reason: 'is_ip' }
   }
 
   if (isSandboxHostname(loose.hostname)) {
     return isValidSandboxHostname(loose.hostname)
       ? { ok: true, domain: loose.hostname }
-      : { ok: false, reason: "invalid_format" };
+      : { ok: false, reason: 'invalid_format' }
   }
 
   // Strict pass for everything else: real-world hostnames must satisfy
   // RFC 1035 label rules (no empty labels, no leading/trailing hyphen, no
   // stray characters) and resolve to a recognized public suffix.
-  const strict = parse(input, { validateHostname: true });
+  const strict = parse(input, { validateHostname: true })
   if (strict.hostname === null) {
-    return { ok: false, reason: "invalid_format" };
+    return { ok: false, reason: 'invalid_format' }
   }
   if (strict.domain === null) {
-    return { ok: false, reason: "no_public_suffix" };
+    return { ok: false, reason: 'no_public_suffix' }
   }
-  return { ok: true, domain: strict.hostname };
+  return { ok: true, domain: strict.hostname }
 }
 
 /**
@@ -89,9 +89,9 @@ export function normalizeDomain(input: string): NormalizeDomainResult {
  */
 export function registrableDomain(domain: string): string {
   if (isSandboxHostname(domain)) {
-    const labels = domain.split(".");
-    return labels.slice(-2).join(".");
+    const labels = domain.split('.')
+    return labels.slice(-2).join('.')
   }
-  const parsed = parse(domain);
-  return parsed.domain ?? domain;
+  const parsed = parse(domain)
+  return parsed.domain ?? domain
 }

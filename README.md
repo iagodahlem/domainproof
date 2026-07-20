@@ -22,18 +22,18 @@ rules.
 
 ## Environments
 
-| | URL |
-| --- | --- |
-| Web (production) | <https://domainproof.dev> |
-| API (production) | <https://api.domainproof.dev> |
+|                   | URL                                                         |
+| ----------------- | ----------------------------------------------------------- |
+| Web (production)  | <https://domainproof.dev>                                   |
+| API (production)  | <https://api.domainproof.dev>                               |
 | Docs (production) | <https://docs.domainproof.dev> — host-routed by the web app |
 | Demo (production) | <https://demo.domainproof.dev> — host-routed by the web app |
 
-| | Local (`pnpm dev`) | Local (`docker compose up`) |
-| --- | --- | --- |
-| Web | <http://localhost:3000> | — (not in `compose.yaml` yet) |
-| API | <http://localhost:3001> | <http://localhost:3101> |
-| Postgres | `localhost:5432` | `localhost:5432` |
+|          | Local (`pnpm dev`)      | Local (`docker compose up`)   |
+| -------- | ----------------------- | ----------------------------- |
+| Web      | <http://localhost:3000> | — (not in `compose.yaml` yet) |
+| API      | <http://localhost:3001> | <http://localhost:3101>       |
+| Postgres | `localhost:5432`        | `localhost:5432`              |
 
 ## Local development
 
@@ -50,11 +50,11 @@ cp apps/api/.env.example apps/api/.env
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
 nothing breaks if the file doesn't exist):
 
-| Var | Required? | For |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service. |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER` | No | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
-| `PORT` | No | Defaults to `3001`. |
+| Var                              | Required? | For                                                                                                                                                         |
+| -------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                   | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER` | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
+| `PORT`                           | No        | Defaults to `3001`.                                                                                                                                         |
 
 ```bash
 docker compose up -d db
@@ -87,12 +87,12 @@ The API has two authentication planes, split by path prefix (see
   here yet — domain verification (creating a domain, checking its status,
   triggering a recheck) is next.
 
-| Method | Path                          | Plane     | Description                                    |
-| ------ | ----------------------------- | --------- | ----------------------------------------------- |
-| GET    | `/health`                     | none      | Liveness check; returns `{ status, version }`.  |
-| POST   | `/dashboard/keys`             | Dashboard | Creates an API key for the caller's project.    |
-| GET    | `/dashboard/keys`             | Dashboard | Lists the caller's project's API keys.          |
-| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                           |
+| Method | Path                            | Plane     | Description                                    |
+| ------ | ------------------------------- | --------- | ---------------------------------------------- |
+| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`. |
+| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.   |
+| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.         |
+| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                            |
 | POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement. |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that

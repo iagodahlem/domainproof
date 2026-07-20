@@ -6,7 +6,7 @@
  * build/bin wiring end to end.
  */
 export function main(): void {
-  console.log("domainproof CLI — coming soon");
+  console.log('domainproof CLI — coming soon')
 }
 
-main();
+main()

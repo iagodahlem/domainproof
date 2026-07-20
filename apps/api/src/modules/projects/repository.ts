@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "@infra/db/client";
-import { projects } from "@infra/db/schema";
+import { eq } from 'drizzle-orm'
+import type { Database } from '@infra/db/client'
+import { projects } from '@infra/db/schema'
 
 /**
  * All db access for the projects module. This is the only file in
@@ -13,7 +13,7 @@ export interface ProjectsRepository {
    * `modules/accounts`), so this is a stand-in for real project selection
    * until the dashboard supports multiple projects per account.
    */
-  findDefaultProjectId(accountId: string): Promise<string | undefined>;
+  findDefaultProjectId(accountId: string): Promise<string | undefined>
 }
 
 export function createProjectsRepository(db: Database): ProjectsRepository {
@@ -23,8 +23,8 @@ export function createProjectsRepository(db: Database): ProjectsRepository {
         .select({ id: projects.id })
         .from(projects)
         .where(eq(projects.accountId, accountId))
-        .limit(1);
-      return project?.id;
+        .limit(1)
+      return project?.id
     },
-  };
+  }
 }

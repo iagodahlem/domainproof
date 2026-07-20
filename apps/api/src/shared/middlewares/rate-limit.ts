@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import type { MiddlewareHandler } from 'hono'
 
 /**
  * The only thing this middleware needs from upstream context — deliberately
@@ -8,16 +8,16 @@ import type { MiddlewareHandler } from "hono";
  * `keyId`.
  */
 export interface RateLimitVariables {
-  keyId: string;
+  keyId: string
 }
 
 export interface RateLimitConfig {
   /** Max requests allowed per key within the window. Default 100. */
-  limit?: number;
+  limit?: number
   /** Sliding window size in milliseconds. Default 60_000 (1 minute). */
-  windowMs?: number;
+  windowMs?: number
   /** Clock source, injected for deterministic tests. Default `Date.now`. */
-  now?: () => number;
+  now?: () => number
 }
 
 /**
@@ -36,39 +36,39 @@ export interface RateLimitConfig {
 export function createRateLimitMiddleware(
   config: RateLimitConfig = {},
 ): MiddlewareHandler<{ Variables: RateLimitVariables }> {
-  const limit = config.limit ?? 100;
-  const windowMs = config.windowMs ?? 60_000;
-  const now = config.now ?? Date.now;
+  const limit = config.limit ?? 100
+  const windowMs = config.windowMs ?? 60_000
+  const now = config.now ?? Date.now
 
-  const hits = new Map<string, number[]>();
+  const hits = new Map<string, number[]>()
 
   return async (c, next) => {
-    const keyId = c.get("keyId");
-    const currentTime = now();
-    const windowStart = currentTime - windowMs;
+    const keyId = c.get('keyId')
+    const currentTime = now()
+    const windowStart = currentTime - windowMs
 
     const recent = (hits.get(keyId) ?? []).filter(
       (timestamp) => timestamp > windowStart,
-    );
+    )
 
     if (recent.length >= limit) {
-      const oldest = recent[0] as number;
+      const oldest = recent[0] as number
       const retryAfterSeconds = Math.max(
         1,
         Math.ceil((oldest + windowMs - currentTime) / 1000),
-      );
-      c.header("Retry-After", String(retryAfterSeconds));
+      )
+      c.header('Retry-After', String(retryAfterSeconds))
       return c.json(
         {
-          error: { code: "rate_limited", message: "Too many requests" },
+          error: { code: 'rate_limited', message: 'Too many requests' },
         },
         429,
-      );
+      )
     }
 
-    recent.push(currentTime);
-    hits.set(keyId, recent);
+    recent.push(currentTime)
+    hits.set(keyId, recent)
 
-    await next();
-  };
+    await next()
+  }
 }

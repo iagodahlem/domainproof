@@ -160,6 +160,7 @@ This isn't mechanically enforced (see Enforcement) — the
    take their repository as an injected dependency and call its methods;
    they never see a `Database` or a schema table. This isn't a documented
    exception, it's the rule — see "Module anatomy" above.
+
 3. **Route files only parse/validate input, call services, and map results
    to HTTP.** No query building, no business rules, no direct db/infra
    access in a route handler, and no wiring plane-global middleware
@@ -201,21 +202,21 @@ explicitly rather than papered over:
 
 ## Where does X go?
 
-| Task | Goes in |
-|---|---|
-| New DNS/HTTP record type logic (new record shape, new parsing rule) | `packages/core/src/record.ts` (+ `check-txt.ts`/`check-http.ts` if it changes what counts as a pass) |
-| New verification state or transition | `packages/core/src/states.ts` |
-| New public (API-key) endpoint | `apps/api/src/apis/v1/routes/<name>.ts` (parsing/HTTP only, mounted in `apis/v1/router.ts`) + a use case in the relevant module's `service.ts` + any new data access in its `repository.ts` |
-| New dashboard (session) endpoint | Same shape, under `apps/api/src/apis/dashboard/routes/` and `apis/dashboard/router.ts` instead |
-| New db table/column a module needs | A new method on that module's `repository.ts`. Never a schema import in `service.ts` or a route file. |
+| Task                                                                                                        | Goes in                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New DNS/HTTP record type logic (new record shape, new parsing rule)                                         | `packages/core/src/record.ts` (+ `check-txt.ts`/`check-http.ts` if it changes what counts as a pass)                                                                                                                                                                                              |
+| New verification state or transition                                                                        | `packages/core/src/states.ts`                                                                                                                                                                                                                                                                     |
+| New public (API-key) endpoint                                                                               | `apps/api/src/apis/v1/routes/<name>.ts` (parsing/HTTP only, mounted in `apis/v1/router.ts`) + a use case in the relevant module's `service.ts` + any new data access in its `repository.ts`                                                                                                       |
+| New dashboard (session) endpoint                                                                            | Same shape, under `apps/api/src/apis/dashboard/routes/` and `apis/dashboard/router.ts` instead                                                                                                                                                                                                    |
+| New db table/column a module needs                                                                          | A new method on that module's `repository.ts`. Never a schema import in `service.ts` or a route file.                                                                                                                                                                                             |
 | New vendor/external service integration (email, webhooks delivery, a new DNS provider, a new auth provider) | Define the port where the concept belongs (core's port files if domain-wide, the owning module's `ports.ts` if module-specific — see rule 2), implement the adapter in `apps/api/src/infra/<area>/`, wire it in `app.ts` and inject it into whichever module's service (or plane router) needs it |
-| New pure logic with no db/IO (parsing, formatting, validation) | The module's `domain/<concept>.ts` — one file per concept |
-| New plane-specific middleware (only one plane will ever use it) | `apis/<plane>/middlewares/<name>.ts` |
-| New plane-agnostic middleware (any plane could use it) | `shared/middlewares/<name>.ts` — don't assume a specific plane's context-variable shape |
-| New tenant/account/project policy (quotas, plan limits, slug rules) | `apps/api/src/modules/projects/` (or a new module, if it doesn't fit an existing one) |
-| New cross-module, cross-plane helper (error shape, pagination, result types) | `apps/api/src/shared/` |
-| A test double for a core port | `packages/core/src/testing/` — export it from `testing/index.ts` so it's available via `@domainproof/core/testing` |
-| A test double for a module's repository or port | A fake object implementing the interface, defined right in the test file that needs it (see `keys/service.test.ts`, `accounts/service.test.ts`) — no shared testing/ convention for `apps/api` yet, unlike core. |
+| New pure logic with no db/IO (parsing, formatting, validation)                                              | The module's `domain/<concept>.ts` — one file per concept                                                                                                                                                                                                                                         |
+| New plane-specific middleware (only one plane will ever use it)                                             | `apis/<plane>/middlewares/<name>.ts`                                                                                                                                                                                                                                                              |
+| New plane-agnostic middleware (any plane could use it)                                                      | `shared/middlewares/<name>.ts` — don't assume a specific plane's context-variable shape                                                                                                                                                                                                           |
+| New tenant/account/project policy (quotas, plan limits, slug rules)                                         | `apps/api/src/modules/projects/` (or a new module, if it doesn't fit an existing one)                                                                                                                                                                                                             |
+| New cross-module, cross-plane helper (error shape, pagination, result types)                                | `apps/api/src/shared/`                                                                                                                                                                                                                                                                            |
+| A test double for a core port                                                                               | `packages/core/src/testing/` — export it from `testing/index.ts` so it's available via `@domainproof/core/testing`                                                                                                                                                                                |
+| A test double for a module's repository or port                                                             | A fake object implementing the interface, defined right in the test file that needs it (see `keys/service.test.ts`, `accounts/service.test.ts`) — no shared testing/ convention for `apps/api` yet, unlike core.                                                                                  |
 
 ## Tooling
 

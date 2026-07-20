@@ -1,20 +1,23 @@
-import type { MiddlewareHandler } from "hono";
-import { apiError } from "@shared/http-errors";
-import type { SessionVerifier, SessionVerifyResult } from "@modules/accounts/ports";
+import type { MiddlewareHandler } from 'hono'
+import { apiError } from '@shared/http-errors'
+import type {
+  SessionVerifier,
+  SessionVerifyResult,
+} from '@modules/accounts/ports'
 
 /**
  * Hono context variable holding the verified session's user id, available
  * to any handler downstream of {@link createSessionAuthMiddleware}.
  */
 export interface SessionAuthVariables {
-  userId: string;
+  userId: string
 }
 
 function unauthorized(message: string) {
   return {
-    body: apiError("unauthorized", message),
+    body: apiError('unauthorized', message),
     status: 401 as const,
-  };
+  }
 }
 
 /**
@@ -24,17 +27,21 @@ function unauthorized(message: string) {
  * (e.g. `packages/core`'s `states.ts`).
  */
 function assertNever(value: never): never {
-  throw new Error(`Unhandled session verify failure reason: ${JSON.stringify(value)}`);
+  throw new Error(
+    `Unhandled session verify failure reason: ${JSON.stringify(value)}`,
+  )
 }
 
-function messageForFailure(reason: Extract<SessionVerifyResult, { ok: false }>["reason"]): string {
+function messageForFailure(
+  reason: Extract<SessionVerifyResult, { ok: false }>['reason'],
+): string {
   switch (reason) {
-    case "invalid_or_expired":
-      return "Invalid or expired token";
-    case "missing_subject":
-      return "Token is missing a subject claim";
+    case 'invalid_or_expired':
+      return 'Invalid or expired token'
+    case 'missing_subject':
+      return 'Token is missing a subject claim'
     default:
-      return assertNever(reason);
+      return assertNever(reason)
   }
 }
 
@@ -57,36 +64,36 @@ export function createSessionAuthMiddleware(
     if (!verifier) {
       return c.json(
         apiError(
-          "auth_not_configured",
-          "Session authentication is not configured",
+          'auth_not_configured',
+          'Session authentication is not configured',
         ),
         500,
-      );
+      )
     }
 
-    const header = c.req.header("Authorization");
-    if (!header || !header.startsWith("Bearer ")) {
+    const header = c.req.header('Authorization')
+    if (!header || !header.startsWith('Bearer ')) {
       const { body, status } = unauthorized(
-        "Missing or malformed Authorization header",
-      );
-      return c.json(body, status);
+        'Missing or malformed Authorization header',
+      )
+      return c.json(body, status)
     }
 
-    const token = header.slice("Bearer ".length).trim();
+    const token = header.slice('Bearer '.length).trim()
     if (!token) {
       const { body, status } = unauthorized(
-        "Missing or malformed Authorization header",
-      );
-      return c.json(body, status);
+        'Missing or malformed Authorization header',
+      )
+      return c.json(body, status)
     }
 
-    const result = await verifier.verify(token);
+    const result = await verifier.verify(token)
     if (!result.ok) {
-      const { body, status } = unauthorized(messageForFailure(result.reason));
-      return c.json(body, status);
+      const { body, status } = unauthorized(messageForFailure(result.reason))
+      return c.json(body, status)
     }
 
-    c.set("userId", result.claims.userId);
-    await next();
-  };
+    c.set('userId', result.claims.userId)
+    await next()
+  }
 }

@@ -6,5 +6,5 @@
  * own tests import them by relative path; the api's tests (and any other
  * package's) import them via the subpath.
  */
-export * from "./fixture-resolver";
-export * from "./fixture-fetcher";
+export * from './fixture-resolver'
+export * from './fixture-fetcher'

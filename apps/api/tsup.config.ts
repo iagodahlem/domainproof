@@ -1,13 +1,13 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm"],
-  platform: "node",
-  target: "node22",
+  entry: ['src/index.ts'],
+  format: ['esm'],
+  platform: 'node',
+  target: 'node22',
   sourcemap: true,
   clean: true,
-  outDir: "dist",
+  outDir: 'dist',
   // Runtime entry point, not a library — no .d.ts output needed.
   dts: false,
   // Workspace packages (e.g. @domainproof/core) export TypeScript source,
@@ -16,4 +16,4 @@ export default defineConfig({
   // runtime. Bundling them into this package's own output is what makes
   // the built dist/ self-contained.
   noExternal: [/^@domainproof\//],
-});
+})

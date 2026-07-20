@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config'
 
 // Vite/Vitest doesn't read tsconfig "paths" on its own — resolve.tsconfigPaths
 // is what makes @infra/*, @modules/*, and @shared/* resolve the same way
@@ -8,4 +8,4 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-});
+})

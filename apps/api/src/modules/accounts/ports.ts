@@ -13,7 +13,7 @@
 
 /** What a verified session proves: who's making the request. */
 export interface SessionClaims {
-  userId: string;
+  userId: string
 }
 
 /**
@@ -27,7 +27,7 @@ export interface SessionClaims {
  */
 export type SessionVerifyResult =
   | { ok: true; claims: SessionClaims }
-  | { ok: false; reason: "invalid_or_expired" | "missing_subject" };
+  | { ok: false; reason: 'invalid_or_expired' | 'missing_subject' }
 
 /**
  * Verifies a bearer token from the `Authorization` header and resolves the
@@ -36,5 +36,5 @@ export type SessionVerifyResult =
  * `HttpFetcher` contract in `packages/core`.
  */
 export interface SessionVerifier {
-  verify(token: string): Promise<SessionVerifyResult>;
+  verify(token: string): Promise<SessionVerifyResult>
 }

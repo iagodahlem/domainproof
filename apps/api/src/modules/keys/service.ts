@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
-import { generateToken } from "@domainproof/core";
-import type { ApiKeyRow, KeysRepository } from "./repository";
-import { generateKeyId } from "./domain/encoding";
-import { formatApiKey, type ApiKeyMode } from "./domain/parse";
+import { createHash } from 'node:crypto'
+import { generateToken } from '@domainproof/core'
+import type { ApiKeyRow, KeysRepository } from './repository'
+import { generateKeyId } from './domain/encoding'
+import { formatApiKey, type ApiKeyMode } from './domain/parse'
 
 /**
  * Display-safe view of an api_keys row: never carries `secretHash`, and
@@ -11,21 +11,21 @@ import { formatApiKey, type ApiKeyMode } from "./domain/parse";
  * dismissed.
  */
 export interface ApiKeyListItem {
-  keyId: string;
-  mode: ApiKeyMode;
+  keyId: string
+  mode: ApiKeyMode
   /** `dp_<mode>_<keyId>_...<last4>` — enough to recognize the key, never the secret. */
-  maskedKey: string;
-  last4: string;
-  name: string | null;
-  createdAt: Date;
-  lastUsedAt: Date | null;
-  revokedAt: Date | null;
+  maskedKey: string
+  last4: string
+  name: string | null
+  createdAt: Date
+  lastUsedAt: Date | null
+  revokedAt: Date | null
 }
 
 export interface CreateKeyResult {
   /** The full `dp_<mode>_<keyId>_<secret>` key. Shown exactly once — never persisted or logged. */
-  key: string;
-  apiKey: ApiKeyListItem;
+  key: string
+  apiKey: ApiKeyListItem
 }
 
 export interface KeysService {
@@ -35,13 +35,17 @@ export interface KeysService {
    * hash and last4 are persisted, so there is no way to recover it later,
    * by design.
    */
-  createKey(projectId: string, mode: ApiKeyMode, name?: string): Promise<CreateKeyResult>;
+  createKey(
+    projectId: string,
+    mode: ApiKeyMode,
+    name?: string,
+  ): Promise<CreateKeyResult>
 
   /** Lists all keys (any mode, any status) belonging to a project. Never returns hashes or secrets. */
-  listKeys(projectId: string): Promise<ApiKeyListItem[]>;
+  listKeys(projectId: string): Promise<ApiKeyListItem[]>
 
   /** Revokes a key. Returns `null` if `keyId` doesn't belong to `projectId`. */
-  revokeKey(projectId: string, keyId: string): Promise<ApiKeyListItem | null>;
+  revokeKey(projectId: string, keyId: string): Promise<ApiKeyListItem | null>
 
   /**
    * Rotates a key: revokes the existing key and creates a replacement
@@ -50,11 +54,11 @@ export interface KeysService {
    * `projectId` (the caller should surface this as a 404, matching the
    * anti-enumeration stance used elsewhere in the key lifecycle).
    */
-  rotateKey(projectId: string, keyId: string): Promise<CreateKeyResult | null>;
+  rotateKey(projectId: string, keyId: string): Promise<CreateKeyResult | null>
 }
 
 function hashSecret(secret: string): string {
-  return createHash("sha256").update(secret).digest("hex");
+  return createHash('sha256').update(secret).digest('hex')
 }
 
 function toListItem(row: ApiKeyRow): ApiKeyListItem {
@@ -67,15 +71,15 @@ function toListItem(row: ApiKeyRow): ApiKeyListItem {
     createdAt: row.createdAt,
     lastUsedAt: row.lastUsedAt,
     revokedAt: row.revokedAt,
-  };
+  }
 }
 
 export function createKeysService(repository: KeysRepository): KeysService {
   return {
     async createKey(projectId, mode, name) {
-      const keyId = generateKeyId();
-      const secret = generateToken();
-      const key = formatApiKey({ mode, keyId, secret });
+      const keyId = generateKeyId()
+      const secret = generateToken()
+      const key = formatApiKey({ mode, keyId, secret })
 
       const row = await repository.insert({
         projectId,
@@ -84,36 +88,40 @@ export function createKeysService(repository: KeysRepository): KeysService {
         secretHash: hashSecret(secret),
         last4: secret.slice(-4),
         name: name ?? null,
-      });
+      })
 
-      return { key, apiKey: toListItem(row) };
+      return { key, apiKey: toListItem(row) }
     },
 
     async listKeys(projectId) {
-      const rows = await repository.listByProject(projectId);
-      return rows.map(toListItem);
+      const rows = await repository.listByProject(projectId)
+      return rows.map(toListItem)
     },
 
     async revokeKey(projectId, keyId) {
-      const row = await repository.revoke(projectId, keyId);
-      return row ? toListItem(row) : null;
+      const row = await repository.revoke(projectId, keyId)
+      return row ? toListItem(row) : null
     },
 
     async rotateKey(projectId, keyId) {
-      const newKeyId = generateKeyId();
-      const secret = generateToken();
+      const newKeyId = generateKeyId()
+      const secret = generateToken()
 
       const result = await repository.rotate(projectId, keyId, {
         keyId: newKeyId,
         secretHash: hashSecret(secret),
         last4: secret.slice(-4),
-      });
+      })
       if (!result) {
-        return null;
+        return null
       }
 
-      const key = formatApiKey({ mode: result.replacement.mode, keyId: newKeyId, secret });
-      return { key, apiKey: toListItem(result.replacement) };
+      const key = formatApiKey({
+        mode: result.replacement.mode,
+        keyId: newKeyId,
+        secret,
+      })
+      return { key, apiKey: toListItem(result.replacement) }
     },
-  };
+  }
 }

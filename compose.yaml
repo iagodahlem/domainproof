@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     ports:
-      - "3101:3001"
+      - '3101:3001'
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -23,12 +23,12 @@ services:
       - POSTGRES_PASSWORD=domainproof
       - POSTGRES_DB=domainproof
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - db-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U domainproof"]
+      test: ['CMD-SHELL', 'pg_isready -U domainproof']
       interval: 10s
       timeout: 5s
       retries: 5

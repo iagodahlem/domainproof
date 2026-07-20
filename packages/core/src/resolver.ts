@@ -11,10 +11,7 @@
  *   than an authoritative answer.
  */
 export type TxtResolutionFailureReason =
-  | "nxdomain"
-  | "no_records"
-  | "timeout"
-  | "server_failure";
+  'nxdomain' | 'no_records' | 'timeout' | 'server_failure'
 
 /**
  * Result of a TXT lookup for a single hostname. Each string in `records` is
@@ -25,7 +22,7 @@ export type TxtResolutionFailureReason =
  */
 export type TxtResolution =
   | { ok: true; records: string[] }
-  | { ok: false; reason: TxtResolutionFailureReason };
+  | { ok: false; reason: TxtResolutionFailureReason }
 
 /**
  * The injected DNS boundary. This is the only place raw DNS IO is allowed to
@@ -40,5 +37,5 @@ export type TxtResolution =
  * throws breaks every caller's exhaustive handling of the `ok: false` case.
  */
 export interface DnsResolver {
-  resolveTxt(hostname: string): Promise<TxtResolution>;
+  resolveTxt(hostname: string): Promise<TxtResolution>
 }
