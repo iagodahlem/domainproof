@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { app, createApp } from './app'
+import { createApp } from './app'
 import { createDb, type Database } from '@infra/db/client'
 import type { SessionVerifier } from '@modules/accounts/ports'
+
+// Shared by every describe block below — a real Database, per this repo's
+// convention of exercising the actual app.ts wiring end to end rather than
+// building each block its own throwaway client.
+const db: Database = createDb(
+  process.env.DATABASE_URL ??
+    'postgres://domainproof:domainproof@localhost:5432/domainproof',
+)
+
+const app = createApp({ db })
 
 describe('GET /health', () => {
   it('returns 200 with ok status and a version', async () => {
@@ -36,11 +46,6 @@ describe('unmatched routes', () => {
 // that proves the real wiring in app.ts — env-driven config, mounted ahead
 // of both real plane routers — behaves the same way end to end.
 describe('host restriction (real app wiring)', () => {
-  const db: Database = createDb(
-    process.env.DATABASE_URL ??
-      'postgres://domainproof:domainproof@localhost:5432/domainproof',
-  )
-
   // A dummy verifier is enough: these tests send no Authorization header,
   // so session-auth middleware 401s before ever calling `verify`. Its only
   // job is to be truthy, so the dashboard plane doesn't 500 with

@@ -31,7 +31,11 @@ export default function baseConfig(
 ) {
   return tseslint.config(
     {
-      ignores: ['dist/**', 'node_modules/**'],
+      // tsup.config.bundled_*.mjs is a transient file esbuild writes next
+      // to tsup.config.ts while bundling it, then removes — eslint's glob
+      // occasionally picks one up mid-build, and it's never something
+      // meant to be linted.
+      ignores: ['dist/**', 'node_modules/**', 'tsup.config.bundled_*.mjs'],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
