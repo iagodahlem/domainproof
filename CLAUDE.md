@@ -87,13 +87,18 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full layer map, dependency
 rules, and a "where does X go?" decision table. The short version:
 
 - `packages/core` is pure domain logic — zero IO, never imports from `apps/`.
-- `apps/api/src/modules/*` owns domain rules, services, and routes for its
-  feature area; it depends on core and its own module, never on a concrete
-  `infra/` adapter or the db client directly.
-- `apps/api/src/infra/*` implements core/module ports (DB, DNS, HTTP) and is
-  only wired up from `apps/api/src/app.ts` (the composition root).
-- Route files parse/validate input, call services, and map results to HTTP —
-  nothing else.
+- `apps/api/src/modules/*` is the plane-agnostic domain layer for its
+  feature area — services, repositories, ports, pure domain logic. No
+  routes, no HTTP. Depends on core and its own module, never on a
+  concrete `infra/` adapter or the db client directly (only its own
+  `repository.ts` does).
+- `apps/api/src/apis/<plane>/` (`dashboard`, `v1`) is the HTTP surface —
+  one folder per authentication plane. Route files parse/validate input,
+  call injected services, and map results to HTTP — nothing else; a
+  plane's `router.ts` applies that plane's global middleware once.
+- `apps/api/src/infra/*` implements core/module ports (DB, DNS, HTTP,
+  auth) and is only wired up from `apps/api/src/app.ts` (the composition
+  root).
 
 These are enforced by eslint (`no-restricted-imports`, see
 `eslint.base.mjs`) and reviewed by the `architecture-reviewer` agent
