@@ -9,7 +9,7 @@ const DATABASE_URL =
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/schema.ts",
+  schema: "./src/infra/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
     url: DATABASE_URL,

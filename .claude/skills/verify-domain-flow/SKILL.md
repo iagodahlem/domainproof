@@ -42,8 +42,8 @@ curl -sf http://localhost:8787/health
    TLD routes to the in-memory fixture resolver in `packages/core`, so this
    never touches real DNS. Confirm the fixture resolver is seeded to
    transition this exact hostname from `pending` to `verified` (see
-   `packages/core/src/resolvers/fixture.ts` — TODO: exact fixture name may
-   differ, check the file).
+   `packages/core/src/testing/fixture-resolver.ts` — TODO: exact fixture
+   name may differ, check the file).
 4. Screenshot: `.claude/artifacts/01-domain-added-pending.png`
    (TODO: confirm the dashboard shows a `pending` badge/status chip
    immediately after adding — selector likely `[data-status="pending"]`).

@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_BRAND_SLUG } from "./brand.js";
-import { checkHttp } from "./check-http.js";
-import { createFixtureFetcher } from "./fetchers/fixture.js";
-import { recordValue } from "./token.js";
+import { checkHttp } from "./check-http";
+import { recordValue } from "./record";
+import { createFixtureFetcher } from "./testing/fixture-fetcher";
 
 const DOMAIN = "example.com";
-const URL = `https://${DOMAIN}/.well-known/${DEFAULT_BRAND_SLUG}-challenge`;
+const BRAND_SLUG = "domainproof";
+const URL = `https://${DOMAIN}/.well-known/${BRAND_SLUG}-challenge`;
 const TOKEN = "expectedtoken1234567890abcd";
 const OTHER_TOKEN = "someothertoken1234567890abcd";
 
 describe("checkHttp", () => {
   it("returns found for an exact match", async () => {
     const fetcher = createFixtureFetcher({
-      [URL]: { ok: true, status: 200, body: recordValue(TOKEN) },
+      [URL]: { ok: true, status: 200, body: recordValue(TOKEN, BRAND_SLUG) },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
     expect(fetcher.calls).toEqual([URL]);
   });
 
@@ -27,22 +27,22 @@ describe("checkHttp", () => {
         status: 200,
         body: [
           "not-a-domainproof-line",
-          recordValue(OTHER_TOKEN),
-          `  " ${recordValue(TOKEN)} "  `,
+          recordValue(OTHER_TOKEN, BRAND_SLUG),
+          `  " ${recordValue(TOKEN, BRAND_SLUG)} "  `,
           "",
         ].join("\n"),
       },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "found" });
   });
 
   it("returns wrong_value with the detected token when none match", async () => {
     const fetcher = createFixtureFetcher({
-      [URL]: { ok: true, status: 200, body: recordValue(OTHER_TOKEN) },
+      [URL]: { ok: true, status: 200, body: recordValue(OTHER_TOKEN, BRAND_SLUG) },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({
       outcome: "wrong_value",
       detected: [OTHER_TOKEN],
     });
@@ -54,11 +54,11 @@ describe("checkHttp", () => {
       [URL]: {
         ok: true,
         status: 200,
-        body: wrongTokens.map((token) => recordValue(token)).join("\n"),
+        body: wrongTokens.map((token) => recordValue(token, BRAND_SLUG)).join("\n"),
       },
     });
 
-    const result = await checkHttp(fetcher, DOMAIN, TOKEN);
+    const result = await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG);
 
     expect(result.outcome).toBe("wrong_value");
     if (result.outcome === "wrong_value") {
@@ -72,7 +72,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 200, body: "" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "not_found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "not_found" });
   });
 
   it("returns not_found when the body has no parseable lines", async () => {
@@ -80,7 +80,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 200, body: "just some unrelated text\n" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "not_found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "not_found" });
   });
 
   it("returns not_found for a 404", async () => {
@@ -88,7 +88,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 404, body: "" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "not_found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "not_found" });
   });
 
   it("returns not_found for a 410", async () => {
@@ -96,7 +96,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 410, body: "" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "not_found" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "not_found" });
   });
 
   it("returns unreachable for a 500", async () => {
@@ -104,7 +104,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 500, body: "" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("returns unreachable for a 503", async () => {
@@ -112,7 +112,7 @@ describe("checkHttp", () => {
       [URL]: { ok: true, status: 503, body: "" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("returns unreachable for a timeout", async () => {
@@ -120,7 +120,7 @@ describe("checkHttp", () => {
       [URL]: { ok: false, reason: "timeout" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("returns unreachable for a connection failure", async () => {
@@ -128,7 +128,7 @@ describe("checkHttp", () => {
       [URL]: { ok: false, reason: "connection_failed" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("returns unreachable for a TLS error", async () => {
@@ -136,7 +136,7 @@ describe("checkHttp", () => {
       [URL]: { ok: false, reason: "tls_error" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("returns unreachable when the body was too large", async () => {
@@ -144,28 +144,26 @@ describe("checkHttp", () => {
       [URL]: { ok: false, reason: "too_large" },
     });
 
-    expect(await checkHttp(fetcher, DOMAIN, TOKEN)).toEqual({ outcome: "unreachable" });
+    expect(await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG)).toEqual({ outcome: "unreachable" });
   });
 
   it("uses a branded slug in the URL and only matches under that brand", async () => {
     const brandedUrl = `https://${DOMAIN}/.well-known/acme-challenge`;
     const fetcher = createFixtureFetcher({
-      [URL]: { ok: true, status: 200, body: recordValue(TOKEN) },
-      [brandedUrl]: { ok: true, status: 200, body: recordValue(OTHER_TOKEN) },
+      [URL]: { ok: true, status: 200, body: recordValue(TOKEN, BRAND_SLUG) },
+      [brandedUrl]: { ok: true, status: 200, body: recordValue(OTHER_TOKEN, "acme") },
     });
 
-    const defaultResult = await checkHttp(fetcher, DOMAIN, TOKEN);
+    const defaultResult = await checkHttp(fetcher, DOMAIN, TOKEN, BRAND_SLUG);
     expect(defaultResult).toEqual({ outcome: "found" });
 
-    const brandedResult = await checkHttp(fetcher, DOMAIN, OTHER_TOKEN, {
-      brandSlug: "acme",
-    });
+    const brandedResult = await checkHttp(fetcher, DOMAIN, OTHER_TOKEN, "acme");
     expect(brandedResult).toEqual({ outcome: "found" });
     expect(fetcher.calls).toEqual([URL, brandedUrl]);
 
     // The branded token isn't found under the default (unbranded) path, and
     // vice versa — each brand's file is independent.
-    const crossCheck = await checkHttp(fetcher, DOMAIN, OTHER_TOKEN);
+    const crossCheck = await checkHttp(fetcher, DOMAIN, OTHER_TOKEN, BRAND_SLUG);
     expect(crossCheck).toEqual({ outcome: "wrong_value", detected: [TOKEN] });
   });
 });

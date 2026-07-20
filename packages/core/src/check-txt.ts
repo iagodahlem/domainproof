@@ -1,5 +1,6 @@
-import type { DnsResolver, TxtResolutionFailureReason } from "./resolver.js";
-import { parseRecordValue, tokensMatch } from "./token.js";
+import { parseRecordValue } from "./record";
+import type { DnsResolver, TxtResolutionFailureReason } from "./resolver";
+import { tokensMatch } from "./token";
 
 /**
  * How many `wrong_value` records to surface for the expected/detected diff
@@ -63,21 +64,14 @@ function resultForFailure(reason: TxtResolutionFailureReason): TxtCheckResult {
 }
 
 /**
- * Options for {@link checkTxt}.
- */
-export type CheckTxtOptions = {
-  /**
-   * Which brand's record prefix to parse against, defaulting to the
-   * DomainProof brand. Must match the brand slug used to generate the
-   * challenge (via {@link recordValue}) — brands are namespaces, so a
-   * record published under one brand is invisible to a check made under
-   * another.
-   */
-  brandSlug?: string;
-};
-
-/**
  * Checks whether `hostname` publishes a TXT record proving `expectedToken`.
+ *
+ * `brandSlug` selects which brand's record prefix to parse against — it
+ * must match the brand slug used to generate the challenge (via
+ * {@link recordValue}) — brands are namespaces, so a record published
+ * under one brand is invisible to a check made under another. Core has no
+ * default brand; the caller (the api's project/challenge layer) always
+ * supplies one.
  *
  * Pure aside from the injected `resolver` call: given the same resolution,
  * this always produces the same outcome. All DNS IO happens behind
@@ -89,7 +83,7 @@ export async function checkTxt(
   resolver: DnsResolver,
   hostname: string,
   expectedToken: string,
-  options?: CheckTxtOptions,
+  brandSlug: string,
 ): Promise<TxtCheckResult> {
   const resolution = await resolver.resolveTxt(hostname);
 
@@ -100,7 +94,7 @@ export async function checkTxt(
   const detected: string[] = [];
 
   for (const record of resolution.records) {
-    const parsed = parseRecordValue(record, options?.brandSlug);
+    const parsed = parseRecordValue(record, brandSlug);
     if (!parsed.ok) {
       continue;
     }
