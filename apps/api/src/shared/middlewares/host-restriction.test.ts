@@ -88,13 +88,20 @@ describe('createHostRestrictionMiddleware', () => {
     }
   })
 
-  it('404s the wrong plane on a restricted host even for a route outside both planes', async () => {
-    const app = buildApp({ publicApiHost: 'api.domainproof.dev' })
-
-    const health = await app.request('/health', {
-      headers: { host: 'api.domainproof.dev' },
+  it('serves /health on every host regardless of restriction, since it is not a plane route', async () => {
+    const app = buildApp({
+      publicApiHost: 'api.domainproof.dev',
+      dashboardApiHost: 'dashboard.api.domainproof.dev',
     })
-    expect(health.status).toBe(404)
+
+    for (const host of [
+      'api.domainproof.dev',
+      'dashboard.api.domainproof.dev',
+      'localhost',
+    ]) {
+      const health = await app.request('/health', { headers: { host } })
+      expect(health.status).toBe(200)
+    }
   })
 
   it('strips the port from the Host header before matching', async () => {

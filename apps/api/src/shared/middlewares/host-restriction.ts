@@ -17,6 +17,12 @@ const PUBLIC_PLANE_PREFIX = '/v1'
 const DASHBOARD_PLANE_PREFIX = '/dashboard'
 
 /**
+ * Liveness check, exempt from host restriction on every host — see the
+ * carve-out note below.
+ */
+const HEALTH_CHECK_PATH = '/health'
+
+/**
  * Confines each configured plane hostname to its own path prefix. Mounted
  * once at the root of `app.ts`, ahead of both plane routers — it decides
  * which plane (if any) a request is allowed to reach before either
@@ -26,6 +32,8 @@ const DASHBOARD_PLANE_PREFIX = '/dashboard'
  * and `api.domainproof.dev` behave the same) is checked against the two
  * configured hostnames:
  *
+ * - `/health` (exact path) always passes through, on every host — see
+ *   the carve-out note below.
  * - Host matches `publicApiHost` and the path isn't under `/v1` -> 404.
  * - Host matches `dashboardApiHost` and the path isn't under `/dashboard` -> 404.
  * - Everything else — an unconfigured plane, an unmatched host
@@ -40,6 +48,12 @@ const DASHBOARD_PLANE_PREFIX = '/dashboard'
  * can't have it," which confirms the other plane's routes exist on this
  * host at all. 404 says nothing lives here, indistinguishable from any
  * other wrong path.
+ *
+ * `/health` is a deliberate carve-out from "only that plane's routes
+ * reach a restricted host": external uptime monitors hit
+ * `api.domainproof.dev/health` directly, not just Railway's internal
+ * healthcheck, so it needs to answer on both production hostnames, not
+ * only on hosts where it happens to fall inside the reachable plane.
  */
 export function createHostRestrictionMiddleware(
   config: HostRestrictionConfig,
@@ -52,8 +66,14 @@ export function createHostRestrictionMiddleware(
       return
     }
 
-    const host = stripPort(c.req.header('host'))
     const path = c.req.path
+
+    if (path === HEALTH_CHECK_PATH) {
+      await next()
+      return
+    }
+
+    const host = stripPort(c.req.header('host'))
 
     const wrongPlane =
       (host === publicApiHost && !path.startsWith(PUBLIC_PLANE_PREFIX)) ||

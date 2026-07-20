@@ -77,7 +77,10 @@ except production) means no restriction at all, so local dev and tests
 never need `/etc/hosts` tricks to exercise either plane. The wrong plane
 on a restricted host gets a 404 through the shared error taxonomy, not a
 403 — a 403 would confirm the other plane's routes exist on that host,
-which is exactly the information a 404 withholds.
+which is exactly the information a 404 withholds. `/health` is the one
+exception: it answers on every host, restricted or not, since external
+uptime monitors hit it directly on the production hostnames rather than
+through Railway's internal healthcheck.
 
 **A new plane hostname is created only when a real auth/CORS boundary
 appears, never speculatively.** `dashboard.api.domainproof.dev` earned one
