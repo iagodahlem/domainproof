@@ -265,3 +265,88 @@ describe('release', () => {
     ).toBeDefined()
   })
 })
+
+describe('recordVerificationAttempt', () => {
+  it('updates the domain status and appends a verification_events row', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const verifiedAt = new Date()
+    const updated = await repository.recordVerificationAttempt({
+      domainId: created.domain.id,
+      nextStatus: 'verified',
+      verifiedAt,
+      event: {
+        type: 'domain_verify_attempted',
+        detail: { outcome: 'found' },
+      },
+    })
+
+    expect(updated.status).toBe('verified')
+    expect(updated.verifiedAt?.getTime()).toBe(verifiedAt.getTime())
+
+    const events = await db
+      .select()
+      .from(verificationEvents)
+      .where(eq(verificationEvents.domainId, created.domain.id))
+    // claim() already inserted a `domain_claimed` event; this adds a second.
+    expect(events).toHaveLength(2)
+    expect(
+      events.some((event) => event.type === 'domain_verify_attempted'),
+    ).toBe(true)
+  })
+
+  it('leaves verifiedAt untouched when not provided', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+    expect(created.domain.verifiedAt).toBeNull()
+
+    const updated = await repository.recordVerificationAttempt({
+      domainId: created.domain.id,
+      nextStatus: 'pending',
+      event: {
+        type: 'domain_verify_attempted',
+        detail: { outcome: 'not_found' },
+      },
+    })
+
+    expect(updated.status).toBe('pending')
+    expect(updated.verifiedAt).toBeNull()
+  })
+
+  it('bumps updatedAt', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    const updated = await repository.recordVerificationAttempt({
+      domainId: created.domain.id,
+      nextStatus: 'pending',
+      event: {
+        type: 'domain_verify_attempted',
+        detail: { outcome: 'not_found' },
+      },
+    })
+
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(
+      created.domain.updatedAt.getTime(),
+    )
+  })
+
+  it('throws when the domain id does not exist', async () => {
+    await expect(
+      repository.recordVerificationAttempt({
+        domainId: randomUUID(),
+        nextStatus: 'pending',
+        event: {
+          type: 'domain_verify_attempted',
+          detail: { outcome: 'not_found' },
+        },
+      }),
+    ).rejects.toThrow(/No domain found/)
+  })
+})

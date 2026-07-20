@@ -71,8 +71,8 @@ async function createTestApiKey(
   return { projectId, mode, slug, key: `dp_${mode}_${keyId}_${secret}` }
 }
 
-function buildApp() {
-  return createApp({ db })
+function buildApp(overrides: { now?: () => Date } = {}) {
+  return createApp({ db, ...overrides })
 }
 
 async function withKey(
@@ -342,5 +342,148 @@ describe('/v1/domains', () => {
       method: 'DELETE',
     })
     expect(res.status).toBe(404)
+  })
+
+  describe('POST /v1/domains/:id/verify', () => {
+    interface VerifyResponseBody {
+      domain: { id: string; status: string; records: Array<{ status: string }> }
+      check: {
+        outcome: string
+        checkedAt: string
+        expected?: string
+        detected?: string[]
+        explanation?: string
+      }
+    }
+
+    async function claimSandboxDomain(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domain: string,
+    ): Promise<string> {
+      const res = await withKey(app, apiKey.key, '/v1/domains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      })
+      const body = (await res.json()) as { domain: { id: string } }
+      return body.domain.id
+    }
+
+    async function verify(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domainId: string,
+    ): Promise<{ status: number; body: VerifyResponseBody }> {
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/verify`,
+        { method: 'POST' },
+      )
+      return {
+        status: res.status,
+        body: (await res.json()) as VerifyResponseBody,
+      }
+    }
+
+    it("verifies a 'verified.test' sandbox domain immediately", async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+      const domainId = await claimSandboxDomain(app, apiKey, 'verified.test')
+
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('found')
+      expect(body.check.checkedAt).toBeDefined()
+      expect(body.domain.status).toBe('verified')
+      expect(body.domain.records).toHaveLength(1)
+      expect(body.domain.records[0]?.status).toBe('verified')
+    })
+
+    it("returns the expected/detected mismatch for a 'wrong-value.test' sandbox domain", async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+      const domainId = await claimSandboxDomain(app, apiKey, 'wrong-value.test')
+
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('wrong_value')
+      expect(typeof body.check.expected).toBe('string')
+      expect(body.check.detected).toEqual(
+        expect.arrayContaining([expect.any(String)]),
+      )
+      // pending -> failed: a wrong-but-valid-looking record is an actionable
+      // mismatch, not "still propagating" — see the domains service's
+      // eventForCheckOutcome mapping.
+      expect(body.domain.status).toBe('failed')
+    })
+
+    it("returns a not_found explanation for a 'pending-then-verified.test' domain before its propagation window, then verifies after", async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const apiKey = await createTestApiKey()
+      const domainId = await claimSandboxDomain(
+        app,
+        apiKey,
+        'pending-then-verified.test',
+      )
+
+      const before = await verify(app, apiKey, domainId)
+      expect(before.status).toBe(200)
+      expect(before.body.check.outcome).toBe('not_found')
+      expect(typeof before.body.check.explanation).toBe('string')
+      expect(before.body.check.explanation).toContain(
+        'pending-then-verified.test',
+      )
+      expect(before.body.domain.status).toBe('pending')
+
+      // The sandbox's `pending-then-verified` journey answers correctly once
+      // 45s have elapsed since the challenge was created — move the
+      // injected clock forward instead of sleeping the test.
+      clockOffsetMs = 46_000
+      const after = await verify(app, apiKey, domainId)
+      expect(after.status).toBe(200)
+      expect(after.body.check.outcome).toBe('found')
+      expect(after.body.domain.status).toBe('verified')
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${randomUUID()}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s for another project's domain", async () => {
+      const app = buildApp()
+      const ownerKey = await createTestApiKey()
+      const otherKey = await createTestApiKey()
+      const domainId = await claimSandboxDomain(app, ownerKey, 'verified.test')
+
+      const res = await withKey(
+        app,
+        otherKey.key,
+        `/v1/domains/${domainId}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(`/v1/domains/${randomUUID()}/verify`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(401)
+    })
   })
 })

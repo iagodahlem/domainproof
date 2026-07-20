@@ -11,12 +11,46 @@ import { createKeysRepository } from '@modules/keys/repository'
 import { createKeysService } from '@modules/keys/service'
 import { createDomainsRepository } from '@modules/domains/repository'
 import { createDomainsService } from '@modules/domains/service'
+import type { ResolverForChallenge } from '@modules/domains/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
 import { createDb, type Database } from '@infra/db/client'
+import { createNodeDnsResolver } from '@infra/dns/node-dns'
+import { createSandboxResolver, isSandboxDomain } from '@infra/dns/sandbox'
 import { env } from './env'
 import { apiError } from '@shared/http-errors'
+
+/**
+ * Builds the `verifyDomain` use case's resolver-selection port: `.test`
+ * sandbox domains get a fresh in-memory `createSandboxResolver` built from
+ * the challenge being checked; every other domain shares one
+ * `createNodeDnsResolver` instance (it's stateless — a fresh client is
+ * created per query internally, see `infra/dns/node-dns.ts`). This is the
+ * one place `isSandboxDomain`/`createSandboxResolver`/`createNodeDnsResolver`
+ * get imported — `modules/domains` only ever sees the `ResolverForChallenge`
+ * port (see `modules/domains/ports.ts`), never these concrete adapters.
+ */
+function createResolverForChallenge(): ResolverForChallenge {
+  const nodeDnsResolver = createNodeDnsResolver()
+
+  return ({
+    domain,
+    recordHost,
+    recordValue,
+    brandSlug,
+    challengeCreatedAt,
+    now,
+  }) => {
+    if (isSandboxDomain(domain)) {
+      return createSandboxResolver(
+        { recordHost, recordValue, brandSlug, createdAt: challengeCreatedAt },
+        now,
+      )
+    }
+    return nodeDnsResolver
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -37,6 +71,12 @@ export interface AppDependencies {
    * routes 500 with `auth_not_configured`) if those aren't set.
    */
   sessionVerifier?: SessionVerifier
+  /**
+   * Clock injected into `domainsService` for deterministic tests (e.g.
+   * driving a sandbox domain's simulated DNS propagation delay without
+   * sleeping). Defaults to `() => new Date()`.
+   */
+  now?: () => Date
 }
 
 /**
@@ -66,6 +106,8 @@ export function createApp(deps: AppDependencies = {}) {
   const domainsService = createDomainsService(
     domainsRepository,
     projectsService,
+    createResolverForChallenge(),
+    deps.now ?? (() => new Date()),
   )
 
   const sessionVerifier =

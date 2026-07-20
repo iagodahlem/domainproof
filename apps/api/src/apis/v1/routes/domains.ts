@@ -1,7 +1,11 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import type { ApiKeyAuthVariables } from '../middlewares/api-key'
-import type { DomainsService, DomainSummary } from '@modules/domains/service'
+import type {
+  DomainsService,
+  DomainSummary,
+  VerifyDomainCheck,
+} from '@modules/domains/service'
 import { apiError } from '@shared/http-errors'
 
 const claimDomainBodySchema = z.object({
@@ -79,6 +83,47 @@ function serializeDomain(summary: DomainSummary) {
 }
 
 /**
+ * Plain-language copy for a `verifyDomain` check attempt that didn't reach a
+ * definitive answer — written to be read by the person who just published a
+ * DNS record and is anxiously refreshing, not a developer: reassuring about
+ * `not_found` (this is normal, not a mistake), honest about `unreachable`
+ * (this is us, not you). This is UI-facing presentation, not domain fact,
+ * so — like `serializeDomain`'s record `description` — it's built here in
+ * the v1 route layer from the plane-agnostic outcome the service returns,
+ * not inside `modules/domains`.
+ */
+const CHECK_EXPLANATIONS: Record<
+  'not_found' | 'unreachable',
+  (domain: string) => string
+> = {
+  not_found: (domain) =>
+    `No record found yet. DNS changes usually take a few minutes to appear — we checked ${domain}'s own nameservers to skip stale caches. Try verifying again shortly.`,
+  unreachable: (domain) =>
+    `We couldn't get a reliable answer from ${domain}'s DNS servers just now. This is usually temporary and not something wrong with your record — wait a moment and try verifying again.`,
+}
+
+/**
+ * Builds the public API's view of one `verifyDomain` attempt: what the
+ * check found and when, plus outcome-specific detail — the expected/detected
+ * value diff for `wrong_value`, a humanized `explanation` for
+ * `not_found`/`unreachable`. `found` and (already-)`verified` recheck
+ * outcomes carry no extra detail beyond the outcome and timestamp; the
+ * updated `domain` in the response already says everything else.
+ */
+function serializeCheck(check: VerifyDomainCheck, domain: string) {
+  return {
+    outcome: check.outcome,
+    checkedAt: check.checkedAt,
+    ...(check.outcome === 'wrong_value'
+      ? { expected: check.expectedValue, detected: check.detectedValues }
+      : {}),
+    ...(check.outcome === 'not_found' || check.outcome === 'unreachable'
+      ? { explanation: CHECK_EXPLANATIONS[check.outcome](domain) }
+      : {}),
+  }
+}
+
+/**
  * Public-API domain claiming routes, mounted at `/domains` under the v1
  * plane's router (giving `/v1/domains`). `projectId` and `mode` come from
  * the api-key auth context set by `apis/v1/middlewares/api-key.ts` — every
@@ -152,6 +197,22 @@ export function createDomainsRoutes(domainsService: DomainsService) {
       return c.json(body, status)
     }
     return c.json({ domain: serializeDomain(domain) })
+  })
+
+  router.post('/:id/verify', async (c) => {
+    const result = await domainsService.verifyDomain(
+      c.get('projectId'),
+      c.get('mode'),
+      c.req.param('id'),
+    )
+    if (!result.ok) {
+      const { body, status } = notFound()
+      return c.json(body, status)
+    }
+    return c.json({
+      domain: serializeDomain(result.domain),
+      check: serializeCheck(result.check, result.domain.domain),
+    })
   })
 
   return router

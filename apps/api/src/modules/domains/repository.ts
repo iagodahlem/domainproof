@@ -36,6 +36,21 @@ export interface DomainWithChallenge {
   challenge: ChallengeRow
 }
 
+export interface VerificationAttemptInsert {
+  domainId: string
+  /** The status computed by the caller via core's state machine (or the unchanged current status, for a no-op attempt). */
+  nextStatus: DomainStatus
+  /**
+   * Set only when this attempt confirms the domain as verified — otherwise
+   * `undefined` leaves the existing `verified_at` column untouched (e.g. a
+   * `not_found`/`unreachable` attempt on a `pending` domain doesn't clear or
+   * touch a timestamp that isn't set yet, and a lost record on a `verified`
+   * domain doesn't erase when it was last confirmed good).
+   */
+  verifiedAt?: Date
+  event: VerificationEventInsert
+}
+
 /**
  * All db access for the domains module — the `domains`, `challenges`, and
  * `verification_events` tables, which together form one bounded context
@@ -77,6 +92,19 @@ export interface DomainsRepository {
     mode: DomainMode,
     id: string,
   ): Promise<DomainRow | undefined>
+
+  /**
+   * Persists the outcome of one `verifyDomain` attempt, atomically: updates
+   * the domain's status (and `verified_at`, if provided) and appends a
+   * `verification_events` row for the attempt, in one transaction. Not
+   * scoped to `(projectId, mode)` — the caller is expected to have already
+   * resolved and authorized `domainId` via `findById`. Throws if `domainId`
+   * doesn't exist (should never happen: the caller just read it in the same
+   * request).
+   */
+  recordVerificationAttempt(
+    values: VerificationAttemptInsert,
+  ): Promise<DomainRow>
 }
 
 export function createDomainsRepository(db: Database): DomainsRepository {
@@ -171,6 +199,34 @@ export function createDomainsRepository(db: Database): DomainsRepository {
         )
         .returning()
       return row
+    },
+
+    async recordVerificationAttempt(values) {
+      return db.transaction(async (tx) => {
+        const [domainRow] = await tx
+          .update(domains)
+          .set({
+            status: values.nextStatus,
+            updatedAt: new Date(),
+            ...(values.verifiedAt ? { verifiedAt: values.verifiedAt } : {}),
+          })
+          .where(eq(domains.id, values.domainId))
+          .returning()
+
+        if (!domainRow) {
+          throw new Error(
+            `No domain found for id ${values.domainId} while recording a verification attempt`,
+          )
+        }
+
+        await tx.insert(verificationEvents).values({
+          domainId: values.domainId,
+          type: values.event.type,
+          detail: values.event.detail,
+        })
+
+        return domainRow
+      })
     },
   }
 }
