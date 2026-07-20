@@ -25,6 +25,10 @@ RUN groupadd --system --gid 1001 api \
 COPY --from=build --chown=api:api /prod/api/dist ./dist
 COPY --from=build --chown=api:api /prod/api/package.json ./package.json
 COPY --from=build --chown=api:api /prod/api/node_modules ./node_modules
+# Migrations run at boot (see src/index.ts) against this folder, resolved
+# relative to dist/index.js at runtime — must land one level up from dist,
+# same as package.json above.
+COPY --from=build --chown=api:api /prod/api/drizzle ./drizzle
 
 USER api
 EXPOSE 3001

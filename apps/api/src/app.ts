@@ -22,6 +22,7 @@ import { isSandboxDomain } from '@domainproof/core'
 import { env } from './env'
 import { apiError } from '@shared/http-errors'
 import { createHostRestrictionMiddleware } from '@shared/middlewares/host-restriction'
+import { createRequestLoggerMiddleware } from '@shared/middlewares/request-logger'
 
 /**
  * Builds the `verifyDomain` use case's resolver-selection port: `.test`
@@ -65,7 +66,10 @@ const pkg = JSON.parse(
 ) as PackageJson
 
 export interface AppDependencies {
-  /** Injected for tests; defaults to a client built from `env.DATABASE_URL`. */
+  /**
+   * Injected by the entrypoint (which migrates it before boot) and by
+   * tests; defaults to a client built from `env.DATABASE_URL`.
+   */
   db?: Database
   /**
    * Injected for tests; defaults to a Clerk-backed verifier built from
@@ -131,6 +135,10 @@ export function createApp(deps: AppDependencies = {}) {
         })
       : undefined)
 
+  // Logs every request, on both planes, before anything else runs — see
+  // shared/middlewares/request-logger.ts.
+  app.use('*', createRequestLoggerMiddleware())
+
   // Confines each configured plane hostname to its own path prefix — see
   // shared/middlewares/host-restriction.ts. Applied once, at the root,
   // ahead of every route below: unset in dev/tests/Railway's service
@@ -168,5 +176,3 @@ export function createApp(deps: AppDependencies = {}) {
 
   return app
 }
-
-export const app = createApp()
