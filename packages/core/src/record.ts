@@ -1,4 +1,4 @@
-import { registrableDomain } from "./domain";
+import { registrableDomain } from './domain'
 
 /**
  * Everything about the shape of a DomainProof verification record — the DNS
@@ -22,7 +22,7 @@ import { registrableDomain } from "./domain";
  * stays a pure string-formatting step.
  */
 export function challengeHost(domain: string, brandSlug: string): string {
-  return `_${brandSlug}-challenge.${registrableDomain(domain)}`;
+  return `_${brandSlug}-challenge.${registrableDomain(domain)}`
 }
 
 /**
@@ -30,7 +30,7 @@ export function challengeHost(domain: string, brandSlug: string): string {
  * `skylane-verify=` for the brand slug `skylane`.
  */
 export function recordValuePrefix(brandSlug: string): string {
-  return `${brandSlug}-verify=`;
+  return `${brandSlug}-verify=`
 }
 
 /**
@@ -40,10 +40,10 @@ export function recordValuePrefix(brandSlug: string): string {
  * {@link parseRecordValue} calls made with the same brand slug.
  */
 export function recordValue(token: string, brandSlug: string): string {
-  return `${recordValuePrefix(brandSlug)}${token}`;
+  return `${recordValuePrefix(brandSlug)}${token}`
 }
 
-export type ParsedRecordValue = { ok: true; token: string } | { ok: false };
+export type ParsedRecordValue = { ok: true; token: string } | { ok: false }
 
 /**
  * Parses a raw TXT (or well-known file line) record string back into a
@@ -60,25 +60,28 @@ export type ParsedRecordValue = { ok: true; token: string } | { ok: false };
  * published under one brand does not parse under a different brand's
  * prefix — brands are namespaces.
  */
-export function parseRecordValue(value: string, brandSlug: string): ParsedRecordValue {
-  const prefix = recordValuePrefix(brandSlug);
-  let trimmed = value.trim();
+export function parseRecordValue(
+  value: string,
+  brandSlug: string,
+): ParsedRecordValue {
+  const prefix = recordValuePrefix(brandSlug)
+  let trimmed = value.trim()
 
   if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    trimmed = trimmed.slice(1, -1).trim();
+    trimmed = trimmed.slice(1, -1).trim()
   }
 
   if (!trimmed.startsWith(prefix)) {
-    return { ok: false };
+    return { ok: false }
   }
 
-  const token = trimmed.slice(prefix.length);
+  const token = trimmed.slice(prefix.length)
 
   if (token.length === 0) {
-    return { ok: false };
+    return { ok: false }
   }
 
-  return { ok: true, token };
+  return { ok: true, token }
 }
 
 /**
@@ -93,5 +96,5 @@ export function parseRecordValue(value: string, brandSlug: string): ParsedRecord
  * point of the check.
  */
 export function wellKnownUrl(domain: string, brandSlug: string): string {
-  return `https://${domain}/.well-known/${brandSlug}-challenge`;
+  return `https://${domain}/.well-known/${brandSlug}-challenge`
 }

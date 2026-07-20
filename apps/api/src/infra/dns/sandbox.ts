@@ -4,13 +4,13 @@ import {
   recordValue,
   type DnsResolver,
   type TxtResolution,
-} from "@domainproof/core";
+} from '@domainproof/core'
 
 // RFC 6761 permanently reserves `.test` for documentation and testing, so it
 // can never be delegated in real DNS or collide with a real owner's domain
 // (see domain.ts). That's what makes it safe to answer entirely in-memory,
 // with no real DNS IO anywhere in this module.
-const SANDBOX_TLD = "test";
+const SANDBOX_TLD = 'test'
 
 /**
  * How long a `pending-then-verified` journey stays nxdomain before the
@@ -18,10 +18,10 @@ const SANDBOX_TLD = "test";
  * on the hosted page's polling UI, short enough that a reviewer isn't
  * sitting around during a demo.
  */
-const PENDING_PROPAGATION_MS = 45_000;
+const PENDING_PROPAGATION_MS = 45_000
 
 /** Width of a `flaky` journey's alternating reachable/unreachable windows. */
-const FLAKY_WINDOW_MS = 30_000;
+const FLAKY_WINDOW_MS = 30_000
 
 /**
  * Deterministic, obviously-fake token for the `wrong-value` journey.
@@ -30,7 +30,7 @@ const FLAKY_WINDOW_MS = 30_000;
  * so it can never coincidentally equal a real generated token, while still
  * parsing as a syntactically valid DomainProof record value.
  */
-const WRONG_VALUE_TOKEN = "wrongwrongwrongwrongwrongw";
+const WRONG_VALUE_TOKEN = 'wrongwrongwrongwrongwrongw'
 
 /**
  * The catalog of magic sandbox journeys, keyed by the label a `.test` domain
@@ -52,36 +52,37 @@ const WRONG_VALUE_TOKEN = "wrongwrongwrongwrongwrongw";
  */
 export const SANDBOX_JOURNEYS = {
   verified:
-    "The correct record is present immediately: resolveTxt returns the " +
+    'The correct record is present immediately: resolveTxt returns the ' +
     "challenge's record value from the very first check. Models a domain " +
-    "owner who published the record before starting verification.",
-  "pending-then-verified":
-    "nxdomain until 45 seconds have elapsed since the challenge was " +
-    "created, then the correct record appears. Models real-world DNS " +
+    'owner who published the record before starting verification.',
+  'pending-then-verified':
+    'nxdomain until 45 seconds have elapsed since the challenge was ' +
+    'created, then the correct record appears. Models real-world DNS ' +
     "propagation delay: long enough to read as real on the hosted page's " +
-    "polling UI, short enough to still fit inside a live demo.",
-  "wrong-value":
-    "Always returns a syntactically valid DomainProof record, but with a " +
-    "deterministic, clearly-fake token that never matches the real one — " +
-    "checkTxt reports wrong_value with the detected (wrong) token, letting " +
-    "the UI render an expected-vs-detected diff.",
-  nxdomain: "nxdomain forever. Models a domain owner who never added the record.",
+    'polling UI, short enough to still fit inside a live demo.',
+  'wrong-value':
+    'Always returns a syntactically valid DomainProof record, but with a ' +
+    'deterministic, clearly-fake token that never matches the real one — ' +
+    'checkTxt reports wrong_value with the detected (wrong) token, letting ' +
+    'the UI render an expected-vs-detected diff.',
+  nxdomain:
+    'nxdomain forever. Models a domain owner who never added the record.',
   flaky:
-    "Deterministic alternation by elapsed 30-second windows: unreachable " +
-    "(a timeout) during odd-numbered windows, the correct record during " +
-    "even-numbered windows. Drives the temporarily_failed grace-window " +
-    "story and its recovery UX.",
+    'Deterministic alternation by elapsed 30-second windows: unreachable ' +
+    '(a timeout) during odd-numbered windows, the correct record during ' +
+    'even-numbered windows. Drives the temporarily_failed grace-window ' +
+    'story and its recovery UX.',
   conflict:
-    "Resolves the correct record immediately, exactly like verified — DNS " +
+    'Resolves the correct record immediately, exactly like verified — DNS ' +
     "has no notion of 'this domain is already claimed by another account'. " +
     "That meaning is enforced by the API's claim layer when it tries to " +
-    "assign a verified domain to an account, not simulated here in DNS.",
-} as const;
+    'assign a verified domain to an account, not simulated here in DNS.',
+} as const
 
-export type SandboxJourney = keyof typeof SANDBOX_JOURNEYS;
+export type SandboxJourney = keyof typeof SANDBOX_JOURNEYS
 
 function isSandboxJourney(value: string): value is SandboxJourney {
-  return Object.hasOwn(SANDBOX_JOURNEYS, value);
+  return Object.hasOwn(SANDBOX_JOURNEYS, value)
 }
 
 /**
@@ -92,11 +93,11 @@ function isSandboxJourney(value: string): value is SandboxJourney {
  * re-implementing hostname parsing here.
  */
 export function isSandboxDomain(domain: string): boolean {
-  const normalized = normalizeDomain(domain);
+  const normalized = normalizeDomain(domain)
   if (!normalized.ok) {
-    return false;
+    return false
   }
-  return registrableDomain(normalized.domain).endsWith(`.${SANDBOX_TLD}`);
+  return registrableDomain(normalized.domain).endsWith(`.${SANDBOX_TLD}`)
 }
 
 /**
@@ -111,7 +112,7 @@ export function isSandboxDomain(domain: string): boolean {
  */
 export type SandboxJourneyResult =
   | { ok: true; journey: SandboxJourney }
-  | { ok: false; reason: "not_sandbox" | "unknown_journey" };
+  | { ok: false; reason: 'not_sandbox' | 'unknown_journey' }
 
 /**
  * Parses the sandbox journey out of a `.test` domain's first label, with any
@@ -121,23 +122,23 @@ export type SandboxJourneyResult =
  * sharing one journey's behavior; it carries no meaning of its own.
  */
 export function sandboxJourneyFor(domain: string): SandboxJourneyResult {
-  const normalized = normalizeDomain(domain);
+  const normalized = normalizeDomain(domain)
   if (!normalized.ok) {
-    return { ok: false, reason: "not_sandbox" };
+    return { ok: false, reason: 'not_sandbox' }
   }
 
-  const registrable = registrableDomain(normalized.domain);
+  const registrable = registrableDomain(normalized.domain)
   if (!registrable.endsWith(`.${SANDBOX_TLD}`)) {
-    return { ok: false, reason: "not_sandbox" };
+    return { ok: false, reason: 'not_sandbox' }
   }
 
-  const label = registrable.slice(0, -(SANDBOX_TLD.length + 1));
-  const journeyLabel = label.split("+")[0] ?? label;
+  const label = registrable.slice(0, -(SANDBOX_TLD.length + 1))
+  const journeyLabel = label.split('+')[0] ?? label
 
   if (isSandboxJourney(journeyLabel)) {
-    return { ok: true, journey: journeyLabel };
+    return { ok: true, journey: journeyLabel }
   }
-  return { ok: false, reason: "unknown_journey" };
+  return { ok: false, reason: 'unknown_journey' }
 }
 
 /**
@@ -149,10 +150,10 @@ export function sandboxJourneyFor(domain: string): SandboxJourneyResult {
  * origin every journey's elapsed-time behavior is measured from).
  */
 export interface SandboxChallenge {
-  recordHost: string;
-  recordValue: string;
-  brandSlug: string;
-  createdAt: Date;
+  recordHost: string
+  recordValue: string
+  brandSlug: string
+  createdAt: Date
 }
 
 /**
@@ -161,8 +162,8 @@ export interface SandboxChallenge {
  * is the domain the journey is parsed from.
  */
 function domainFromRecordHost(recordHost: string): string {
-  const firstDotIndex = recordHost.indexOf(".");
-  return firstDotIndex === -1 ? recordHost : recordHost.slice(firstDotIndex + 1);
+  const firstDotIndex = recordHost.indexOf('.')
+  return firstDotIndex === -1 ? recordHost : recordHost.slice(firstDotIndex + 1)
 }
 
 /**
@@ -171,7 +172,9 @@ function domainFromRecordHost(recordHost: string): string {
  * exhaustive. Mirrors the `assertNever` pattern in states.ts / check-txt.ts.
  */
 function assertNever(value: never): never {
-  throw new Error(`Unhandled sandbox journey in createSandboxResolver: ${JSON.stringify(value)}`);
+  throw new Error(
+    `Unhandled sandbox journey in createSandboxResolver: ${JSON.stringify(value)}`,
+  )
 }
 
 function resolveForJourney(
@@ -180,30 +183,33 @@ function resolveForJourney(
   elapsedMs: number,
 ): TxtResolution {
   switch (journey) {
-    case "verified":
-    case "conflict":
-      return { ok: true, records: [challenge.recordValue] };
+    case 'verified':
+    case 'conflict':
+      return { ok: true, records: [challenge.recordValue] }
 
-    case "pending-then-verified":
+    case 'pending-then-verified':
       return elapsedMs >= PENDING_PROPAGATION_MS
         ? { ok: true, records: [challenge.recordValue] }
-        : { ok: false, reason: "nxdomain" };
+        : { ok: false, reason: 'nxdomain' }
 
-    case "wrong-value":
-      return { ok: true, records: [recordValue(WRONG_VALUE_TOKEN, challenge.brandSlug)] };
+    case 'wrong-value':
+      return {
+        ok: true,
+        records: [recordValue(WRONG_VALUE_TOKEN, challenge.brandSlug)],
+      }
 
-    case "nxdomain":
-      return { ok: false, reason: "nxdomain" };
+    case 'nxdomain':
+      return { ok: false, reason: 'nxdomain' }
 
-    case "flaky": {
-      const windowIndex = Math.floor(elapsedMs / FLAKY_WINDOW_MS);
+    case 'flaky': {
+      const windowIndex = Math.floor(elapsedMs / FLAKY_WINDOW_MS)
       return windowIndex % 2 === 0
         ? { ok: true, records: [challenge.recordValue] }
-        : { ok: false, reason: "timeout" };
+        : { ok: false, reason: 'timeout' }
     }
 
     default:
-      return assertNever(journey);
+      return assertNever(journey)
   }
 }
 
@@ -230,18 +236,23 @@ function resolveForJourney(
  * for this", and exactly what a real resolver reports for a domain whose
  * record was never added.
  */
-export function createSandboxResolver(challenge: SandboxChallenge, now: () => Date): DnsResolver {
+export function createSandboxResolver(
+  challenge: SandboxChallenge,
+  now: () => Date,
+): DnsResolver {
   async function resolveTxt(hostname: string): Promise<TxtResolution> {
     if (hostname !== challenge.recordHost) {
-      return { ok: false, reason: "nxdomain" };
+      return { ok: false, reason: 'nxdomain' }
     }
 
-    const journeyResult = sandboxJourneyFor(domainFromRecordHost(challenge.recordHost));
-    const journey = journeyResult.ok ? journeyResult.journey : "nxdomain";
-    const elapsedMs = now().getTime() - challenge.createdAt.getTime();
+    const journeyResult = sandboxJourneyFor(
+      domainFromRecordHost(challenge.recordHost),
+    )
+    const journey = journeyResult.ok ? journeyResult.journey : 'nxdomain'
+    const elapsedMs = now().getTime() - challenge.createdAt.getTime()
 
-    return resolveForJourney(journey, challenge, elapsedMs);
+    return resolveForJourney(journey, challenge, elapsedMs)
   }
 
-  return { resolveTxt };
+  return { resolveTxt }
 }

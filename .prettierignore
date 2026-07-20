@@ -4,3 +4,7 @@ pnpm-workspace.yaml
 dist
 .next
 coverage
+build
+out
+.vercel
+apps/api/drizzle

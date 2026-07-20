@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 
 /**
  * Verification tokens embed 128 bits of cryptographically random entropy —
@@ -6,7 +6,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
  * infeasible. That's the entire trust model behind a DNS TXT challenge:
  * whoever can publish this exact value controls the domain.
  */
-const TOKEN_BYTE_LENGTH = 16; // 128 bits
+const TOKEN_BYTE_LENGTH = 16 // 128 bits
 
 /**
  * RFC 4648 base32 alphabet, lowercased. DNS TXT records are compared
@@ -15,7 +15,7 @@ const TOKEN_BYTE_LENGTH = 16; // 128 bits
  * start rather than normalized later — there's no uppercase form to ever
  * disagree with.
  */
-const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+const BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567'
 
 /**
  * Minimal base32 encoder (no padding). Not worth a dependency for ~15
@@ -23,27 +23,27 @@ const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
  * alphabet character.
  */
 function encodeBase32Lowercase(bytes: Uint8Array): string {
-  let bitBuffer = 0;
-  let bitCount = 0;
-  let output = "";
+  let bitBuffer = 0
+  let bitCount = 0
+  let output = ''
 
   for (const byte of bytes) {
-    bitBuffer = (bitBuffer << 8) | byte;
-    bitCount += 8;
+    bitBuffer = (bitBuffer << 8) | byte
+    bitCount += 8
 
     while (bitCount >= 5) {
-      const index = (bitBuffer >>> (bitCount - 5)) & 0x1f;
-      output += BASE32_ALPHABET[index];
-      bitCount -= 5;
+      const index = (bitBuffer >>> (bitCount - 5)) & 0x1f
+      output += BASE32_ALPHABET[index]
+      bitCount -= 5
     }
   }
 
   if (bitCount > 0) {
-    const index = (bitBuffer << (5 - bitCount)) & 0x1f;
-    output += BASE32_ALPHABET[index];
+    const index = (bitBuffer << (5 - bitCount)) & 0x1f
+    output += BASE32_ALPHABET[index]
   }
 
-  return output;
+  return output
 }
 
 /**
@@ -53,7 +53,7 @@ function encodeBase32Lowercase(bytes: Uint8Array): string {
  * drawn from `[a-z2-7]`.
  */
 export function generateToken(): string {
-  return encodeBase32Lowercase(randomBytes(TOKEN_BYTE_LENGTH));
+  return encodeBase32Lowercase(randomBytes(TOKEN_BYTE_LENGTH))
 }
 
 /**
@@ -70,9 +70,9 @@ export function generateToken(): string {
  * easier than guessing the original token.
  */
 export function tokensMatch(a: string, b: string): boolean {
-  const digestA = createHash("sha256").update(a).digest();
-  const digestB = createHash("sha256").update(b).digest();
-  return timingSafeEqual(digestA, digestB);
+  const digestA = createHash('sha256').update(a).digest()
+  const digestB = createHash('sha256').update(b).digest()
+  return timingSafeEqual(digestA, digestB)
 }
 
 /**
@@ -82,7 +82,7 @@ export function tokensMatch(a: string, b: string): boolean {
  * to regenerate, so an old token (possibly leaked, possibly copied into
  * the wrong place) can't surface and verify long after it was issued.
  */
-export const DEFAULT_TOKEN_TTL_MS = 72 * 60 * 60 * 1000;
+export const DEFAULT_TOKEN_TTL_MS = 72 * 60 * 60 * 1000
 
 /**
  * Pure expiry check. No clock reads happen inside this module — `now` is
@@ -96,5 +96,5 @@ export function isExpired(
   now: Date,
   ttlMs: number = DEFAULT_TOKEN_TTL_MS,
 ): boolean {
-  return now.getTime() - createdAt.getTime() >= ttlMs;
+  return now.getTime() - createdAt.getTime() >= ttlMs
 }

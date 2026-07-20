@@ -6,12 +6,12 @@
  */
 export interface ApiErrorBody {
   error: {
-    code: string;
-    message: string;
-  };
+    code: string
+    message: string
+  }
 }
 
 /** Builds an `{ error: { code, message } }` body for a Hono `c.json(...)` response. */
 export function apiError(code: string, message: string): ApiErrorBody {
-  return { error: { code, message } };
+  return { error: { code, message } }
 }

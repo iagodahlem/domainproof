@@ -57,7 +57,7 @@ found. If a rule has no violations, say so explicitly — don't skip it.
 
 5. **Dependency rule 4 — infra is composition-root-only.** Nothing outside
    `apps/api/src/app.ts`, `apps/api/src/index.ts`, or another file under
-   `infra/` imports a concrete adapter from `infra/` (as a *value* import
+   `infra/` imports a concrete adapter from `infra/` (as a _value_ import
    — type-only imports of a port a module owns are fine).
 
 6. **Dependency rule 5 — the two planes don't import each other.** Nothing

@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest'
 
-import { DOMAIN_STATUSES } from "./index";
+import { DOMAIN_STATUSES } from './index'
 
-describe("DOMAIN_STATUSES", () => {
+describe('DOMAIN_STATUSES', () => {
   it("contains 'verified'", () => {
-    expect(DOMAIN_STATUSES).toContain("verified");
-  });
-});
+    expect(DOMAIN_STATUSES).toContain('verified')
+  })
+})

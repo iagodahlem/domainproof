@@ -1,11 +1,14 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { SessionVerifier, SessionVerifyResult } from "@modules/accounts/ports";
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import type {
+  SessionVerifier,
+  SessionVerifyResult,
+} from '@modules/accounts/ports'
 
 export interface ClerkSessionVerifierConfig {
   /** JWKS endpoint for the Clerk instance, e.g. env `CLERK_JWKS_URL`. */
-  jwksUrl: string;
+  jwksUrl: string
   /** Expected `iss` claim, e.g. env `CLERK_ISSUER`. */
-  issuer: string;
+  issuer: string
 }
 
 /**
@@ -22,22 +25,22 @@ export interface ClerkSessionVerifierConfig {
 export function createClerkSessionVerifier(
   config: ClerkSessionVerifierConfig,
 ): SessionVerifier {
-  const jwks = createRemoteJWKSet(new URL(config.jwksUrl));
+  const jwks = createRemoteJWKSet(new URL(config.jwksUrl))
 
   return {
     async verify(token: string): Promise<SessionVerifyResult> {
-      let payload;
+      let payload
       try {
-        ({ payload } = await jwtVerify(token, jwks, { issuer: config.issuer }));
+        ;({ payload } = await jwtVerify(token, jwks, { issuer: config.issuer }))
       } catch {
-        return { ok: false, reason: "invalid_or_expired" };
+        return { ok: false, reason: 'invalid_or_expired' }
       }
 
       if (!payload.sub) {
-        return { ok: false, reason: "missing_subject" };
+        return { ok: false, reason: 'missing_subject' }
       }
 
-      return { ok: true, claims: { userId: payload.sub } };
+      return { ok: true, claims: { userId: payload.sub } }
     },
-  };
+  }
 }

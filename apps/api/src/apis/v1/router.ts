@@ -1,10 +1,13 @@
-import { Hono } from "hono";
-import type { KeysRepository } from "@modules/keys/repository";
-import { createRateLimitMiddleware } from "@shared/middlewares/rate-limit";
-import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from "./middlewares/api-key";
+import { Hono } from 'hono'
+import type { KeysRepository } from '@modules/keys/repository'
+import { createRateLimitMiddleware } from '@shared/middlewares/rate-limit'
+import {
+  createApiKeyAuthMiddleware,
+  type ApiKeyAuthVariables,
+} from './middlewares/api-key'
 
 export interface V1RouterDeps {
-  keysRepository: KeysRepository;
+  keysRepository: KeysRepository
 }
 
 /**
@@ -18,9 +21,13 @@ export interface V1RouterDeps {
  * status, triggering a recheck) lands here next.
  */
 export function createV1Router(deps: V1RouterDeps) {
-  const router = new Hono<{ Variables: ApiKeyAuthVariables }>();
+  const router = new Hono<{ Variables: ApiKeyAuthVariables }>()
 
-  router.use("*", createApiKeyAuthMiddleware(deps.keysRepository), createRateLimitMiddleware());
+  router.use(
+    '*',
+    createApiKeyAuthMiddleware(deps.keysRepository),
+    createRateLimitMiddleware(),
+  )
 
-  return router;
+  return router
 }

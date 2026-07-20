@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -14,7 +14,7 @@
 @theme {
   --color-dp-primary: oklch(0.205 0 0);
   --radius-dp: 0.625rem;
-  --font-dp-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-dp-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {

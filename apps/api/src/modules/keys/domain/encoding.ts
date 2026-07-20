@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes } from 'node:crypto'
 
 /**
  * RFC 4648 base32 alphabet, lowercased — the same alphabet
@@ -9,34 +9,34 @@ import { randomBytes } from "node:crypto";
  * exposes (which is hardcoded to 128-bit/26-char tokens); it's the same
  * ~15-line approach, not a new one.
  */
-const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+const BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567'
 
 function encodeBase32Lowercase(bytes: Uint8Array): string {
-  let bitBuffer = 0;
-  let bitCount = 0;
-  let output = "";
+  let bitBuffer = 0
+  let bitCount = 0
+  let output = ''
 
   for (const byte of bytes) {
-    bitBuffer = (bitBuffer << 8) | byte;
-    bitCount += 8;
+    bitBuffer = (bitBuffer << 8) | byte
+    bitCount += 8
 
     while (bitCount >= 5) {
-      const index = (bitBuffer >>> (bitCount - 5)) & 0x1f;
-      output += BASE32_ALPHABET[index];
-      bitCount -= 5;
+      const index = (bitBuffer >>> (bitCount - 5)) & 0x1f
+      output += BASE32_ALPHABET[index]
+      bitCount -= 5
     }
   }
 
   if (bitCount > 0) {
-    const index = (bitBuffer << (5 - bitCount)) & 0x1f;
-    output += BASE32_ALPHABET[index];
+    const index = (bitBuffer << (5 - bitCount)) & 0x1f
+    output += BASE32_ALPHABET[index]
   }
 
-  return output;
+  return output
 }
 
 /** Fixed length of a key id's public identifier segment. */
-export const KEY_ID_LENGTH = 12;
+export const KEY_ID_LENGTH = 12
 
 /**
  * Generates the public key-id segment of an API key: 12 lowercase base32
@@ -49,5 +49,5 @@ export const KEY_ID_LENGTH = 12;
  * collisions negligible against the column's unique constraint.
  */
 export function generateKeyId(): string {
-  return encodeBase32Lowercase(randomBytes(8)).slice(0, KEY_ID_LENGTH);
+  return encodeBase32Lowercase(randomBytes(8)).slice(0, KEY_ID_LENGTH)
 }

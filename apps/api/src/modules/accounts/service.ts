@@ -1,9 +1,9 @@
-import type { AccountsRepository } from "./repository";
+import type { AccountsRepository } from './repository'
 
 export interface EnsureAccountResult {
-  accountId: string;
+  accountId: string
   /** True only when this call created the account (and its default project). */
-  created: boolean;
+  created: boolean
 }
 
 export interface AccountsService {
@@ -17,28 +17,30 @@ export interface AccountsService {
    * succeeds, and the loser re-reads the winner's row instead of throwing
    * or double-creating a project.
    */
-  ensureAccount(clerkUserId: string): Promise<EnsureAccountResult>;
+  ensureAccount(clerkUserId: string): Promise<EnsureAccountResult>
 }
 
-export function createAccountsService(repository: AccountsRepository): AccountsService {
+export function createAccountsService(
+  repository: AccountsRepository,
+): AccountsService {
   return {
     async ensureAccount(clerkUserId) {
-      const created = await repository.createWithDefaultProject(clerkUserId);
+      const created = await repository.createWithDefaultProject(clerkUserId)
       if (created) {
-        return { accountId: created.id, created: true };
+        return { accountId: created.id, created: true }
       }
 
-      const existing = await repository.findByClerkUserId(clerkUserId);
+      const existing = await repository.findByClerkUserId(clerkUserId)
       if (!existing) {
         // The insert hit the unique conflict (so a row exists) but the
         // re-select didn't find it — should not happen outside of a
         // visibility race inside a broken transaction setup.
         throw new Error(
           `Failed to bootstrap account for clerk user ${clerkUserId}: row not found after conflict`,
-        );
+        )
       }
 
-      return { accountId: existing.id, created: false };
+      return { accountId: existing.id, created: false }
     },
-  };
+  }
 }

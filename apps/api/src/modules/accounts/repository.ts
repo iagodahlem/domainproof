@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "@infra/db/client";
-import { accounts, projects } from "@infra/db/schema";
+import { eq } from 'drizzle-orm'
+import type { Database } from '@infra/db/client'
+import { accounts, projects } from '@infra/db/schema'
 
 /** A newly (or already) bootstrapped account's id. */
 export interface AccountRow {
-  id: string;
+  id: string
 }
 
 /**
@@ -14,7 +14,7 @@ export interface AccountRow {
  * `Database` directly.
  */
 export interface AccountsRepository {
-  findByClerkUserId(clerkUserId: string): Promise<AccountRow | undefined>;
+  findByClerkUserId(clerkUserId: string): Promise<AccountRow | undefined>
 
   /**
    * Inserts an account row plus its "Default" project, atomically, in one
@@ -27,7 +27,7 @@ export interface AccountsRepository {
    * falls back to {@link findByClerkUserId} instead of erroring or
    * double-creating a project.
    */
-  createWithDefaultProject(clerkUserId: string): Promise<AccountRow | undefined>;
+  createWithDefaultProject(clerkUserId: string): Promise<AccountRow | undefined>
 }
 
 export function createAccountsRepository(db: Database): AccountsRepository {
@@ -37,8 +37,8 @@ export function createAccountsRepository(db: Database): AccountsRepository {
         .select({ id: accounts.id })
         .from(accounts)
         .where(eq(accounts.clerkUserId, clerkUserId))
-        .limit(1);
-      return row;
+        .limit(1)
+      return row
     },
 
     async createWithDefaultProject(clerkUserId) {
@@ -47,20 +47,20 @@ export function createAccountsRepository(db: Database): AccountsRepository {
           .insert(accounts)
           .values({ clerkUserId })
           .onConflictDoNothing({ target: accounts.clerkUserId })
-          .returning({ id: accounts.id });
+          .returning({ id: accounts.id })
 
-        const account = inserted[0];
+        const account = inserted[0]
         if (!account) {
-          return undefined;
+          return undefined
         }
 
         await tx.insert(projects).values({
           accountId: account.id,
-          name: "Default",
-        });
+          name: 'Default',
+        })
 
-        return account;
-      });
+        return account
+      })
     },
-  };
+  }
 }

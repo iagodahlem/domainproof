@@ -1,6 +1,6 @@
-import { parseRecordValue } from "./record";
-import type { DnsResolver, TxtResolutionFailureReason } from "./resolver";
-import { tokensMatch } from "./token";
+import { parseRecordValue } from './record'
+import type { DnsResolver, TxtResolutionFailureReason } from './resolver'
+import { tokensMatch } from './token'
 
 /**
  * How many `wrong_value` records to surface for the expected/detected diff
@@ -8,7 +8,7 @@ import { tokensMatch } from "./token";
  * blow up the response — ten is plenty to show "here's what we found
  * instead" without needing pagination.
  */
-const MAX_DETECTED_VALUES = 10;
+const MAX_DETECTED_VALUES = 10
 
 /**
  * Outcome of checking a hostname's TXT records against an expected
@@ -36,10 +36,10 @@ const MAX_DETECTED_VALUES = 10;
  *   provider) instead of being read as a failed check.
  */
 export type TxtCheckResult =
-  | { outcome: "found" }
-  | { outcome: "wrong_value"; detected: string[] }
-  | { outcome: "not_found" }
-  | { outcome: "unreachable" };
+  | { outcome: 'found' }
+  | { outcome: 'wrong_value'; detected: string[] }
+  | { outcome: 'not_found' }
+  | { outcome: 'unreachable' }
 
 /**
  * Throws only on a type-system violation (a resolver failure reason the
@@ -47,19 +47,21 @@ export type TxtCheckResult =
  * switch stays exhaustive. Mirrors the `assertNever` pattern in states.ts.
  */
 function assertNever(value: never): never {
-  throw new Error(`Unhandled DNS failure reason in checkTxt: ${JSON.stringify(value)}`);
+  throw new Error(
+    `Unhandled DNS failure reason in checkTxt: ${JSON.stringify(value)}`,
+  )
 }
 
 function resultForFailure(reason: TxtResolutionFailureReason): TxtCheckResult {
   switch (reason) {
-    case "nxdomain":
-    case "no_records":
-      return { outcome: "not_found" };
-    case "timeout":
-    case "server_failure":
-      return { outcome: "unreachable" };
+    case 'nxdomain':
+    case 'no_records':
+      return { outcome: 'not_found' }
+    case 'timeout':
+    case 'server_failure':
+      return { outcome: 'unreachable' }
     default:
-      return assertNever(reason);
+      return assertNever(reason)
   }
 }
 
@@ -85,30 +87,30 @@ export async function checkTxt(
   expectedToken: string,
   brandSlug: string,
 ): Promise<TxtCheckResult> {
-  const resolution = await resolver.resolveTxt(hostname);
+  const resolution = await resolver.resolveTxt(hostname)
 
   if (!resolution.ok) {
-    return resultForFailure(resolution.reason);
+    return resultForFailure(resolution.reason)
   }
 
-  const detected: string[] = [];
+  const detected: string[] = []
 
   for (const record of resolution.records) {
-    const parsed = parseRecordValue(record, brandSlug);
+    const parsed = parseRecordValue(record, brandSlug)
     if (!parsed.ok) {
-      continue;
+      continue
     }
     if (tokensMatch(parsed.token, expectedToken)) {
-      return { outcome: "found" };
+      return { outcome: 'found' }
     }
     if (detected.length < MAX_DETECTED_VALUES) {
-      detected.push(parsed.token);
+      detected.push(parsed.token)
     }
   }
 
   if (detected.length > 0) {
-    return { outcome: "wrong_value", detected };
+    return { outcome: 'wrong_value', detected }
   }
 
-  return { outcome: "not_found" };
+  return { outcome: 'not_found' }
 }

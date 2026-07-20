@@ -1,11 +1,11 @@
-import { Resolver } from "node:dns/promises";
+import { Resolver } from 'node:dns/promises'
 
 import {
   registrableDomain,
   type DnsResolver,
   type TxtResolution,
   type TxtResolutionFailureReason,
-} from "@domainproof/core";
+} from '@domainproof/core'
 
 /**
  * The production {@link DnsResolver}. This is the only file in the package
@@ -49,18 +49,18 @@ import {
  * throws, per the {@link DnsResolver} contract.
  */
 
-const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_PUBLIC_RESOLVERS = ["1.1.1.1", "8.8.8.8"];
+const DEFAULT_TIMEOUT_MS = 5000
+const DEFAULT_PUBLIC_RESOLVERS = ['1.1.1.1', '8.8.8.8']
 
 /** How many NS hostnames we'll attempt to resolve to an IP. */
-const MAX_NAMESERVERS_TO_RESOLVE = 3;
+const MAX_NAMESERVERS_TO_RESOLVE = 3
 
 /**
  * How many authoritative IPs we'll keep (and, in {@link createNodeDnsResolver},
  * try in sequence) — this is the "max 2-3 attempts total" bound on the
  * authoritative query path.
  */
-const MAX_AUTHORITATIVE_IPS = 3;
+const MAX_AUTHORITATIVE_IPS = 3
 
 /**
  * The subset of `node:dns/promises`' `Resolver` this module depends on.
@@ -68,17 +68,17 @@ const MAX_AUTHORITATIVE_IPS = 3;
  * directly) is what lets tests inject a fake that never touches the network.
  */
 export interface NodeDnsClient {
-  setServers(servers: readonly string[]): void;
-  resolveTxt(hostname: string): Promise<string[][]>;
-  resolveNs(hostname: string): Promise<string[]>;
-  resolve4(hostname: string): Promise<string[]>;
+  setServers(servers: readonly string[]): void
+  resolveTxt(hostname: string): Promise<string[][]>
+  resolveNs(hostname: string): Promise<string[]>
+  resolve4(hostname: string): Promise<string[]>
 }
 
 export interface NodeDnsClientOptions {
   /** Query timeout in milliseconds, passed through to `node:dns`'s own timeout. */
-  timeout?: number;
+  timeout?: number
   /** Tries per server; we manage our own attempt/fallback ladder, so this stays at 1. */
-  tries?: number;
+  tries?: number
 }
 
 /**
@@ -86,9 +86,12 @@ export interface NodeDnsClientOptions {
  * each attempt can point `setServers` at a different (authoritative or
  * public) IP without cross-contaminating other in-flight queries.
  */
-export type CreateNodeDnsClient = (options?: NodeDnsClientOptions) => NodeDnsClient;
+export type CreateNodeDnsClient = (
+  options?: NodeDnsClientOptions,
+) => NodeDnsClient
 
-const createRealNodeDnsClient: CreateNodeDnsClient = (options) => new Resolver(options);
+const createRealNodeDnsClient: CreateNodeDnsClient = (options) =>
+  new Resolver(options)
 
 export interface NodeDnsResolverOptions {
   /**
@@ -99,7 +102,7 @@ export interface NodeDnsResolverOptions {
    *
    * @default 5000
    */
-  timeoutMs?: number;
+  timeoutMs?: number
 
   /**
    * Public recursive resolvers used to discover authoritative nameservers
@@ -107,7 +110,7 @@ export interface NodeDnsResolverOptions {
    *
    * @default ["1.1.1.1", "8.8.8.8"]
    */
-  publicResolvers?: readonly string[];
+  publicResolvers?: readonly string[]
 
   /**
    * Low-level DNS client factory. Defaults to real `node:dns/promises`
@@ -115,7 +118,7 @@ export interface NodeDnsResolverOptions {
    * strategy (authoritative discovery, attempt bounding, fallback, error
    * mapping) can be exercised without any real network IO.
    */
-  dns?: CreateNodeDnsClient;
+  dns?: CreateNodeDnsClient
 }
 
 /**
@@ -127,16 +130,16 @@ export interface NodeDnsResolverOptions {
  * grouped here rather than inventing a one-off reason, since callers treat it
  * the same way: we don't have a usable authoritative answer.
  */
-export type NameserverDiscoveryFailureReason = TxtResolutionFailureReason;
+export type NameserverDiscoveryFailureReason = TxtResolutionFailureReason
 
 export type NameserverDiscoveryResult =
   | { ok: true; nameservers: string[]; ips: string[] }
-  | { ok: false; reason: NameserverDiscoveryFailureReason };
+  | { ok: false; reason: NameserverDiscoveryFailureReason }
 
 export interface DiscoverAuthoritativeNameserversOptions {
-  timeoutMs?: number;
-  publicResolvers?: readonly string[];
-  dns?: CreateNodeDnsClient;
+  timeoutMs?: number
+  publicResolvers?: readonly string[]
+  dns?: CreateNodeDnsClient
 }
 
 /**
@@ -147,29 +150,29 @@ export interface DiscoverAuthoritativeNameserversOptions {
  * underlying client or from our own safety net.
  */
 class QueryTimeoutError extends Error {
-  readonly code = "ETIMEOUT";
+  readonly code = 'ETIMEOUT'
 
   constructor() {
-    super("DNS query timed out");
-    this.name = "QueryTimeoutError";
+    super('DNS query timed out')
+    this.name = 'QueryTimeoutError'
   }
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new QueryTimeoutError()), timeoutMs);
+    const timer = setTimeout(() => reject(new QueryTimeoutError()), timeoutMs)
 
     promise.then(
       (value) => {
-        clearTimeout(timer);
-        resolve(value);
+        clearTimeout(timer)
+        resolve(value)
       },
       (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
+        clearTimeout(timer)
+        reject(error)
       },
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -185,21 +188,23 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
  *   don't recognize) -> `server_failure`, the catch-all for "the resolver
  *   didn't give us an authoritative answer."
  */
-function mapDnsErrorToFailureReason(error: unknown): TxtResolutionFailureReason {
+function mapDnsErrorToFailureReason(
+  error: unknown,
+): TxtResolutionFailureReason {
   const code =
-    typeof error === "object" && error !== null && "code" in error
+    typeof error === 'object' && error !== null && 'code' in error
       ? (error as { code?: unknown }).code
-      : undefined;
+      : undefined
 
   switch (code) {
-    case "ENOTFOUND":
-      return "nxdomain";
-    case "ENODATA":
-      return "no_records";
-    case "ETIMEOUT":
-      return "timeout";
+    case 'ENOTFOUND':
+      return 'nxdomain'
+    case 'ENODATA':
+      return 'no_records'
+    case 'ETIMEOUT':
+      return 'timeout'
     default:
-      return "server_failure";
+      return 'server_failure'
   }
 }
 
@@ -222,35 +227,38 @@ export async function discoverAuthoritativeNameservers(
   domain: string,
   opts: DiscoverAuthoritativeNameserversOptions = {},
 ): Promise<NameserverDiscoveryResult> {
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const publicResolvers = opts.publicResolvers ?? DEFAULT_PUBLIC_RESOLVERS;
-  const createClient = opts.dns ?? createRealNodeDnsClient;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const publicResolvers = opts.publicResolvers ?? DEFAULT_PUBLIC_RESOLVERS
+  const createClient = opts.dns ?? createRealNodeDnsClient
 
-  const publicClient = createClient({ timeout: timeoutMs, tries: 1 });
-  publicClient.setServers(publicResolvers);
+  const publicClient = createClient({ timeout: timeoutMs, tries: 1 })
+  publicClient.setServers(publicResolvers)
 
-  let nameservers: string[];
+  let nameservers: string[]
   try {
-    nameservers = await withTimeout(publicClient.resolveNs(domain), timeoutMs);
+    nameservers = await withTimeout(publicClient.resolveNs(domain), timeoutMs)
   } catch (error) {
-    return { ok: false, reason: mapDnsErrorToFailureReason(error) };
+    return { ok: false, reason: mapDnsErrorToFailureReason(error) }
   }
 
   if (nameservers.length === 0) {
-    return { ok: false, reason: "no_records" };
+    return { ok: false, reason: 'no_records' }
   }
 
-  const ips: string[] = [];
+  const ips: string[] = []
   for (const nameserver of nameservers.slice(0, MAX_NAMESERVERS_TO_RESOLVE)) {
     if (ips.length >= MAX_AUTHORITATIVE_IPS) {
-      break;
+      break
     }
 
     try {
-      const addresses = await withTimeout(publicClient.resolve4(nameserver), timeoutMs);
-      const [firstAddress] = addresses;
+      const addresses = await withTimeout(
+        publicClient.resolve4(nameserver),
+        timeoutMs,
+      )
+      const [firstAddress] = addresses
       if (firstAddress !== undefined) {
-        ips.push(firstAddress);
+        ips.push(firstAddress)
       }
     } catch {
       // This nameserver hostname didn't resolve to an IP; move on to the
@@ -259,10 +267,10 @@ export async function discoverAuthoritativeNameservers(
   }
 
   if (ips.length === 0) {
-    return { ok: false, reason: "server_failure" };
+    return { ok: false, reason: 'server_failure' }
   }
 
-  return { ok: true, nameservers, ips };
+  return { ok: true, nameservers, ips }
 }
 
 /**
@@ -277,19 +285,25 @@ async function queryTxt(
   hostname: string,
   timeoutMs: number,
 ): Promise<TxtResolution> {
-  const client = createClient({ timeout: timeoutMs, tries: 1 });
-  client.setServers(servers);
+  const client = createClient({ timeout: timeoutMs, tries: 1 })
+  client.setServers(servers)
 
   try {
-    const chunkedRecords = await withTimeout(client.resolveTxt(hostname), timeoutMs);
+    const chunkedRecords = await withTimeout(
+      client.resolveTxt(hostname),
+      timeoutMs,
+    )
 
     if (chunkedRecords.length === 0) {
-      return { ok: false, reason: "no_records" };
+      return { ok: false, reason: 'no_records' }
     }
 
-    return { ok: true, records: chunkedRecords.map((chunks) => chunks.join("")) };
+    return {
+      ok: true,
+      records: chunkedRecords.map((chunks) => chunks.join('')),
+    }
   } catch (error) {
-    return { ok: false, reason: mapDnsErrorToFailureReason(error) };
+    return { ok: false, reason: mapDnsErrorToFailureReason(error) }
   }
 }
 
@@ -302,7 +316,11 @@ async function queryTxt(
  * against the next authoritative IP (or falling back).
  */
 function isDefinitiveAnswer(resolution: TxtResolution): boolean {
-  return resolution.ok || resolution.reason === "nxdomain" || resolution.reason === "no_records";
+  return (
+    resolution.ok ||
+    resolution.reason === 'nxdomain' ||
+    resolution.reason === 'no_records'
+  )
 }
 
 async function resolveTxtViaAuthoritativeThenFallback(
@@ -311,17 +329,20 @@ async function resolveTxtViaAuthoritativeThenFallback(
   timeoutMs: number,
   hostname: string,
 ): Promise<TxtResolution> {
-  const discovery = await discoverAuthoritativeNameservers(registrableDomain(hostname), {
-    timeoutMs,
-    publicResolvers,
-    dns: createClient,
-  });
+  const discovery = await discoverAuthoritativeNameservers(
+    registrableDomain(hostname),
+    {
+      timeoutMs,
+      publicResolvers,
+      dns: createClient,
+    },
+  )
 
   if (discovery.ok) {
     for (const ip of discovery.ips) {
-      const resolution = await queryTxt(createClient, [ip], hostname, timeoutMs);
+      const resolution = await queryTxt(createClient, [ip], hostname, timeoutMs)
       if (isDefinitiveAnswer(resolution)) {
-        return resolution;
+        return resolution
       }
       // Timed out or errored against this authoritative IP — try the next
       // one. `discovery.ips` is already bounded to MAX_AUTHORITATIVE_IPS.
@@ -332,7 +353,7 @@ async function resolveTxtViaAuthoritativeThenFallback(
   // errored without a definitive answer. Fall back to the public resolvers
   // so the caller still gets an answer, just without the freshness
   // guarantee the authoritative path provides.
-  return queryTxt(createClient, publicResolvers, hostname, timeoutMs);
+  return queryTxt(createClient, publicResolvers, hostname, timeoutMs)
 }
 
 /**
@@ -340,14 +361,21 @@ async function resolveTxtViaAuthoritativeThenFallback(
  * with an authoritative-nameserver query path (see the module doc comment
  * for why). Never throws — every failure mode maps onto {@link TxtResolution}.
  */
-export function createNodeDnsResolver(options: NodeDnsResolverOptions = {}): DnsResolver {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const publicResolvers = options.publicResolvers ?? DEFAULT_PUBLIC_RESOLVERS;
-  const createClient = options.dns ?? createRealNodeDnsClient;
+export function createNodeDnsResolver(
+  options: NodeDnsResolverOptions = {},
+): DnsResolver {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const publicResolvers = options.publicResolvers ?? DEFAULT_PUBLIC_RESOLVERS
+  const createClient = options.dns ?? createRealNodeDnsClient
 
   return {
     resolveTxt(hostname: string): Promise<TxtResolution> {
-      return resolveTxtViaAuthoritativeThenFallback(createClient, publicResolvers, timeoutMs, hostname);
+      return resolveTxtViaAuthoritativeThenFallback(
+        createClient,
+        publicResolvers,
+        timeoutMs,
+        hostname,
+      )
     },
-  };
+  }
 }

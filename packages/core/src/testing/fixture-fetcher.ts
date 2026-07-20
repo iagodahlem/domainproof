@@ -1,4 +1,4 @@
-import type { HttpFetcher, HttpFetchResult } from "../fetcher";
+import type { HttpFetcher, HttpFetchResult } from '../fetcher'
 
 /**
  * In-memory {@link HttpFetcher} for tests. Never touches real network IO —
@@ -14,14 +14,14 @@ export interface FixtureFetcher extends HttpFetcher {
    * exactly what was fetched (and how many times) without instrumenting the
    * fetcher themselves.
    */
-  readonly calls: string[];
+  readonly calls: string[]
 
   /**
    * Adds or replaces the fixture entry for `url`. Use this between calls to
    * {@link checkHttp} to simulate a file appearing, changing, or being
    * removed.
    */
-  set(url: string, result: HttpFetchResult): void;
+  set(url: string, result: HttpFetchResult): void
 }
 
 /**
@@ -34,25 +34,25 @@ export interface FixtureFetcher extends HttpFetcher {
 export function createFixtureFetcher(
   responses: Record<string, HttpFetchResult> = {},
 ): FixtureFetcher {
-  const state = new Map<string, HttpFetchResult>(Object.entries(responses));
-  const calls: string[] = [];
+  const state = new Map<string, HttpFetchResult>(Object.entries(responses))
+  const calls: string[] = []
 
   async function fetchText(url: string): Promise<HttpFetchResult> {
-    calls.push(url);
+    calls.push(url)
 
-    const entry = state.get(url);
+    const entry = state.get(url)
     if (entry === undefined) {
-      return { ok: false, reason: "connection_failed" };
+      return { ok: false, reason: 'connection_failed' }
     }
 
-    return entry;
+    return entry
   }
 
   return {
     calls,
     fetchText,
     set(url: string, result: HttpFetchResult): void {
-      state.set(url, result);
+      state.set(url, result)
     },
-  };
+  }
 }

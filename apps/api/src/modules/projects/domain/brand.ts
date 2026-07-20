@@ -3,18 +3,18 @@
  * configured their own. Preserves the original hard-coded behavior for
  * every existing caller.
  */
-export const DEFAULT_BRAND_SLUG = "domainproof";
+export const DEFAULT_BRAND_SLUG = 'domainproof'
 
 /**
  * Failure reasons returned by {@link validateBrandSlug}. Kept as a closed
  * set of string codes so callers (API error taxonomy, UI copy) can switch
  * on them without parsing free-text messages.
  */
-export type BrandSlugValidationFailureReason = "invalid_format" | "reserved";
+export type BrandSlugValidationFailureReason = 'invalid_format' | 'reserved'
 
 export type ValidateBrandSlugResult =
   | { ok: true; slug: string }
-  | { ok: false; reason: BrandSlugValidationFailureReason };
+  | { ok: false; reason: BrandSlugValidationFailureReason }
 
 /**
  * A brand slug becomes a DNS label: `_<slug>-challenge.<domain>` and a TXT
@@ -25,10 +25,10 @@ export type ValidateBrandSlugResult =
  * 2-character floor, since the boundary-character alternative alone would
  * accept a single character.
  */
-const BRAND_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+const BRAND_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/
 
-const MIN_BRAND_SLUG_LENGTH = 2;
-const MAX_BRAND_SLUG_LENGTH = 32;
+const MIN_BRAND_SLUG_LENGTH = 2
+const MAX_BRAND_SLUG_LENGTH = 32
 
 /**
  * Slugs that must never be assignable to a builder because they collide
@@ -43,7 +43,7 @@ export const RESERVED_BRAND_SLUGS: ReadonlySet<string> = new Set([
   // domain control validation. A builder named "Acme" (or anything
   // that derives to this slug) must not be able to squat the exact
   // label real ACME clients look for.
-  "acme",
+  'acme',
 
   // Email authentication protocols. Each of these already owns meaning
   // at an underscore-prefixed DNS label — DKIM selectors live under
@@ -52,23 +52,23 @@ export const RESERVED_BRAND_SLUGS: ReadonlySet<string> = new Set([
   // policy discovery lives at `_mta-sts`, and SMTP TLS reporting uses
   // `_smtp._tls` / `_tlsrpt`. A `_<slug>-challenge` label built from any
   // of these would read as if it belonged to the email standard itself.
-  "domainkey",
-  "dkim",
-  "dmarc",
-  "spf",
-  "bimi",
-  "mta-sts",
-  "smtp-tls",
-  "tlsrpt",
+  'domainkey',
+  'dkim',
+  'dmarc',
+  'spf',
+  'bimi',
+  'mta-sts',
+  'smtp-tls',
+  'tlsrpt',
 
   // Other protocols and products with an established underscore-prefixed
   // or well-known domain-verification convention that a
   // `_<slug>-challenge` label could be mistaken for.
-  "atproto", // AT Protocol (Bluesky) domain-handle verification
-  "pki-validation", // CA/Browser Forum well-known PKI validation paths
-  "dnsauth", // generic DNS-based auth verification convention
-  "domainconnect", // Domain Connect provisioning protocol
-]);
+  'atproto', // AT Protocol (Bluesky) domain-handle verification
+  'pki-validation', // CA/Browser Forum well-known PKI validation paths
+  'dnsauth', // generic DNS-based auth verification convention
+  'domainconnect', // Domain Connect provisioning protocol
+])
 
 /**
  * Validates a brand slug for use in a verification record label and value
@@ -80,25 +80,25 @@ export const RESERVED_BRAND_SLUGS: ReadonlySet<string> = new Set([
  * checks run.
  */
 export function validateBrandSlug(slug: string): ValidateBrandSlugResult {
-  if (typeof slug !== "string") {
-    return { ok: false, reason: "invalid_format" };
+  if (typeof slug !== 'string') {
+    return { ok: false, reason: 'invalid_format' }
   }
 
-  const normalized = slug.trim().toLowerCase();
+  const normalized = slug.trim().toLowerCase()
 
   if (
     normalized.length < MIN_BRAND_SLUG_LENGTH ||
     normalized.length > MAX_BRAND_SLUG_LENGTH ||
     !BRAND_SLUG_PATTERN.test(normalized)
   ) {
-    return { ok: false, reason: "invalid_format" };
+    return { ok: false, reason: 'invalid_format' }
   }
 
   if (RESERVED_BRAND_SLUGS.has(normalized)) {
-    return { ok: false, reason: "reserved" };
+    return { ok: false, reason: 'reserved' }
   }
 
-  return { ok: true, slug: normalized };
+  return { ok: true, slug: normalized }
 }
 
 /**
@@ -115,20 +115,20 @@ export function validateBrandSlug(slug: string): ValidateBrandSlugResult {
  * variant: the caller should prompt for an explicit slug instead.
  */
 export function slugFromName(name: string): string | null {
-  if (typeof name !== "string") {
-    return null;
+  if (typeof name !== 'string') {
+    return null
   }
 
   const candidate = name
     .trim()
     .toLowerCase()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, MAX_BRAND_SLUG_LENGTH)
-    .replace(/-+$/g, ""); // slicing to the length cap can re-expose a trailing hyphen
+    .replace(/-+$/g, '') // slicing to the length cap can re-expose a trailing hyphen
 
-  const result = validateBrandSlug(candidate);
-  return result.ok ? result.slug : null;
+  const result = validateBrandSlug(candidate)
+  return result.ok ? result.slug : null
 }
