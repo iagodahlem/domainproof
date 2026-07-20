@@ -1,19 +1,10 @@
 import {
-  isSandboxDomain,
   normalizeDomain,
   registrableDomain,
   recordValue,
   type DnsResolver,
   type TxtResolution,
 } from '@domainproof/core'
-
-// Re-exported so existing imports of `isSandboxDomain` from this module
-// (app.ts, this file's own tests) keep working. The implementation itself
-// now lives in `@domainproof/core` (see `packages/core/src/sandbox.ts`):
-// it's pure domain classification with no IO, and `modules/domains` needs
-// the exact same classification (to gate `.test` claims by API key mode)
-// without being allowed to import a concrete infra adapter like this one.
-export { isSandboxDomain }
 
 // RFC 6761 permanently reserves `.test` for documentation and testing, so it
 // can never be delegated in real DNS or collide with a real owner's domain

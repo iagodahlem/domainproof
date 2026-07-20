@@ -11,10 +11,10 @@ const SANDBOX_TLD = 'test'
  * to the sandbox namespace. Pure domain classification (string parsing via
  * {@link normalizeDomain}/{@link registrableDomain} only, no IO), so it
  * lives in core rather than next to the DNS resolver that also happens to
- * consume it (`apps/api/src/infra/dns/sandbox.ts`, which re-exports this):
- * `modules/domains` needs the same classification — to gate `.test` claims
- * by API key mode — without being allowed to import a concrete infra
- * adapter (see ARCHITECTURE.md's dependency rules).
+ * consume it (`apps/api/src/infra/dns/sandbox.ts`): `modules/domains` needs
+ * the same classification — to gate `.test` claims by API key mode —
+ * without being allowed to import a concrete infra adapter (see
+ * ARCHITECTURE.md's dependency rules).
  */
 export function isSandboxDomain(domain: string): boolean {
   const normalized = normalizeDomain(domain)

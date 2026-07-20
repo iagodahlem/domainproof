@@ -4,7 +4,6 @@ import { challengeHost, checkTxt, recordValue } from '@domainproof/core'
 
 import {
   createSandboxResolver,
-  isSandboxDomain,
   type SandboxChallenge,
   sandboxJourneyFor,
 } from './sandbox'
@@ -26,17 +25,6 @@ function makeChallenge(domain: string): SandboxChallenge {
     createdAt: CREATED_AT,
   }
 }
-
-describe('isSandboxDomain (re-exported from @domainproof/core)', () => {
-  // The exhaustive classification cases live in
-  // packages/core/src/sandbox.test.ts, next to the implementation. This is
-  // just a wiring smoke test: this module's `export { isSandboxDomain }`
-  // (and app.ts's `@infra/dns/sandbox` import of it) stay correct.
-  it('classifies a .test domain as sandbox and a real domain as not', () => {
-    expect(isSandboxDomain('verified.test')).toBe(true)
-    expect(isSandboxDomain('example.com')).toBe(false)
-  })
-})
 
 describe('sandboxJourneyFor', () => {
   it('parses each known journey from its plain label', () => {
