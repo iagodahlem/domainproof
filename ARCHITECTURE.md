@@ -301,23 +301,34 @@ explicitly rather than papered over:
   real, present devDependency. Verified against `typescript@beta` in
   addition to the repo's pinned version — see Enforcement.
 
-## Planned: events
+## Events
 
-Not built yet — this is the shape the next layer will take, so services
-written today can anticipate it instead of needing a rewrite.
-
-- **`shared/events.ts`** defines a typed event map (e.g.
-  `{ "domain.verified": { domainId: string; projectId: string } }`) and an
-  `EventBus` interface (`publish`, `subscribe`) that modules code against.
-- **`infra/events/`** holds the concrete implementation — an in-process
-  `EventBus` to start (a `Map` of subscribers, synchronous or microtask
-  dispatch). Swapping to a queue (SQS, a Postgres-backed outbox, etc.) later
-  means writing a new adapter here, not touching any module.
+- **`shared/events.ts`** defines the typed event map (`DomainEventMap`, one
+  entry per namespaced event type — `account.created`, `domain.claimed`,
+  `domain.check_passed`, `domain.check_failed`, `domain.verified`,
+  `domain.temporarily_failed`, `domain.failed`) and the `EventBus` interface
+  (`publish`, `subscribe`) that modules code against.
+- **`infra/events/in-process-bus.ts`** holds the concrete implementation — an
+  in-process `EventBus` (a `Map` of subscribers, dispatched in registration
+  order and awaited from `publish`). Swapping to a queue (SQS, a
+  Postgres-backed outbox, etc.) later means writing a new adapter here, not
+  touching any module — every publisher/subscriber only ever depends on the
+  `EventBus` interface from `shared/`.
 - **Services publish after the state transition that produced the event
   commits** — never before, and never as a side effect buried inside the
   state machine itself (`packages/core`'s `transition()` stays pure and
   event-free). A service calls `core`'s `transition`, persists the result,
-  and only then calls `eventBus.publish(...)`.
+  and only then calls `eventBus.publish(...)` (see `modules/domains/service.ts`,
+  `modules/accounts/service.ts`).
+- **`modules/events/`** is the timeline: its `repository.ts` persists every
+  published event to the generic `events` table, and its `service.ts`
+  registers a persistence subscriber first for every event type in `app.ts`
+  — before any other subscriber (e.g. email) — so the timeline is a
+  guaranteed, complete record regardless of what else reacts to an event.
+  `GET /v1/domains/:id/events` (cursor-paginated) reads it back.
+- **`modules/notifications/`** is the Resend email subscriber for
+  `account.created`/`domain.verified`/`domain.temporarily_failed`/
+  `domain.failed` — see "JSX in modules", below, for its file layout.
 - **Subscribers are plain module functions**, registered against the bus in
   `app.ts` (the composition root) — the same place every other adapter gets
   wired up. A module never subscribes to its own or another module's events
@@ -328,6 +339,24 @@ written today can anticipate it instead of needing a rewrite.
   swapping in-process dispatch for a real queue is a change to
   `infra/events/` and `app.ts`'s wiring, with zero changes to any module's
   domain code.
+
+### JSX in modules
+
+`modules/notifications/` is the first module that renders anything, so its
+files extend (not replace) the module anatomy rules above:
+
+- **`service.tsx`**, not `service.ts` — the module's root file set is the
+  same closed set (service/repository/ports/middlewares), just with a
+  `.tsx` extension where a file's use cases construct JSX directly (here,
+  the event subscribers render a template as part of building the email).
+  `tsconfig.json`'s `jsx: "react-jsx"` and eslint's `files` globs cover
+  `.tsx` alongside `.ts` repo-wide for exactly this reason.
+- **`domain/templates/`** — a subfolder of `domain/`, not a flat file per
+  concept like `keys/domain/encoding.ts`. Rendering concerns (a shared
+  `layout.tsx` plus one file per email) are still pure, IO-free logic —
+  `domain/`'s actual rule — they just naturally group as a folder once
+  there's more than a couple of them. `domain/render.ts` (the
+  `@react-email/render` wrapper) stays a flat file alongside it.
 
 ## Enforcement
 

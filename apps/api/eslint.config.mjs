@@ -59,7 +59,7 @@ export default [
     // concrete infra adapter, no @infra/db, and no apis/ — modules are
     // plane-agnostic domain logic (services, ports, pure domain files),
     // consumed by whichever plane(s) need them.
-    files: ['src/modules/**/*.ts'],
+    files: ['src/modules/**/*.ts', 'src/modules/**/*.tsx'],
     ignores: ['src/modules/**/*.test.ts', 'src/modules/**/repository.ts'],
     rules: {
       'no-restricted-imports': [
@@ -99,7 +99,7 @@ export default [
     // fake implementing the repository/port interface instead), and no
     // apis/ (a module's tests exercise it in isolation, the same way
     // production code does).
-    files: ['src/modules/**/*.test.ts'],
+    files: ['src/modules/**/*.test.ts', 'src/modules/**/*.test.tsx'],
     ignores: ['src/modules/**/repository.test.ts'],
     rules: {
       'no-restricted-imports': [

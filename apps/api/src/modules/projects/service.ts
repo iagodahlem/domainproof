@@ -5,8 +5,10 @@ export interface ProjectsService {
   /**
    * Resolves the project a Clerk-authenticated caller is acting on,
    * bootstrapping their account (and its default project) on first call.
+   * `emailHint` is forwarded to `accountsService.ensureAccount` — see its
+   * doc comment for how it's used.
    */
-  getDefaultProjectId(clerkUserId: string): Promise<string>
+  getDefaultProjectId(clerkUserId: string, emailHint?: string): Promise<string>
 
   /**
    * A project's brand slug, used by other modules (e.g. `domains`) to build
@@ -22,8 +24,11 @@ export function createProjectsService(
   accountsService: AccountsService,
 ): ProjectsService {
   return {
-    async getDefaultProjectId(clerkUserId) {
-      const { accountId } = await accountsService.ensureAccount(clerkUserId)
+    async getDefaultProjectId(clerkUserId, emailHint) {
+      const { accountId } = await accountsService.ensureAccount(
+        clerkUserId,
+        emailHint,
+      )
 
       const projectId = await repository.findDefaultProjectId(accountId)
       if (!projectId) {

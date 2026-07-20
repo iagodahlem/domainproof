@@ -28,6 +28,17 @@ const envSchema = z.object({
   // `shared/middlewares/host-restriction.ts`.
   PUBLIC_API_HOST: bareHostname.optional(),
   DASHBOARD_API_HOST: bareHostname.optional(),
+  // Optional: unset means the email notification subscribers aren't
+  // registered at all (see `app.ts`) — a clean log-and-skip, not a crash,
+  // since dev/test environments won't have this configured. See
+  // `infra/email/resend.ts`.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  // Optional, defaults to the address this repo's Resend domain is
+  // verified for.
+  EMAIL_FROM: z
+    .string()
+    .min(1)
+    .default('DomainProof <notifications@domainproof.dev>'),
 })
 
 export type Env = z.infer<typeof envSchema>

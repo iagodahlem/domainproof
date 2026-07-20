@@ -11,9 +11,17 @@
  * into `infra/dns` or `infra/http`.
  */
 
-/** What a verified session proves: who's making the request. */
+/**
+ * What a verified session proves: who's making the request, plus whatever
+ * profile fields the token happens to carry. `email` is `undefined` unless
+ * the Clerk instance is configured to include it as a session token claim
+ * (this repo's Clerk instance isn't, today) — see
+ * `modules/accounts/service.ts`'s `ensureAccount` for the fallback when
+ * it's absent.
+ */
 export interface SessionClaims {
   userId: string
+  email?: string
 }
 
 /**
@@ -37,4 +45,21 @@ export type SessionVerifyResult =
  */
 export interface SessionVerifier {
   verify(token: string): Promise<SessionVerifyResult>
+}
+
+/**
+ * Resolves a Clerk user's email address when it isn't already present on
+ * the verified session claims — e.g. via Clerk's backend API. A module-
+ * owned port (same reasoning as `SessionVerifier`): "resolve this user's
+ * email" is specific to how this api bootstraps accounts, not a
+ * domain-wide concept.
+ *
+ * Must never throw: a resolution failure (no backend credentials
+ * configured, the lookup itself failing, no email on the Clerk user) comes
+ * back as `undefined`, and `ensureAccount` logs and continues without an
+ * email rather than blocking account bootstrap on it — see
+ * `modules/accounts/service.ts`.
+ */
+export interface AccountEmailResolver {
+  resolveEmail(clerkUserId: string): Promise<string | undefined>
 }

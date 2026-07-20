@@ -43,6 +43,15 @@ export const webhookDeliveryStatusEnum = pgEnum('webhook_delivery_status', [
 export const accounts = pgTable('accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
   clerkUserId: text('clerk_user_id').notNull().unique(),
+  /**
+   * Captured at account bootstrap (see `modules/accounts/service.ts`'s
+   * `ensureAccount`) from the verified Clerk session claims, or via a
+   * resolver port when the claims don't carry one. Nullable: neither
+   * source is guaranteed to produce an address, and a missing email just
+   * means the welcome/notification emails are skipped for that account
+   * rather than blocking bootstrap.
+   */
+  email: text('email'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -152,17 +161,26 @@ export const challenges = pgTable('challenges', {
 })
 
 /**
- * The user-facing event timeline for a domain (what we queried, what we
- * detected, what changed). Append-only: rows are never updated or deleted
- * once written, only ever inserted.
+ * The generic, append-only event log every published `DomainEvent` (see
+ * `shared/events.ts`) lands in, via the events module's persistence
+ * subscriber — the one guaranteed write every event gets, regardless of
+ * which other subscribers (email, ...) also react to it. Replaces the
+ * narrower `verification_events` table: `type` is a namespaced string
+ * ('domain.verified', 'account.created', ...) spanning every module, not
+ * just domain verification attempts.
+ *
+ * `domainId` and `mode` are both nullable because not every event is
+ * domain- or mode-scoped — `account.created` has neither. `payload` is the
+ * event's full typed payload, stored as-is for replay/inspection.
  */
-export const verificationEvents = pgTable('verification_events', {
+export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),
-  domainId: uuid('domain_id')
-    .notNull()
-    .references(() => domains.id, { onDelete: 'cascade' }),
   type: text('type').notNull(),
-  detail: jsonb('detail').notNull(),
+  domainId: uuid('domain_id').references(() => domains.id, {
+    onDelete: 'cascade',
+  }),
+  mode: modeEnum('mode'),
+  payload: jsonb('payload').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

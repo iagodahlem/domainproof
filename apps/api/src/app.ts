@@ -12,13 +12,20 @@ import { createKeysService } from '@modules/keys/service'
 import { createDomainsRepository } from '@modules/domains/repository'
 import { createDomainsService } from '@modules/domains/service'
 import type { ResolverForChallenge } from '@modules/domains/ports'
+import { createEventsRepository } from '@modules/events/repository'
+import { createEventsService } from '@modules/events/service'
+import { createNotificationsService } from '@modules/notifications/service'
+import type { EmailSender } from '@modules/notifications/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
 import { createDb, type Database } from '@infra/db/client'
 import { createNodeDnsResolver } from '@infra/dns/node-dns'
 import { createSandboxResolver } from '@infra/dns/sandbox'
+import { createInProcessEventBus } from '@infra/events/in-process-bus'
+import { createResendEmailSender } from '@infra/email/resend'
 import { isSandboxDomain } from '@domainproof/core'
+import { DOMAIN_EVENT_TYPES } from '@shared/events'
 import { env } from './env'
 import { apiError } from '@shared/http-errors'
 import { createHostRestrictionMiddleware } from '@shared/middlewares/host-restriction'
@@ -93,6 +100,15 @@ export interface AppDependencies {
    * `shared/middlewares/host-restriction.ts`.
    */
   dashboardApiHost?: string
+  /**
+   * Injected for tests (a fake — never hit the real Resend network from a
+   * test); defaults to a Resend-backed sender built from
+   * `env.RESEND_API_KEY` / `env.EMAIL_FROM`, or `undefined` if
+   * `RESEND_API_KEY` isn't set — in which case the email notification
+   * subscribers are never registered at all (see `createApp` below), a
+   * clean log-and-skip rather than a crash.
+   */
+  emailSender?: EmailSender
 }
 
 /**
@@ -106,8 +122,22 @@ export function createApp(deps: AppDependencies = {}) {
   const app = new Hono()
   const db = deps.db ?? createDb(env.DATABASE_URL)
 
+  // The event bus: every domain status transition and account bootstrap
+  // publishes here, and everything downstream (the timeline, email) is a
+  // subscriber — see shared/events.ts. Persistence is registered first,
+  // for every event type, before any other subscriber (notifications,
+  // below) — so the events table is a complete record of everything
+  // published, regardless of what else reacts to it.
+  const eventBus = createInProcessEventBus()
+
+  const eventsRepository = createEventsRepository(db)
+  const eventsService = createEventsService(eventsRepository)
+  for (const type of DOMAIN_EVENT_TYPES) {
+    eventBus.subscribe(type, (payload) => eventsService.record(type, payload))
+  }
+
   const accountsRepository = createAccountsRepository(db)
-  const accountsService = createAccountsService(accountsRepository)
+  const accountsService = createAccountsService(accountsRepository, eventBus)
 
   const projectsRepository = createProjectsRepository(db)
   const projectsService = createProjectsService(
@@ -124,7 +154,40 @@ export function createApp(deps: AppDependencies = {}) {
     projectsService,
     createResolverForChallenge(),
     deps.now ?? (() => new Date()),
+    eventBus,
   )
+
+  // Only registered when a sender is actually configured — same pattern
+  // as `sessionVerifier` below (an unconfigured vendor integration is a
+  // no-op, not a boot failure). Unset `RESEND_API_KEY` in dev/test means
+  // these subscribers simply never run, rather than every send needing
+  // its own "is this configured" guard.
+  const emailSender =
+    deps.emailSender ??
+    (env.RESEND_API_KEY
+      ? createResendEmailSender({
+          apiKey: env.RESEND_API_KEY,
+          from: env.EMAIL_FROM,
+        })
+      : undefined)
+
+  if (emailSender) {
+    const notifications = createNotificationsService({
+      emailSender,
+      getAccountEmailByProjectId: accountsService.getEmailForProject,
+    })
+    eventBus.subscribe('account.created', notifications.onAccountCreated)
+    eventBus.subscribe('domain.verified', notifications.onDomainVerified)
+    eventBus.subscribe(
+      'domain.temporarily_failed',
+      notifications.onDomainTemporarilyFailed,
+    )
+    eventBus.subscribe('domain.failed', notifications.onDomainFailed)
+  } else {
+    console.log(
+      'RESEND_API_KEY not configured — email notifications are disabled',
+    )
+  }
 
   const sessionVerifier =
     deps.sessionVerifier ??
@@ -163,7 +226,10 @@ export function createApp(deps: AppDependencies = {}) {
     '/dashboard',
     createDashboardRouter({ keysService, projectsService, sessionVerifier }),
   )
-  app.route('/v1', createV1Router({ keysRepository, domainsService }))
+  app.route(
+    '/v1',
+    createV1Router({ keysRepository, domainsService, eventsService }),
+  )
 
   app.notFound((c) => {
     return c.json(apiError('not_found', 'Route not found'), 404)

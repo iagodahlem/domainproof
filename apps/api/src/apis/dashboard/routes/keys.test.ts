@@ -234,3 +234,70 @@ describe('/dashboard/keys', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('account bootstrap notifications', () => {
+  // A session claims email — the fake sessionVerifier above never sets one
+  // (matching this repo's real Clerk wiring, see
+  // modules/accounts/service.ts), so this variant proves the email, once
+  // present, actually flows through to the welcome email.
+  const fakeSessionVerifierWithEmail: SessionVerifier = {
+    async verify(token) {
+      if (!token.startsWith('token-for-')) {
+        return { ok: false, reason: 'invalid_or_expired' }
+      }
+      return {
+        ok: true,
+        claims: {
+          userId: token.slice('token-for-'.length),
+          email: 'builder@example.com',
+        },
+      }
+    },
+  }
+
+  afterEach(async () => {
+    while (createdClerkUserIds.length > 0) {
+      const clerkUserId = createdClerkUserIds.pop()
+      if (clerkUserId) {
+        await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId))
+      }
+    }
+  })
+
+  it("sends a welcome email to the session's email on first bootstrap, never again after", async () => {
+    const sent: { to: string; subject: string }[] = []
+    const app = createApp({
+      db,
+      sessionVerifier: fakeSessionVerifierWithEmail,
+      emailSender: {
+        async send(message) {
+          sent.push(message)
+        },
+      },
+    })
+    const clerkUserId = freshClerkUserId()
+
+    const first = await asUser(app, clerkUserId, '/dashboard/keys')
+    expect(first.status).toBe(200)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({
+      to: 'builder@example.com',
+      subject: 'Welcome to DomainProof',
+    })
+
+    const second = await asUser(app, clerkUserId, '/dashboard/keys')
+    expect(second.status).toBe(200)
+    expect(sent).toHaveLength(1) // no second welcome email on a later request
+  })
+
+  it('never sends an email when RESEND_API_KEY (here: no emailSender) is not configured', async () => {
+    const app = createApp({ db, sessionVerifier: fakeSessionVerifierWithEmail })
+    const clerkUserId = freshClerkUserId()
+
+    // No emailSender injected and no RESEND_API_KEY in this test env, so
+    // the notification subscribers are never registered — this proves the
+    // request path still succeeds rather than crashing.
+    const res = await asUser(app, clerkUserId, '/dashboard/keys')
+    expect(res.status).toBe(200)
+  })
+})
