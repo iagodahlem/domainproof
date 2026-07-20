@@ -46,7 +46,9 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-`apps/api/.env` (`tsx` loads it automatically in dev):
+`apps/api/.env` (`pnpm --filter api dev` loads it automatically via
+`node`'s `--env-file-if-exists` flag — no shell exports needed, and
+nothing breaks if the file doesn't exist):
 
 | Var | Required? | For |
 | --- | --- | --- |
