@@ -57,6 +57,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Fails fast on unformatted code before the heavier tasks below run.
+      - run: pnpm turbo run format:check
+
       # Applies migrations against the service container above. This also
       # doubles as a from-scratch migration proof on every CI run.
       - run: pnpm --filter api db:migrate

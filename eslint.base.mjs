@@ -1,5 +1,6 @@
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import eslintConfigPrettier from 'eslint-config-prettier'
 
 /**
  * Shared flat ESLint config for packages/* stub packages (and apps/api).
@@ -18,21 +19,25 @@ import tseslint from "typescript-eslint";
  */
 export const EXTENSIONLESS_IMPORT_PATTERNS = [
   {
-    group: ["*.js", "**/*.js"],
+    group: ['*.js', '**/*.js'],
     message:
-      "Relative imports must be extensionless (this repo builds with tsup under bundler module resolution, not NodeNext) — drop the .js suffix.",
+      'Relative imports must be extensionless (this repo builds with tsup under bundler module resolution, not NodeNext) — drop the .js suffix.',
   },
-];
+]
 
-export default function baseConfig(dirname, extraRestrictedImportPatterns = []) {
+export default function baseConfig(
+  dirname,
+  extraRestrictedImportPatterns = [],
+) {
   return tseslint.config(
     {
-      ignores: ["dist/**", "node_modules/**"],
+      ignores: ['dist/**', 'node_modules/**'],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
+    eslintConfigPrettier,
     {
-      files: ["src/**/*.ts"],
+      files: ['src/**/*.ts'],
       languageOptions: {
         parserOptions: {
           projectService: true,
@@ -40,13 +45,16 @@ export default function baseConfig(dirname, extraRestrictedImportPatterns = []) 
         },
       },
       rules: {
-        "no-restricted-imports": [
-          "error",
+        'no-restricted-imports': [
+          'error',
           {
-            patterns: [...EXTENSIONLESS_IMPORT_PATTERNS, ...extraRestrictedImportPatterns],
+            patterns: [
+              ...EXTENSIONLESS_IMPORT_PATTERNS,
+              ...extraRestrictedImportPatterns,
+            ],
           },
         ],
       },
     },
-  );
+  )
 }

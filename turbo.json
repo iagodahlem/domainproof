@@ -20,6 +20,12 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "//#format": {
+      "cache": false
+    },
+    "//#format:check": {
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true
