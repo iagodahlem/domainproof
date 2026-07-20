@@ -119,5 +119,15 @@ for the layer map and dependency rules.
 
 `outcome` is one of `found` (verified), `wrong_value` (a record exists but
 doesn't match — the response also carries `expected`/`detected`),
-`not_found`, or `unreachable` (both of the latter two carry a
-plain-language `explanation` instead).
+`not_found`, `unreachable`, or `expired` (a still-`pending` domain's
+72-hour verification window closed before a correct record ever showed up
+— claim it again for a fresh code). `not_found`, `unreachable`, and
+`expired` all carry a plain-language `explanation` instead.
+
+A domain's `verifiedAt` is "last confirmed good", not "first verified" — it
+updates on every passing check (including a no-op recheck of an
+already-verified domain), not just the first one.
+
+Claiming a `.test` sandbox domain (see the domains module's DNS testing
+fixtures) requires a test-mode key; a live-mode key gets
+`400 sandbox_requires_test_mode`.
