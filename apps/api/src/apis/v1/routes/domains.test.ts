@@ -120,7 +120,7 @@ describe('/v1/domains', () => {
         domain: string
         mode: string
         status: string
-        verification_url: string
+        verificationUrl: string
         records: Array<{
           type: string
           name: string
@@ -135,7 +135,7 @@ describe('/v1/domains', () => {
     expect(body.domain.domain).toBe('example.com')
     expect(body.domain.mode).toBe('live')
     expect(body.domain.status).toBe('pending')
-    expect(body.domain.verification_url).toBe(
+    expect(body.domain.verificationUrl).toBe(
       `https://domainproof.dev/verify/${body.domain.id}`,
     )
 

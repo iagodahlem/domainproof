@@ -26,7 +26,7 @@ export interface ChallengeSummary {
 /**
  * Plane-agnostic view of a domain claim: the facts, not the presentation.
  * Turning this into the public API's `records`-as-data response shape
- * (record `type`/`purpose`/`description` copy, `verification_url`) is a
+ * (record `type`/`purpose`/`description` copy, `verificationUrl`) is a
  * v1-plane concern, done in `apis/v1/routes/domains.ts` — this module has
  * no opinion on API wording, only on what's true about the claim.
  */
