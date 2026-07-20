@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { recordValue, type DnsResolver } from '@domainproof/core'
+import {
+  DEFAULT_TOKEN_TTL_MS,
+  recordValue,
+  type DnsResolver,
+} from '@domainproof/core'
 import { createFixtureResolver } from '@domainproof/core/testing'
 import type { ProjectsService } from '@modules/projects/service'
 import type { ResolverForChallenge, ResolverForChallengeInput } from './ports'
@@ -356,6 +360,51 @@ describe('claimDomain', () => {
       }),
     ).rejects.toThrow(/No project found/)
   })
+
+  it('rejects a .test sandbox domain claimed with a live-mode key', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'verified.test',
+    })
+
+    expect(result).toEqual({ ok: false, error: 'sandbox_requires_test_mode' })
+  })
+
+  it('allows a .test sandbox domain claimed with a test-mode key', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'verified.test',
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('allows a real domain claimed with a live-mode key (the gate only blocks .test+live)', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+
+    expect(result.ok).toBe(true)
+  })
 })
 
 describe('listDomains', () => {
@@ -505,10 +554,11 @@ describe('verifyDomain', () => {
     service: ReturnType<typeof createDomainsService>,
     domain = 'example.com',
     projectId = 'project_1',
+    mode: 'live' | 'test' = 'live',
   ) {
     const claimed = await service.claimDomain({
       projectId,
-      mode: 'live',
+      mode,
       domain,
     })
     if (!claimed.ok) throw new Error('setup failed')
@@ -647,6 +697,180 @@ describe('verifyDomain', () => {
 
     expect(result.check.outcome).toBe('unreachable')
     expect(result.domain.status).toBe('pending')
+  })
+
+  describe('challenge expiry', () => {
+    it('hard-fails a pending domain whose challenge has outlived the verification window, without ever running the DNS check', async () => {
+      const repository = fakeRepository()
+      const claimingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId } = await claimAndGetChallenge(claimingService)
+
+      // A resolver that throws if ever queried — proves the expiry guard
+      // short-circuits before any DNS check runs, not that the check
+      // itself happened to come back unfavorable.
+      const explodingResolver: DnsResolver = {
+        async resolveTxt() {
+          throw new Error(
+            'should never be called: expiry must be checked before any DNS query',
+          )
+        },
+      }
+      const verifyingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(explodingResolver),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS),
+      )
+
+      const result = await verifyingService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('expired')
+      expect(result.check.detectedValues).toEqual([])
+      expect(result.domain.status).toBe('failed')
+
+      const events = repository.getEvents(domainId)
+      expect(events[1]).toMatchObject({
+        type: 'domain_verify_attempted',
+        detail: {
+          outcome: 'expired',
+          previousStatus: 'pending',
+          nextStatus: 'failed',
+        },
+      })
+    })
+
+    it('does not expire a domain still inside its verification window', async () => {
+      const repository = fakeRepository()
+      const claimingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId } = await claimAndGetChallenge(claimingService)
+
+      const verifyingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        // Empty fixture (no zones seeded) -> not_found, proving the DNS
+        // check actually ran rather than short-circuiting on expiry.
+        fakeResolverForChallenge(createFixtureResolver()),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS - 1_000),
+      )
+
+      const result = await verifyingService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('not_found')
+      expect(result.domain.status).toBe('pending')
+    })
+
+    it('does not expire an already-verified domain, even long after the original challenge window', async () => {
+      const repository = fakeRepository()
+      const service = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId, challenge } = await claimAndGetChallenge(service)
+
+      const resolver = createFixtureResolver({
+        [challenge.recordHost]: [challenge.recordValue],
+      })
+      const activeService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+      )
+      const verified = await activeService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      if (!verified.ok) throw new Error('setup failed')
+      expect(verified.domain.status).toBe('verified')
+
+      // Well past the original 72h verification window — expiry only ever
+      // gates a still-`pending` domain (see verifyDomain's doc comment):
+      // a verified domain's original challenge already did its job, and
+      // its rechecks are governed by recheck_passed/recheck_record_lost,
+      // not this challenge's expiry.
+      const longAfterService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS * 10),
+      )
+      const result = await longAfterService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('found')
+      expect(result.domain.status).toBe('verified')
+    })
+
+    it('does not expire a temporarily_failed domain either — a different, grace-window timer applies there', async () => {
+      const repository = fakeRepository()
+      const service = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId, challenge } = await claimAndGetChallenge(service)
+
+      const resolver = createFixtureResolver({
+        [challenge.recordHost]: [challenge.recordValue],
+      })
+      const activeService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+      )
+      await activeService.verifyDomain('project_1', 'live', domainId) // -> verified
+      resolver.set(challenge.recordHost, []) // -> temporarily_failed
+      const lost = await activeService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      if (!lost.ok) throw new Error('setup failed')
+      expect(lost.domain.status).toBe('temporarily_failed')
+
+      const longAfterService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver), // still not_found (record still removed)
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS * 10),
+      )
+      const result = await longAfterService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('not_found')
+      expect(result.domain.status).toBe('temporarily_failed')
+    })
   })
 
   it('recheck of a verified domain: a passing recheck is a no-op refresh', async () => {
@@ -916,6 +1140,8 @@ describe('verifyDomain', () => {
     const { domainId, challenge } = await claimAndGetChallenge(
       service,
       'verified.test',
+      'project_1',
+      'test',
     )
 
     const { resolverForChallenge, calls } = spyResolverForChallenge(
@@ -929,7 +1155,7 @@ describe('verifyDomain', () => {
       resolverForChallenge,
     )
 
-    await verifyingService.verifyDomain('project_1', 'live', domainId)
+    await verifyingService.verifyDomain('project_1', 'test', domainId)
 
     expect(calls).toHaveLength(1)
     expect(calls[0]).toMatchObject({
