@@ -9,6 +9,8 @@ import { createProjectsRepository } from '@modules/projects/repository'
 import { createProjectsService } from '@modules/projects/service'
 import { createKeysRepository } from '@modules/keys/repository'
 import { createKeysService } from '@modules/keys/service'
+import { createDomainsRepository } from '@modules/domains/repository'
+import { createDomainsService } from '@modules/domains/service'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
@@ -60,6 +62,12 @@ export function createApp(deps: AppDependencies = {}) {
   const keysRepository = createKeysRepository(db)
   const keysService = createKeysService(keysRepository)
 
+  const domainsRepository = createDomainsRepository(db)
+  const domainsService = createDomainsService(
+    domainsRepository,
+    projectsService,
+  )
+
   const sessionVerifier =
     deps.sessionVerifier ??
     (env.CLERK_JWKS_URL && env.CLERK_ISSUER
@@ -80,7 +88,7 @@ export function createApp(deps: AppDependencies = {}) {
     '/dashboard',
     createDashboardRouter({ keysService, projectsService, sessionVerifier }),
   )
-  app.route('/v1', createV1Router({ keysRepository }))
+  app.route('/v1', createV1Router({ keysRepository, domainsService }))
 
   app.notFound((c) => {
     return c.json(apiError('not_found', 'Route not found'), 404)
