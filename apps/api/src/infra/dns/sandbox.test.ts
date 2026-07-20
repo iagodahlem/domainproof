@@ -4,7 +4,6 @@ import { challengeHost, checkTxt, recordValue } from '@domainproof/core'
 
 import {
   createSandboxResolver,
-  isSandboxDomain,
   type SandboxChallenge,
   sandboxJourneyFor,
 } from './sandbox'
@@ -26,28 +25,6 @@ function makeChallenge(domain: string): SandboxChallenge {
     createdAt: CREATED_AT,
   }
 }
-
-describe('isSandboxDomain', () => {
-  it('is true for a plain .test domain', () => {
-    expect(isSandboxDomain('verified.test')).toBe(true)
-  })
-
-  it('is true for a .test domain with a + suffix label', () => {
-    expect(isSandboxDomain('pending-then-verified+run1.test')).toBe(true)
-  })
-
-  it('is true for a subdomain of a .test domain', () => {
-    expect(isSandboxDomain('sub.verified.test')).toBe(true)
-  })
-
-  it('is false for a real-world domain', () => {
-    expect(isSandboxDomain('example.com')).toBe(false)
-  })
-
-  it('is false for input that fails normalization', () => {
-    expect(isSandboxDomain('')).toBe(false)
-  })
-})
 
 describe('sandboxJourneyFor', () => {
   it('parses each known journey from its plain label', () => {

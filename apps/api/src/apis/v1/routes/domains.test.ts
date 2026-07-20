@@ -1,11 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import { generateToken } from '@domainproof/core'
+import {
+  DEFAULT_TOKEN_TTL_MS,
+  DOMAIN_STATUSES,
+  generateToken,
+} from '@domainproof/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../../app'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
+import { recordStatusFor } from './domains'
 
 // Auth here goes through the real api-key middleware against real db rows
 // (not a fake) — this file is the only end-to-end coverage of `/v1/domains`
@@ -71,8 +76,8 @@ async function createTestApiKey(
   return { projectId, mode, slug, key: `dp_${mode}_${keyId}_${secret}` }
 }
 
-function buildApp() {
-  return createApp({ db })
+function buildApp(overrides: { now?: () => Date } = {}) {
+  return createApp({ db, ...overrides })
 }
 
 async function withKey(
@@ -86,6 +91,29 @@ async function withKey(
     headers: { ...init.headers, Authorization: `Bearer ${key}` },
   })
 }
+
+describe('recordStatusFor', () => {
+  it('mirrors the domain status truthfully for every real status', () => {
+    expect(recordStatusFor('pending')).toBe('pending')
+    expect(recordStatusFor('verified')).toBe('verified')
+    expect(recordStatusFor('failed')).toBe('failed')
+    expect(recordStatusFor('temporarily_failed')).toBe('temporarily_failed')
+  })
+
+  it('falls back to pending for not_started (never happens in practice)', () => {
+    expect(recordStatusFor('not_started')).toBe('pending')
+  })
+
+  it('covers every DomainStatus', () => {
+    expect(DOMAIN_STATUSES.map(recordStatusFor)).toEqual([
+      'pending', // not_started -> pending
+      'pending',
+      'verified',
+      'temporarily_failed',
+      'failed',
+    ])
+  })
+})
 
 describe('/v1/domains', () => {
   afterEach(async () => {
@@ -173,6 +201,64 @@ describe('/v1/domains', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ domain: '127.0.0.1' }),
+    })
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('invalid_request')
+  })
+
+  it('rejects a .test sandbox domain claimed with a live-mode key', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey({ mode: 'live' })
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'verified.test' }),
+    })
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as {
+      error: { code: string; message: string }
+    }
+    expect(body.error.code).toBe('sandbox_requires_test_mode')
+    expect(body.error.message).toBe(
+      'Sandbox domains are only available with test keys.',
+    )
+  })
+
+  it('allows a .test sandbox domain claimed with a test-mode key', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey({ mode: 'test' })
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'verified.test' }),
+    })
+    expect(res.status).toBe(201)
+  })
+
+  it('allows a real domain claimed with a live-mode key (sandbox gate only blocks .test+live)', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey({ mode: 'live' })
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'example.com' }),
+    })
+    expect(res.status).toBe(201)
+  })
+
+  it('rejects a domain string over 253 characters', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+    const tooLong = `${'a'.repeat(250)}.com`
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: tooLong }),
     })
     expect(res.status).toBe(400)
     const body = (await res.json()) as { error: { code: string } }
@@ -334,6 +420,36 @@ describe('/v1/domains', () => {
     expect(getRes.status).toBe(404)
   })
 
+  it("404s (not 403) when releasing another project's domain", async () => {
+    const app = buildApp()
+    const ownerKey = await createTestApiKey()
+    const otherKey = await createTestApiKey()
+
+    const createRes = await withKey(app, ownerKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'example.com' }),
+    })
+    const created = (await createRes.json()) as { domain: { id: string } }
+
+    const res = await withKey(
+      app,
+      otherKey.key,
+      `/v1/domains/${created.domain.id}`,
+      { method: 'DELETE' },
+    )
+    expect(res.status).toBe(404)
+
+    // Confirm it's still there under the owner's key — the other project's
+    // request didn't just 404, it also didn't delete anything.
+    const getRes = await withKey(
+      app,
+      ownerKey.key,
+      `/v1/domains/${created.domain.id}`,
+    )
+    expect(getRes.status).toBe(200)
+  })
+
   it('returns 404 when releasing an unknown domain id', async () => {
     const app = buildApp()
     const apiKey = await createTestApiKey()
@@ -342,5 +458,199 @@ describe('/v1/domains', () => {
       method: 'DELETE',
     })
     expect(res.status).toBe(404)
+  })
+
+  describe('POST /v1/domains/:id/verify', () => {
+    interface VerifyResponseBody {
+      domain: { id: string; status: string; records: Array<{ status: string }> }
+      check: {
+        outcome: string
+        checkedAt: string
+        expected?: string
+        detected?: string[]
+        explanation?: string
+      }
+    }
+
+    async function claimSandboxDomain(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domain: string,
+    ): Promise<string> {
+      const res = await withKey(app, apiKey.key, '/v1/domains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      })
+      const body = (await res.json()) as { domain: { id: string } }
+      return body.domain.id
+    }
+
+    async function verify(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domainId: string,
+    ): Promise<{ status: number; body: VerifyResponseBody }> {
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/verify`,
+        { method: 'POST' },
+      )
+      return {
+        status: res.status,
+        body: (await res.json()) as VerifyResponseBody,
+      }
+    }
+
+    it("verifies a 'verified.test' sandbox domain immediately", async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'verified.test')
+
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('found')
+      expect(body.check.checkedAt).toBeDefined()
+      expect(body.domain.status).toBe('verified')
+      expect(body.domain.records).toHaveLength(1)
+      expect(body.domain.records[0]?.status).toBe('verified')
+    })
+
+    it("returns the expected/detected mismatch for a 'wrong-value.test' sandbox domain", async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'wrong-value.test')
+
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('wrong_value')
+      expect(typeof body.check.expected).toBe('string')
+      expect(body.check.detected).toEqual(
+        expect.arrayContaining([expect.any(String)]),
+      )
+      // pending -> failed: a wrong-but-valid-looking record is an actionable
+      // mismatch, not "still propagating" — see the domains service's
+      // eventForCheckOutcome mapping.
+      expect(body.domain.status).toBe('failed')
+    })
+
+    it("returns a not_found explanation for a 'pending-then-verified.test' domain before its propagation window, then verifies after", async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(
+        app,
+        apiKey,
+        'pending-then-verified.test',
+      )
+
+      const before = await verify(app, apiKey, domainId)
+      expect(before.status).toBe(200)
+      expect(before.body.check.outcome).toBe('not_found')
+      expect(typeof before.body.check.explanation).toBe('string')
+      expect(before.body.check.explanation).toContain(
+        'pending-then-verified.test',
+      )
+      expect(before.body.domain.status).toBe('pending')
+
+      // The sandbox's `pending-then-verified` journey answers correctly once
+      // 45s have elapsed since the challenge was created — move the
+      // injected clock forward instead of sleeping the test.
+      clockOffsetMs = 46_000
+      const after = await verify(app, apiKey, domainId)
+      expect(after.status).toBe(200)
+      expect(after.body.check.outcome).toBe('found')
+      expect(after.body.domain.status).toBe('verified')
+    })
+
+    it('hard-fails a pending domain whose challenge outlived the 72h verification window, without ever checking DNS', async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      // `nxdomain.test` never resolves — proof the expiry guard fires
+      // before any DNS check runs, not because the check itself failed.
+      const domainId = await claimSandboxDomain(app, apiKey, 'nxdomain.test')
+
+      clockOffsetMs = DEFAULT_TOKEN_TTL_MS
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('expired')
+      expect(typeof body.check.explanation).toBe('string')
+      expect(body.check.explanation).toContain('72 hours')
+      expect(body.domain.status).toBe('failed')
+      expect(body.domain.records[0]?.status).toBe('failed')
+    })
+
+    it('does not expire a domain that is still inside its verification window', async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'nxdomain.test')
+
+      clockOffsetMs = DEFAULT_TOKEN_TTL_MS - 1_000
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('not_found') // the real DNS check ran
+      expect(body.domain.status).toBe('pending')
+    })
+
+    it('does not expire an already-verified domain, even long after the original challenge window', async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'verified.test')
+
+      const first = await verify(app, apiKey, domainId)
+      expect(first.body.domain.status).toBe('verified')
+
+      // Well past the 72h verification window the original challenge was
+      // issued under — expiry only ever gates a still-pending domain (see
+      // verifyDomain's doc comment), so this recheck runs the DNS check as
+      // normal rather than hard-failing on a stale challenge.
+      clockOffsetMs = DEFAULT_TOKEN_TTL_MS * 10
+      const { status, body } = await verify(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.check.outcome).toBe('found')
+      expect(body.domain.status).toBe('verified')
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${randomUUID()}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s for another project's domain", async () => {
+      const app = buildApp()
+      const ownerKey = await createTestApiKey({ mode: 'test' })
+      const otherKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, ownerKey, 'verified.test')
+
+      const res = await withKey(
+        app,
+        otherKey.key,
+        `/v1/domains/${domainId}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(`/v1/domains/${randomUUID()}/verify`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(401)
+    })
   })
 })

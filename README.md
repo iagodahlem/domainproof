@@ -83,22 +83,51 @@ The API has two authentication planes, split by path prefix (see
   meant to be called directly by integrations.
 - **Public API** (`/v1/*`) — authenticated with a project API key
   (`Authorization: Bearer dp_test_...` / `dp_live_...`). This is the plane
-  the SDK, CLI, MCP server, and direct integrations use. Domain claiming is
-  the first endpoint group here; checking a domain's status and triggering
-  a recheck are next.
+  the SDK, CLI, MCP server, and direct integrations use. Domain claiming,
+  and running the DNS check that verifies a claim, live here.
 
-| Method | Path                            | Plane     | Description                                                        |
-| ------ | ------------------------------- | --------- | ------------------------------------------------------------------ |
-| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                     |
-| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                       |
-| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                             |
-| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                |
-| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                     |
-| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge. |
-| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                   |
-| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).      |
-| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                           |
+| Method | Path                            | Plane     | Description                                                                             |
+| ------ | ------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                                          |
+| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                                            |
+| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                                                  |
+| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                     |
+| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                          |
+| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge.                      |
+| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                                        |
+| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).                           |
+| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                                                |
+| POST   | `/v1/domains/:id/verify`        | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome. |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
 for the layer map and dependency rules.
+
+`POST /v1/domains/:id/verify` re-runs the check every time it's called
+(safe to poll) and always returns a `check` object alongside the domain:
+
+```json
+{
+  "domain": { "id": "...", "status": "pending", "records": ["..."] },
+  "check": {
+    "outcome": "not_found",
+    "checkedAt": "2026-07-19T12:00:00.000Z",
+    "explanation": "No record found yet. DNS changes usually take a few minutes to appear — we checked example.com's own nameservers to skip stale caches. Try verifying again shortly."
+  }
+}
+```
+
+`outcome` is one of `found` (verified), `wrong_value` (a record exists but
+doesn't match — the response also carries `expected`/`detected`),
+`not_found`, `unreachable`, or `expired` (a still-`pending` domain's
+72-hour verification window closed before a correct record ever showed up
+— claim it again for a fresh code). `not_found`, `unreachable`, and
+`expired` all carry a plain-language `explanation` instead.
+
+A domain's `verifiedAt` is "last confirmed good", not "first verified" — it
+updates on every passing check (including a no-op recheck of an
+already-verified domain), not just the first one.
+
+Claiming a `.test` sandbox domain (see the domains module's DNS testing
+fixtures) requires a test-mode key; a live-mode key gets
+`400 sandbox_requires_test_mode`.

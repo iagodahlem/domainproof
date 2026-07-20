@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import {
+  DEFAULT_TOKEN_TTL_MS,
+  recordValue,
+  type DnsResolver,
+} from '@domainproof/core'
+import { createFixtureResolver } from '@domainproof/core/testing'
 import type { ProjectsService } from '@modules/projects/service'
+import type { ResolverForChallenge, ResolverForChallengeInput } from './ports'
 import type {
   ChallengeRow,
   ClaimInsert,
   DomainRow,
   DomainsRepository,
+  VerificationEventInsert,
 } from './repository'
 import { createDomainsService } from './service'
 
@@ -17,9 +25,19 @@ import { createDomainsService } from './service'
  * only tests the service's own logic: domain normalization, branded record
  * generation, and result mapping.
  */
-function fakeRepository(): DomainsRepository {
+/**
+ * The fake repository also exposes `getEvents`, beyond what
+ * `DomainsRepository` requires — a superset, so every existing call site
+ * that only needs a `DomainsRepository` keeps compiling unchanged, and only
+ * `verifyDomain`'s tests use the extra method to assert on the recorded
+ * timeline.
+ */
+function fakeRepository(): DomainsRepository & {
+  getEvents(domainId: string): VerificationEventInsert[]
+} {
   const domainRows = new Map<string, DomainRow>()
   const challengesByDomainId = new Map<string, ChallengeRow[]>()
+  const eventsByDomainId = new Map<string, VerificationEventInsert[]>()
 
   function conflicts(values: ClaimInsert): boolean {
     return [...domainRows.values()].some(
@@ -60,6 +78,9 @@ function fakeRepository(): DomainsRepository {
         createdAt: new Date(),
       }
       challengesByDomainId.set(domainRow.id, [challengeRow])
+      eventsByDomainId.set(domainRow.id, [
+        { type: values.event.type, detail: values.event.detail },
+      ])
 
       return { domain: domainRow, challenge: challengeRow }
     },
@@ -91,6 +112,60 @@ function fakeRepository(): DomainsRepository {
       domainRows.delete(id)
       challengesByDomainId.delete(id)
       return row
+    },
+
+    async recordVerificationAttempt(values) {
+      const row = domainRows.get(values.domainId)
+      if (!row) {
+        throw new Error(`No domain found for id ${values.domainId}`)
+      }
+
+      const updated: DomainRow = {
+        ...row,
+        status: values.nextStatus,
+        updatedAt: new Date(),
+        verifiedAt: values.verifiedAt ?? row.verifiedAt,
+      }
+      domainRows.set(row.id, updated)
+
+      const events = eventsByDomainId.get(row.id) ?? []
+      events.push(values.event)
+      eventsByDomainId.set(row.id, events)
+
+      return updated
+    },
+
+    getEvents(domainId) {
+      return eventsByDomainId.get(domainId) ?? []
+    },
+  }
+}
+
+/**
+ * A `ResolverForChallenge` that always returns `resolver`, ignoring the
+ * input — for tests where the resolver-selection *outcome* isn't under
+ * test, only what a fixed resolver does.
+ */
+function fakeResolverForChallenge(resolver: DnsResolver): ResolverForChallenge {
+  return () => resolver
+}
+
+/**
+ * A `ResolverForChallenge` that records every call's input (so a test can
+ * assert what `verifyDomain` forwarded to the resolver-selection port —
+ * the domain, the challenge's record host/value, the brand slug) while
+ * always answering with `resolver`.
+ */
+function spyResolverForChallenge(resolver: DnsResolver): {
+  resolverForChallenge: ResolverForChallenge
+  calls: ResolverForChallengeInput[]
+} {
+  const calls: ResolverForChallengeInput[] = []
+  return {
+    calls,
+    resolverForChallenge(input) {
+      calls.push(input)
+      return resolver
     },
   }
 }
@@ -285,6 +360,51 @@ describe('claimDomain', () => {
       }),
     ).rejects.toThrow(/No project found/)
   })
+
+  it('rejects a .test sandbox domain claimed with a live-mode key', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'verified.test',
+    })
+
+    expect(result).toEqual({ ok: false, error: 'sandbox_requires_test_mode' })
+  })
+
+  it('allows a .test sandbox domain claimed with a test-mode key', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'verified.test',
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('allows a real domain claimed with a live-mode key (the gate only blocks .test+live)', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+
+    expect(result.ok).toBe(true)
+  })
 })
 
 describe('listDomains', () => {
@@ -426,5 +546,625 @@ describe('releaseDomain', () => {
     expect(
       await service.releaseDomain('project_b', 'live', claimed.domain.id),
     ).toBeNull()
+  })
+})
+
+describe('verifyDomain', () => {
+  async function claimAndGetChallenge(
+    service: ReturnType<typeof createDomainsService>,
+    domain = 'example.com',
+    projectId = 'project_1',
+    mode: 'live' | 'test' = 'live',
+  ) {
+    const claimed = await service.claimDomain({
+      projectId,
+      mode,
+      domain,
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+    const [challenge] = claimed.domain.challenges
+    if (!challenge) throw new Error('setup failed: no challenge')
+    return { domainId: claimed.domain.id, challenge }
+  }
+
+  it('found: transitions pending -> verified and sets verifiedAt', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()), // seeded below
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const result = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('found')
+    expect(result.check.detectedValues).toEqual([])
+    expect(result.domain.status).toBe('verified')
+    expect(result.domain.verifiedAt).not.toBeNull()
+  })
+
+  it('not_found: stays pending, records the attempt, no explanation baked in at this layer', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId } = await claimAndGetChallenge(service)
+
+    const result = await service.verifyDomain('project_1', 'live', domainId)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('not_found')
+    expect(result.domain.status).toBe('pending')
+    expect(result.domain.verifiedAt).toBeNull()
+
+    const events = repository.getEvents(domainId)
+    expect(events).toHaveLength(2) // domain_claimed, then this attempt
+    expect(events[1]).toMatchObject({
+      type: 'domain_verify_attempted',
+      detail: expect.objectContaining({
+        outcome: 'not_found',
+        previousStatus: 'pending',
+        nextStatus: 'pending',
+      }),
+    })
+  })
+
+  it('wrong_value: transitions pending -> failed and records the detected value', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const wrongValue = recordValue('someotherrandomtoken1234567', 'skylane')
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [wrongValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const result = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('wrong_value')
+    expect(result.check.detectedValues).toEqual(['someotherrandomtoken1234567'])
+    expect(result.check.expectedValue).toBe(challenge.recordValue)
+    expect(result.domain.status).toBe('failed')
+
+    const events = repository.getEvents(domainId)
+    expect(events[1]?.detail).toMatchObject({
+      outcome: 'wrong_value',
+      detected: ['someotherrandomtoken1234567'],
+      previousStatus: 'pending',
+      nextStatus: 'failed',
+    })
+  })
+
+  it('unreachable: never transitions, regardless of status', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const unreachableResolver = createFixtureResolver({
+      [challenge.recordHost]: { error: 'timeout' },
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(unreachableResolver),
+    )
+
+    const result = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('unreachable')
+    expect(result.domain.status).toBe('pending')
+  })
+
+  describe('challenge expiry', () => {
+    it('hard-fails a pending domain whose challenge has outlived the verification window, without ever running the DNS check', async () => {
+      const repository = fakeRepository()
+      const claimingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId } = await claimAndGetChallenge(claimingService)
+
+      // A resolver that throws if ever queried — proves the expiry guard
+      // short-circuits before any DNS check runs, not that the check
+      // itself happened to come back unfavorable.
+      const explodingResolver: DnsResolver = {
+        async resolveTxt() {
+          throw new Error(
+            'should never be called: expiry must be checked before any DNS query',
+          )
+        },
+      }
+      const verifyingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(explodingResolver),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS),
+      )
+
+      const result = await verifyingService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('expired')
+      expect(result.check.detectedValues).toEqual([])
+      expect(result.domain.status).toBe('failed')
+
+      const events = repository.getEvents(domainId)
+      expect(events[1]).toMatchObject({
+        type: 'domain_verify_attempted',
+        detail: {
+          outcome: 'expired',
+          previousStatus: 'pending',
+          nextStatus: 'failed',
+        },
+      })
+    })
+
+    it('does not expire a domain still inside its verification window', async () => {
+      const repository = fakeRepository()
+      const claimingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId } = await claimAndGetChallenge(claimingService)
+
+      const verifyingService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        // Empty fixture (no zones seeded) -> not_found, proving the DNS
+        // check actually ran rather than short-circuiting on expiry.
+        fakeResolverForChallenge(createFixtureResolver()),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS - 1_000),
+      )
+
+      const result = await verifyingService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('not_found')
+      expect(result.domain.status).toBe('pending')
+    })
+
+    it('does not expire an already-verified domain, even long after the original challenge window', async () => {
+      const repository = fakeRepository()
+      const service = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId, challenge } = await claimAndGetChallenge(service)
+
+      const resolver = createFixtureResolver({
+        [challenge.recordHost]: [challenge.recordValue],
+      })
+      const activeService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+      )
+      const verified = await activeService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      if (!verified.ok) throw new Error('setup failed')
+      expect(verified.domain.status).toBe('verified')
+
+      // Well past the original 72h verification window — expiry only ever
+      // gates a still-`pending` domain (see verifyDomain's doc comment):
+      // a verified domain's original challenge already did its job, and
+      // its rechecks are governed by recheck_passed/recheck_record_lost,
+      // not this challenge's expiry.
+      const longAfterService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS * 10),
+      )
+      const result = await longAfterService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('found')
+      expect(result.domain.status).toBe('verified')
+    })
+
+    it('does not expire a temporarily_failed domain either — a different, grace-window timer applies there', async () => {
+      const repository = fakeRepository()
+      const service = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(createFixtureResolver()),
+      )
+      const { domainId, challenge } = await claimAndGetChallenge(service)
+
+      const resolver = createFixtureResolver({
+        [challenge.recordHost]: [challenge.recordValue],
+      })
+      const activeService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver),
+      )
+      await activeService.verifyDomain('project_1', 'live', domainId) // -> verified
+      resolver.set(challenge.recordHost, []) // -> temporarily_failed
+      const lost = await activeService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      if (!lost.ok) throw new Error('setup failed')
+      expect(lost.domain.status).toBe('temporarily_failed')
+
+      const longAfterService = createDomainsService(
+        repository,
+        fakeProjectsService(),
+        fakeResolverForChallenge(resolver), // still not_found (record still removed)
+        () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS * 10),
+      )
+      const result = await longAfterService.verifyDomain(
+        'project_1',
+        'live',
+        domainId,
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(result.check.outcome).toBe('not_found')
+      expect(result.domain.status).toBe('temporarily_failed')
+    })
+  })
+
+  it('recheck of a verified domain: a passing recheck is a no-op refresh', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const first = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    if (!first.ok) throw new Error('setup failed')
+    expect(first.domain.status).toBe('verified')
+
+    const second = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+    expect(second.check.outcome).toBe('found')
+    expect(second.domain.status).toBe('verified')
+  })
+
+  it('recheck of a verified domain: a lost or wrong record opens the grace window (temporarily_failed)', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const verified = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    if (!verified.ok) throw new Error('setup failed')
+    expect(verified.domain.status).toBe('verified')
+
+    resolver.set(challenge.recordHost, []) // record removed -> not_found
+    const lost = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(lost.ok).toBe(true)
+    if (!lost.ok) return
+    expect(lost.check.outcome).toBe('not_found')
+    expect(lost.domain.status).toBe('temporarily_failed')
+  })
+
+  it('recheck of a verified domain: unreachable does not open the grace window', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const verified = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    if (!verified.ok) throw new Error('setup failed')
+    expect(verified.domain.status).toBe('verified')
+
+    resolver.set(challenge.recordHost, { error: 'timeout' })
+    const unreachable = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(unreachable.ok).toBe(true)
+    if (!unreachable.ok) return
+    expect(unreachable.check.outcome).toBe('unreachable')
+    expect(unreachable.domain.status).toBe('verified')
+  })
+
+  it('temporarily_failed recovers to verified on a passing recheck', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    await verifyingService.verifyDomain('project_1', 'live', domainId) // -> verified
+    resolver.set(challenge.recordHost, []) // -> temporarily_failed
+    const lost = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    if (!lost.ok) throw new Error('setup failed')
+    expect(lost.domain.status).toBe('temporarily_failed')
+
+    resolver.set(challenge.recordHost, [challenge.recordValue]) // record restored
+    const recovered = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(recovered.ok).toBe(true)
+    if (!recovered.ok) return
+    expect(recovered.check.outcome).toBe('found')
+    expect(recovered.domain.status).toBe('verified')
+  })
+
+  it('temporarily_failed stays temporarily_failed on another inconclusive check (grace window continues)', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    await verifyingService.verifyDomain('project_1', 'live', domainId) // -> verified
+    resolver.set(challenge.recordHost, []) // -> temporarily_failed
+    await verifyingService.verifyDomain('project_1', 'live', domainId)
+
+    const stillLost = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(stillLost.ok).toBe(true)
+    if (!stillLost.ok) return
+    expect(stillLost.check.outcome).toBe('not_found')
+    expect(stillLost.domain.status).toBe('temporarily_failed')
+  })
+
+  it('failed domains never resurrect from a mere passing check', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(service)
+
+    const wrongValue = recordValue('someotherrandomtoken1234567', 'skylane')
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [wrongValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+    )
+
+    const failed = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    if (!failed.ok) throw new Error('setup failed')
+    expect(failed.domain.status).toBe('failed')
+
+    resolver.set(challenge.recordHost, [challenge.recordValue]) // now correct
+    const stillFailed = await verifyingService.verifyDomain(
+      'project_1',
+      'live',
+      domainId,
+    )
+    expect(stillFailed.ok).toBe(true)
+    if (!stillFailed.ok) return
+    expect(stillFailed.check.outcome).toBe('found')
+    expect(stillFailed.domain.status).toBe('failed')
+  })
+
+  it('returns not_found for an unknown domain id', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+
+    const result = await service.verifyDomain('project_1', 'live', randomUUID())
+    expect(result).toEqual({ ok: false, error: 'not_found' })
+  })
+
+  it("returns not_found for another project's domain", async () => {
+    const repository = fakeRepository()
+    const projects = fakeProjectsService({
+      project_a: 'skylane',
+      project_b: 'atlas',
+    })
+    const service = createDomainsService(
+      repository,
+      projects,
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId } = await claimAndGetChallenge(
+      service,
+      'example.com',
+      'project_a',
+    )
+
+    const result = await service.verifyDomain('project_b', 'live', domainId)
+    expect(result).toEqual({ ok: false, error: 'not_found' })
+  })
+
+  it('forwards the domain, challenge, and brand slug to the resolverForChallenge port', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+    const { domainId, challenge } = await claimAndGetChallenge(
+      service,
+      'verified.test',
+      'project_1',
+      'test',
+    )
+
+    const { resolverForChallenge, calls } = spyResolverForChallenge(
+      createFixtureResolver({
+        [challenge.recordHost]: [challenge.recordValue],
+      }),
+    )
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      resolverForChallenge,
+    )
+
+    await verifyingService.verifyDomain('project_1', 'test', domainId)
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      domain: 'verified.test',
+      recordHost: challenge.recordHost,
+      recordValue: challenge.recordValue,
+      brandSlug: 'skylane',
+    })
+    expect(calls[0]?.challengeCreatedAt).toBeInstanceOf(Date)
+    expect(typeof calls[0]?.now).toBe('function')
   })
 })

@@ -86,21 +86,6 @@ function isSandboxJourney(value: string): value is SandboxJourney {
 }
 
 /**
- * True when `domain`'s registrable domain's TLD is `test` — i.e. it belongs
- * to the sandbox namespace and should be routed to
- * {@link createSandboxResolver} instead of a real resolver. Delegates all
- * parsing to {@link normalizeDomain} / {@link registrableDomain} rather than
- * re-implementing hostname parsing here.
- */
-export function isSandboxDomain(domain: string): boolean {
-  const normalized = normalizeDomain(domain)
-  if (!normalized.ok) {
-    return false
-  }
-  return registrableDomain(normalized.domain).endsWith(`.${SANDBOX_TLD}`)
-}
-
-/**
  * Failure reasons {@link sandboxJourneyFor} can report, discriminated by
  * `ok`:
  *
