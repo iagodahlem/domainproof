@@ -1,10 +1,9 @@
 import { Hono } from "hono";
-import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import type { SessionAuthVariables } from "@modules/accounts/middleware";
+import type { SessionAuthVariables } from "../middlewares/session-auth";
 import type { ProjectsService } from "@modules/projects/service";
+import type { KeysService } from "@modules/keys/service";
 import { apiError } from "@shared/http-errors";
-import type { KeysService } from "./service";
 
 const createKeyBodySchema = z.object({
   mode: z.enum(["test", "live"]),
@@ -26,26 +25,23 @@ function invalidRequest(message: string) {
 }
 
 /**
- * Dashboard-facing key management routes, mounted under `/dashboard/keys`.
- * Every route is scoped to the caller's account -> project (resolved via
- * session auth + {@link ProjectsService.getDefaultProjectId}): a `keyId`
- * belonging to another account's project always 404s, matching the
- * anti-enumeration stance used by the public-API key auth middleware — a
- * caller should never be able to distinguish "not yours" from "doesn't
- * exist".
+ * Dashboard-facing key management routes, mounted at `/keys` under the
+ * dashboard plane's router (giving `/dashboard/keys`). Every route is
+ * scoped to the caller's account -> project (resolved via
+ * `projectsService.getDefaultProjectId`): a `keyId` belonging to another
+ * account's project always 404s, matching the anti-enumeration stance
+ * used by the public-API key auth middleware — a caller should never be
+ * able to distinguish "not yours" from "doesn't exist".
  *
- * Parses/validates input, calls the injected services, and maps the
- * result to HTTP — no db or schema access here; that's `keysService` and
- * `projectsService`'s job (each backed by its own module's repository).
+ * Session auth is applied once for the whole plane in
+ * `apis/dashboard/router.ts`, not here — by the time a handler in this
+ * file runs, `c.get("userId")` is already set. Parses/validates input,
+ * calls the injected services, and maps the result to HTTP — no db or
+ * schema access here; that's `keysService` and `projectsService`'s job
+ * (each backed by its own module's repository).
  */
-export function createKeysRoutes(
-  keysService: KeysService,
-  projectsService: ProjectsService,
-  sessionAuth: MiddlewareHandler<{ Variables: SessionAuthVariables }>,
-) {
+export function createKeysRoutes(keysService: KeysService, projectsService: ProjectsService) {
   const router = new Hono<{ Variables: SessionAuthVariables }>();
-
-  router.use("*", sessionAuth);
 
   router.post("/", async (c) => {
     const json = await c.req.json().catch(() => undefined);

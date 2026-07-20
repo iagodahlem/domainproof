@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { apiError } from "@shared/http-errors";
-import type { SessionVerifier, SessionVerifyResult } from "./ports";
+import type { SessionVerifier, SessionVerifyResult } from "@modules/accounts/ports";
 
 /**
  * Hono context variable holding the verified session's user id, available
@@ -17,12 +17,24 @@ function unauthorized(message: string) {
   };
 }
 
+/**
+ * Throws only on a type-system violation (a failure reason the switch below
+ * doesn't know about) — unreachable at runtime as long as the switch stays
+ * exhaustive. Mirrors the `assertNever` pattern used elsewhere in this repo
+ * (e.g. `packages/core`'s `states.ts`).
+ */
+function assertNever(value: never): never {
+  throw new Error(`Unhandled session verify failure reason: ${JSON.stringify(value)}`);
+}
+
 function messageForFailure(reason: Extract<SessionVerifyResult, { ok: false }>["reason"]): string {
   switch (reason) {
     case "invalid_or_expired":
       return "Invalid or expired token";
     case "missing_subject":
       return "Token is missing a subject claim";
+    default:
+      return assertNever(reason);
   }
 }
 

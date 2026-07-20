@@ -1,20 +1,19 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import type { ApiKeyAuthVariables } from "./api-key";
-import { createRateLimitMiddleware } from "./rate-limit";
+import { createRateLimitMiddleware, type RateLimitVariables } from "./rate-limit";
 
 /**
  * Builds a minimal app that stands in for the real pipeline: a fake
  * "auth" step that sets `keyId` from a header (so tests can address
  * different keys), the rate limiter under test, and a trivial handler.
+ * Only sets `keyId` — this middleware is plane-agnostic and doesn't care
+ * what else a real plane's auth middleware would set.
  */
 function buildApp(config: Parameters<typeof createRateLimitMiddleware>[0]) {
-  const app = new Hono<{ Variables: ApiKeyAuthVariables }>();
+  const app = new Hono<{ Variables: RateLimitVariables }>();
 
   app.use("*", async (c, next) => {
     c.set("keyId", c.req.header("x-test-key-id") ?? "key_1");
-    c.set("projectId", "project_1");
-    c.set("mode", "test");
     await next();
   });
 
@@ -24,7 +23,7 @@ function buildApp(config: Parameters<typeof createRateLimitMiddleware>[0]) {
 }
 
 async function requestAs(
-  app: Hono<{ Variables: ApiKeyAuthVariables }>,
+  app: Hono<{ Variables: RateLimitVariables }>,
   keyId: string,
 ) {
   return app.request("/ping", { headers: { "x-test-key-id": keyId } });

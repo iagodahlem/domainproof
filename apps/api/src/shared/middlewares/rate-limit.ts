@@ -1,5 +1,15 @@
 import type { MiddlewareHandler } from "hono";
-import type { ApiKeyAuthVariables } from "./api-key";
+
+/**
+ * The only thing this middleware needs from upstream context — deliberately
+ * not tied to any one plane's auth-variable shape (e.g. `v1`'s
+ * `ApiKeyAuthVariables`), since this middleware is plane-agnostic and any
+ * `apis/<plane>` can mount it downstream of whatever middleware sets
+ * `keyId`.
+ */
+export interface RateLimitVariables {
+  keyId: string;
+}
 
 export interface RateLimitConfig {
   /** Max requests allowed per key within the window. Default 100. */
@@ -11,9 +21,9 @@ export interface RateLimitConfig {
 }
 
 /**
- * Per-API-key sliding-window rate limiter. Must be mounted downstream of
- * {@link createApiKeyAuthMiddleware} (it reads the `keyId` variable that
- * middleware sets).
+ * Per-key sliding-window rate limiter. Must be mounted downstream of
+ * whatever middleware sets the `keyId` context variable (e.g. `v1`'s
+ * api-key auth).
  *
  * State lives in an in-memory `Map<keyId, timestamps[]>` — per-process
  * only. It resets on every deploy/restart, and a multi-instance
@@ -25,7 +35,7 @@ export interface RateLimitConfig {
  */
 export function createRateLimitMiddleware(
   config: RateLimitConfig = {},
-): MiddlewareHandler<{ Variables: ApiKeyAuthVariables }> {
+): MiddlewareHandler<{ Variables: RateLimitVariables }> {
   const limit = config.limit ?? 100;
   const windowMs = config.windowMs ?? 60_000;
   const now = config.now ?? Date.now;

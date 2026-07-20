@@ -1,8 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 import { apiError } from "@shared/http-errors";
-import { parseApiKey, type ApiKeyMode } from "./domain/parse";
-import type { KeysRepository } from "./repository";
+import { parseApiKey, type ApiKeyMode } from "@modules/keys/domain/parse";
+import type { KeysRepository } from "@modules/keys/repository";
 
 /**
  * Hono context variables set by {@link createApiKeyAuthMiddleware} for any

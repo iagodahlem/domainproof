@@ -3,9 +3,9 @@ import { generateToken } from "@domainproof/core";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from "./api-key";
-import { generateKeyId } from "./domain/encoding";
-import { formatApiKey, type ApiKeyMode } from "./domain/parse";
-import type { ApiKeyRow, KeysRepository } from "./repository";
+import { generateKeyId } from "@modules/keys/domain/encoding";
+import { formatApiKey, type ApiKeyMode } from "@modules/keys/domain/parse";
+import type { ApiKeyRow, KeysRepository } from "@modules/keys/repository";
 
 /**
  * A fake KeysRepository implementing the port directly, in memory — no

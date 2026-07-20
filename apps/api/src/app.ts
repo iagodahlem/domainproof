@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
-import { createSessionAuthMiddleware } from "@modules/accounts/middleware";
 import type { SessionVerifier } from "@modules/accounts/ports";
 import { createAccountsRepository } from "@modules/accounts/repository";
 import { createAccountsService } from "@modules/accounts/service";
@@ -10,7 +9,8 @@ import { createProjectsRepository } from "@modules/projects/repository";
 import { createProjectsService } from "@modules/projects/service";
 import { createKeysRepository } from "@modules/keys/repository";
 import { createKeysService } from "@modules/keys/service";
-import { createKeysRoutes } from "@modules/keys/routes";
+import { createDashboardRouter } from "@apis/dashboard/router";
+import { createV1Router } from "@apis/v1/router";
 import { createClerkSessionVerifier } from "@infra/auth/clerk";
 import { createDb, type Database } from "@infra/db/client";
 import { env } from "./env";
@@ -31,7 +31,7 @@ export interface AppDependencies {
   db?: Database;
   /**
    * Injected for tests; defaults to a Clerk-backed verifier built from
-   * `env.CLERK_JWKS_URL` / `env.CLERK_ISSUER`, or `undefined` (session auth
+   * `env.CLERK_JWKS_URL` / `env.CLERK_ISSUER`, or `undefined` (dashboard
    * routes 500 with `auth_not_configured`) if those aren't set.
    */
   sessionVerifier?: SessionVerifier;
@@ -39,9 +39,10 @@ export interface AppDependencies {
 
 /**
  * The composition root: every repository, service, and adapter gets built
- * and wired here, exactly once. Nothing outside this file constructs a
- * `Database`, a repository, or a `SessionVerifier` — modules and their
- * routes only ever receive them as arguments.
+ * and wired here, exactly once, then handed to the plane routers under
+ * `apis/`. Nothing outside this file constructs a `Database`, a
+ * repository, or a `SessionVerifier` — modules and planes only ever
+ * receive them as arguments.
  */
 export function createApp(deps: AppDependencies = {}) {
   const app = new Hono();
@@ -64,16 +65,16 @@ export function createApp(deps: AppDependencies = {}) {
           issuer: env.CLERK_ISSUER,
         })
       : undefined);
-  const sessionAuth = createSessionAuthMiddleware(sessionVerifier);
 
   app.get("/health", (c) => {
     return c.json({ status: "ok", version: pkg.version });
   });
 
   // /dashboard/* is the session-authenticated backend of the dashboard app
-  // (unversioned — we control its only consumer). /v1/* is reserved for
-  // the public, API-key-authenticated plane; see ARCHITECTURE.md.
-  app.route("/dashboard/keys", createKeysRoutes(keysService, projectsService, sessionAuth));
+  // (unversioned — we control its only consumer). /v1/* is the public,
+  // API-key-authenticated plane. See ARCHITECTURE.md's Route planes.
+  app.route("/dashboard", createDashboardRouter({ keysService, projectsService, sessionVerifier }));
+  app.route("/v1", createV1Router({ keysRepository }));
 
   app.notFound((c) => {
     return c.json(apiError("not_found", "Route not found"), 404);

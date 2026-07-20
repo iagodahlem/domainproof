@@ -4,11 +4,12 @@
     "outDir": "dist",
     "rootDir": "src",
     "noEmit": true,
-    "baseUrl": ".",
+    "types": ["node"],
     "paths": {
-      "@infra/*": ["src/infra/*"],
-      "@modules/*": ["src/modules/*"],
-      "@shared/*": ["src/shared/*"]
+      "@apis/*": ["./src/apis/*"],
+      "@infra/*": ["./src/infra/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src/**/*.ts"]
