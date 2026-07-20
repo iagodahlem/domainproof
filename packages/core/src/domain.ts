@@ -38,8 +38,35 @@ function isValidSandboxHostname(hostname: string): boolean {
 }
 
 /**
+ * Converts a validated hostname to its ASCII (punycode) form via IDNA —
+ * required because DNS itself is ASCII-only: a real nameserver (and
+ * `node:dns`'s `resolveTxt`, which `infra/dns/node-dns.ts` calls) needs
+ * `xn--caf-dma.com`, not `café.com`. A unicode hostname stored as-is would
+ * claim fine (nothing here rejects it) but could never actually verify —
+ * every real DNS query for it would fail.
+ *
+ * The web-standard `URL` global performs IDNA host processing internally
+ * (RFC 3492 punycode, via each JS engine's ICU) without needing `node:url`
+ * or a userland IDNA library — parsing a synthetic `http://<hostname>` URL
+ * and reading back `.hostname` is enough, and it works identically in any
+ * runtime that implements `URL`, keeping this module free of Node-specific
+ * IO. All-ASCII input (already lowercase by this point) round-trips
+ * unchanged. Returns `null` only if `hostname` doesn't parse as a URL host
+ * at all — shouldn't happen for input that already passed this function's
+ * caller's own strict validation, but guarded rather than assumed.
+ */
+function toAsciiHostname(hostname: string): string | null {
+  try {
+    return new URL(`http://${hostname}`).hostname
+  } catch {
+    return null
+  }
+}
+
+/**
  * Normalizes a user-supplied domain (or a pasted URL) into a canonical
- * lowercase hostname with no trailing dot, scheme, path, port, or userinfo.
+ * lowercase, ASCII (punycode) hostname with no trailing dot, scheme, path,
+ * port, or userinfo.
  *
  * Never throws — malformed input comes back as `{ ok: false, reason }`.
  */
@@ -68,7 +95,15 @@ export function normalizeDomain(input: string): NormalizeDomainResult {
 
   // Strict pass for everything else: real-world hostnames must satisfy
   // RFC 1035 label rules (no empty labels, no leading/trailing hyphen, no
-  // stray characters) and resolve to a recognized public suffix.
+  // stray characters) and resolve to a recognized public suffix. tldts
+  // accepts unicode labels here (`café.com` parses fine, with a
+  // recognized `.com` suffix) — that's exactly why the ASCII conversion
+  // below has to happen after this check, not instead of it: converting
+  // first would feed tldts a already-punycoded (and to a human, unreadable)
+  // string, and validating first then converting is also what preserves
+  // "this failed because the hostname is malformed" vs. "this failed
+  // because it doesn't have a real public suffix" as distinct, accurate
+  // reasons.
   const strict = parse(input, { validateHostname: true })
   if (strict.hostname === null) {
     return { ok: false, reason: 'invalid_format' }
@@ -76,7 +111,13 @@ export function normalizeDomain(input: string): NormalizeDomainResult {
   if (strict.domain === null) {
     return { ok: false, reason: 'no_public_suffix' }
   }
-  return { ok: true, domain: strict.hostname }
+
+  const ascii = toAsciiHostname(strict.hostname)
+  if (ascii === null) {
+    return { ok: false, reason: 'invalid_format' }
+  }
+
+  return { ok: true, domain: ascii }
 }
 
 /**

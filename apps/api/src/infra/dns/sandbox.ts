@@ -1,10 +1,19 @@
 import {
+  isSandboxDomain,
   normalizeDomain,
   registrableDomain,
   recordValue,
   type DnsResolver,
   type TxtResolution,
 } from '@domainproof/core'
+
+// Re-exported so existing imports of `isSandboxDomain` from this module
+// (app.ts, this file's own tests) keep working. The implementation itself
+// now lives in `@domainproof/core` (see `packages/core/src/sandbox.ts`):
+// it's pure domain classification with no IO, and `modules/domains` needs
+// the exact same classification (to gate `.test` claims by API key mode)
+// without being allowed to import a concrete infra adapter like this one.
+export { isSandboxDomain }
 
 // RFC 6761 permanently reserves `.test` for documentation and testing, so it
 // can never be delegated in real DNS or collide with a real owner's domain
@@ -83,21 +92,6 @@ export type SandboxJourney = keyof typeof SANDBOX_JOURNEYS
 
 function isSandboxJourney(value: string): value is SandboxJourney {
   return Object.hasOwn(SANDBOX_JOURNEYS, value)
-}
-
-/**
- * True when `domain`'s registrable domain's TLD is `test` — i.e. it belongs
- * to the sandbox namespace and should be routed to
- * {@link createSandboxResolver} instead of a real resolver. Delegates all
- * parsing to {@link normalizeDomain} / {@link registrableDomain} rather than
- * re-implementing hostname parsing here.
- */
-export function isSandboxDomain(domain: string): boolean {
-  const normalized = normalizeDomain(domain)
-  if (!normalized.ok) {
-    return false
-  }
-  return registrableDomain(normalized.domain).endsWith(`.${SANDBOX_TLD}`)
 }
 
 /**

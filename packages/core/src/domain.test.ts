@@ -105,11 +105,31 @@ describe('normalizeDomain', () => {
     })
   })
 
-  it('accepts an IDN domain (unicode label)', () => {
+  it('converts an IDN domain (unicode label) to its ASCII punycode form', () => {
+    // DNS itself is ASCII-only — node:dns's resolveTxt (and any real
+    // nameserver) needs `xn--caf-dma.com`, not `café.com`. Storing the
+    // unicode form as-is would claim fine but could never actually verify.
     const result = normalizeDomain('café.com')
-    // tldts accepts unicode labels directly (no punycode conversion needed);
-    // if that ever changes, this case documents the expected fallback.
-    expect(result).toEqual({ ok: true, domain: 'café.com' })
+    expect(result).toEqual({ ok: true, domain: 'xn--caf-dma.com' })
+  })
+
+  it('converts a multi-label IDN domain to punycode per label', () => {
+    const result = normalizeDomain('münchen.de')
+    expect(result).toEqual({ ok: true, domain: 'xn--mnchen-3ya.de' })
+  })
+
+  it('leaves an already-ASCII domain unchanged', () => {
+    expect(normalizeDomain('example.com')).toEqual({
+      ok: true,
+      domain: 'example.com',
+    })
+  })
+
+  it('converts an IDN domain pasted as a URL, case-insensitively', () => {
+    expect(normalizeDomain('https://Café.COM/verify')).toEqual({
+      ok: true,
+      domain: 'xn--caf-dma.com',
+    })
   })
 
   it('accepts a .test sandbox domain', () => {
