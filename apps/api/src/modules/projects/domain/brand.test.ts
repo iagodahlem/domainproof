@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   DEFAULT_BRAND_SLUG,
+  FALLBACK_PROJECT_SLUG,
   RESERVED_BRAND_SLUGS,
+  deriveProjectSlug,
   slugFromName,
   validateBrandSlug,
 } from './brand'
@@ -166,5 +168,34 @@ describe('slugFromName', () => {
 
     expect(result).not.toBeNull()
     expect(result?.endsWith('-')).toBe(false)
+  })
+})
+
+describe('deriveProjectSlug', () => {
+  it('derives a slug from a valid name, same as slugFromName', () => {
+    expect(deriveProjectSlug('Skylane HR')).toBe('skylane-hr')
+  })
+
+  it('falls back to the fixed fallback slug for a name that derives to a reserved slug', () => {
+    expect(deriveProjectSlug('Acme')).toBe(FALLBACK_PROJECT_SLUG)
+  })
+
+  it('falls back to the fixed fallback slug for an all-symbol name', () => {
+    expect(deriveProjectSlug('🚀🔥✨')).toBe(FALLBACK_PROJECT_SLUG)
+  })
+
+  it('falls back to the fixed fallback slug for an empty name', () => {
+    expect(deriveProjectSlug('')).toBe(FALLBACK_PROJECT_SLUG)
+  })
+
+  it('is deterministic: the same input always falls back the same way', () => {
+    expect(deriveProjectSlug('Acme')).toBe(deriveProjectSlug('Acme'))
+  })
+
+  it('the fallback slug itself is not reserved and passes validation', () => {
+    expect(validateBrandSlug(FALLBACK_PROJECT_SLUG)).toEqual({
+      ok: true,
+      slug: FALLBACK_PROJECT_SLUG,
+    })
   })
 })

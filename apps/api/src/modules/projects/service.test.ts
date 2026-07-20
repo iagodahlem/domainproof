@@ -13,10 +13,14 @@ function fakeAccountsService(accountId = 'account_1'): AccountsService {
 
 function fakeProjectsRepository(
   byAccountId: Record<string, string> = {},
+  slugsByProjectId: Record<string, string> = {},
 ): ProjectsRepository {
   return {
     async findDefaultProjectId(accountId) {
       return byAccountId[accountId]
+    },
+    async findSlugById(projectId) {
+      return slugsByProjectId[projectId]
     },
   }
 }
@@ -40,5 +44,25 @@ describe('getDefaultProjectId', () => {
     await expect(service.getDefaultProjectId('user_123')).rejects.toThrow(
       /No project found for account/,
     )
+  })
+})
+
+describe('getProjectSlug', () => {
+  it("returns the project's slug", async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository({}, { project_1: 'skylane' }),
+      fakeAccountsService(),
+    )
+
+    expect(await service.getProjectSlug('project_1')).toBe('skylane')
+  })
+
+  it('returns undefined for an unknown project id', async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository(),
+      fakeAccountsService(),
+    )
+
+    expect(await service.getProjectSlug('unknown')).toBeUndefined()
   })
 })

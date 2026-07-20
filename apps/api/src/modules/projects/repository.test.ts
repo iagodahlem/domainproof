@@ -44,9 +44,25 @@ describe('findDefaultProjectId', () => {
     const accountId = await createTestAccount()
     const [project] = await db
       .insert(projects)
-      .values({ accountId, name: 'Default' })
+      .values({ accountId, name: 'Default', slug: 'default' })
       .returning({ id: projects.id })
 
     expect(await repository.findDefaultProjectId(accountId)).toBe(project?.id)
+  })
+})
+
+describe('findSlugById', () => {
+  it('returns undefined for an unknown project id', async () => {
+    expect(await repository.findSlugById(randomUUID())).toBeUndefined()
+  })
+
+  it("returns the project's slug", async () => {
+    const accountId = await createTestAccount()
+    const [project] = await db
+      .insert(projects)
+      .values({ accountId, name: 'Skylane HR', slug: 'skylane-hr' })
+      .returning({ id: projects.id })
+
+    expect(await repository.findSlugById(project?.id ?? '')).toBe('skylane-hr')
   })
 })

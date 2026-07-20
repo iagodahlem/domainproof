@@ -52,6 +52,7 @@ describe('createWithDefaultProject', () => {
       .where(eq(projects.accountId, created?.id ?? ''))
     expect(projectRows).toHaveLength(1)
     expect(projectRows[0]?.name).toBe('Default')
+    expect(projectRows[0]?.slug).toBe('default')
   })
 
   it('returns undefined without creating a second project when the account already exists', async () => {
