@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { accounts, projects } from '@infra/db/schema'
+import { deriveProjectSlug } from '@modules/projects/domain/brand'
 
 /** A newly (or already) bootstrapped account's id. */
 export interface AccountRow {
@@ -57,6 +58,7 @@ export function createAccountsRepository(db: Database): AccountsRepository {
         await tx.insert(projects).values({
           accountId: account.id,
           name: 'Default',
+          slug: deriveProjectSlug('Default'),
         })
 
         return account

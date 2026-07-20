@@ -132,3 +132,27 @@ export function slugFromName(name: string): string | null {
   const result = validateBrandSlug(candidate)
   return result.ok ? result.slug : null
 }
+
+/**
+ * Deterministic fallback slug assigned when nothing valid can be derived
+ * from a project's name (see {@link deriveProjectSlug}). Matches the
+ * default the `projects.slug` migration backfills onto pre-existing rows,
+ * so "a project got its slug from the fallback" reads the same whether it
+ * happened via migration or via {@link deriveProjectSlug}.
+ */
+export const FALLBACK_PROJECT_SLUG = 'app'
+
+/**
+ * Derives a project's brand slug from its name for use at creation time.
+ * Unlike {@link slugFromName}, this never returns `null` — every project
+ * needs a slug the moment it's created (it's a `NOT NULL` column), so
+ * there's no caller left to prompt for an explicit one the way a builder
+ * later editing their brand settings could be. Any name that `slugFromName`
+ * can't turn into a valid, non-reserved slug (empty, all-symbol, or one
+ * that derives to a reserved word like "Acme" -> "acme") falls back to the
+ * fixed {@link FALLBACK_PROJECT_SLUG}, deterministically — not a mangled or
+ * randomized variant, so the same input always produces the same output.
+ */
+export function deriveProjectSlug(name: string): string {
+  return slugFromName(name) ?? FALLBACK_PROJECT_SLUG
+}

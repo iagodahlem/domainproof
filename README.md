@@ -83,17 +83,21 @@ The API has two authentication planes, split by path prefix (see
   meant to be called directly by integrations.
 - **Public API** (`/v1/*`) — authenticated with a project API key
   (`Authorization: Bearer dp_test_...` / `dp_live_...`). This is the plane
-  the SDK, CLI, MCP server, and direct integrations use. No endpoints live
-  here yet — domain verification (creating a domain, checking its status,
-  triggering a recheck) is next.
+  the SDK, CLI, MCP server, and direct integrations use. Domain claiming is
+  the first endpoint group here; checking a domain's status and triggering
+  a recheck are next.
 
-| Method | Path                            | Plane     | Description                                    |
-| ------ | ------------------------------- | --------- | ---------------------------------------------- |
-| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`. |
-| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.   |
-| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.         |
-| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                            |
-| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement. |
+| Method | Path                            | Plane     | Description                                                        |
+| ------ | ------------------------------- | --------- | ------------------------------------------------------------------ |
+| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                     |
+| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                       |
+| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                             |
+| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                |
+| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                     |
+| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge. |
+| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                   |
+| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).      |
+| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                           |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
