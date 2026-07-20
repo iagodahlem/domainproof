@@ -21,6 +21,7 @@ import { createSandboxResolver } from '@infra/dns/sandbox'
 import { isSandboxDomain } from '@domainproof/core'
 import { env } from './env'
 import { apiError } from '@shared/http-errors'
+import { createHostRestrictionMiddleware } from '@shared/middlewares/host-restriction'
 
 /**
  * Builds the `verifyDomain` use case's resolver-selection port: `.test`
@@ -78,6 +79,16 @@ export interface AppDependencies {
    * sleeping). Defaults to `() => new Date()`.
    */
   now?: () => Date
+  /**
+   * Injected for tests; defaults to `env.PUBLIC_API_HOST`. See
+   * `shared/middlewares/host-restriction.ts`.
+   */
+  publicApiHost?: string
+  /**
+   * Injected for tests; defaults to `env.DASHBOARD_API_HOST`. See
+   * `shared/middlewares/host-restriction.ts`.
+   */
+  dashboardApiHost?: string
 }
 
 /**
@@ -119,6 +130,19 @@ export function createApp(deps: AppDependencies = {}) {
           issuer: env.CLERK_ISSUER,
         })
       : undefined)
+
+  // Confines each configured plane hostname to its own path prefix — see
+  // shared/middlewares/host-restriction.ts. Applied once, at the root,
+  // ahead of every route below: unset in dev/tests/Railway's service
+  // domain, so this is a no-op until the two production hostnames are
+  // configured.
+  app.use(
+    '*',
+    createHostRestrictionMiddleware({
+      publicApiHost: deps.publicApiHost ?? env.PUBLIC_API_HOST,
+      dashboardApiHost: deps.dashboardApiHost ?? env.DASHBOARD_API_HOST,
+    }),
+  )
 
   app.get('/health', (c) => {
     return c.json({ status: 'ok', version: pkg.version })

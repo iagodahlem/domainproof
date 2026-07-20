@@ -59,11 +59,34 @@ every new route picks one:
   backend of the dashboard app (e.g. `/dashboard/keys`). Unversioned — we
   control its only consumer, so there's no external contract to version.
 
-Both planes are path-based on the same `api.domainproof.dev` origin today
-— no host routing. If the dashboard plane ever moves to its own
-subdomain, that's `dashboard.api.domainproof.dev` (grouped under the api
-tree, not a sibling of it), and it's a separate PR — nothing here builds
-host routing yet.
+Both planes are path-based on one origin, and that origin is also
+host-restricted in production:
+
+| Host                                                                          | Serves              |
+| ----------------------------------------------------------------------------- | ------------------- |
+| `api.domainproof.dev`                                                         | `/v1/*` only        |
+| `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only |
+| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | both planes         |
+
+This is enforced by `shared/middlewares/host-restriction.ts`, applied once
+at the root of `app.ts` — ahead of both plane routers, since it decides
+which plane (if any) a request may reach before either plane's own auth
+middleware runs. It's driven by two optional env vars, `PUBLIC_API_HOST`
+and `DASHBOARD_API_HOST` (see `env.ts`); unset (the default everywhere
+except production) means no restriction at all, so local dev and tests
+never need `/etc/hosts` tricks to exercise either plane. The wrong plane
+on a restricted host gets a 404 through the shared error taxonomy, not a
+403 — a 403 would confirm the other plane's routes exist on that host,
+which is exactly the information a 404 withholds.
+
+**A new plane hostname is created only when a real auth/CORS boundary
+appears, never speculatively.** `dashboard.api.domainproof.dev` earned one
+because the dashboard plane needed to be unreachable from hosts serving
+the public API — a real boundary — not because splitting hosts looked
+tidy. The path-based split (`/v1/*` vs `/dashboard/*`) remains the source
+of truth for which plane a route belongs to; host restriction is an
+additional production-only constraint layered on top, not a replacement
+for it.
 
 **A plane's `router.ts` is the only place its global middleware gets
 applied.** `apis/dashboard/router.ts` mounts session auth once for the
@@ -86,6 +109,10 @@ repository), two thin route files, each in its own plane.
 - Plane-agnostic (any plane could mount it) → `shared/middlewares/`. It
   must not assume a specific plane's context-variable shape — `rate-limit.ts`
   only requires `{ keyId: string }`, not `v1`'s full `ApiKeyAuthVariables`.
+  `host-restriction.ts` is the extreme version of this: it runs ahead of
+  either plane's auth and requires no context at all — it decides which
+  plane a request may reach before there's any plane-specific state to
+  assume.
 - Module-owned, and genuinely domain-related (not auth/rate-limiting) —
   e.g. a feature-flag check tied to one module's business rules → the
   module's own `middlewares/<name>.ts`. One file per middleware, same as

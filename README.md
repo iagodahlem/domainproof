@@ -22,12 +22,13 @@ rules.
 
 ## Environments
 
-|                   | URL                                                         |
-| ----------------- | ----------------------------------------------------------- |
-| Web (production)  | <https://domainproof.dev>                                   |
-| API (production)  | <https://api.domainproof.dev>                               |
-| Docs (production) | <https://docs.domainproof.dev> — host-routed by the web app |
-| Demo (production) | <https://demo.domainproof.dev> — host-routed by the web app |
+|                            | URL                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| Web (production)           | <https://domainproof.dev>                                                                     |
+| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
+| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
+| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
+| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
 
 |          | Local (`pnpm dev`)      | Local (`docker compose up`)   |
 | -------- | ----------------------- | ----------------------------- |
@@ -75,7 +76,11 @@ Base URL: `api.domainproof.dev`. Every non-2xx response is
 `{ error: { code, message } }`.
 
 The API has two authentication planes, split by path prefix (see
-[ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)):
+[ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
+plane is also confined to its own host — `api.domainproof.dev` serves
+`/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
+only — but locally and in the Railway service domain both stay reachable
+on one origin, so the split below is what matters for local development:
 
 - **Dashboard API** (`/dashboard/*`) — authenticated by the builder's login
   session (`Authorization: Bearer <session token>`). This is what the
