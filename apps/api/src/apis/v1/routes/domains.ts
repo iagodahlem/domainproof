@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { DEFAULT_TOKEN_TTL_MS, registrableDomain } from '@domainproof/core'
+import { DEFAULT_TOKEN_TTL_MS } from '@domainproof/core'
 import type { ApiKeyAuthVariables } from '../middlewares/api-key'
 import type {
   DomainsService,
@@ -94,15 +94,10 @@ export function recordStatusFor(domainStatus: DomainSummary['status']) {
  * `DomainSummary` the service returns, not inside `modules/domains`.
  */
 function serializeDomain(summary: DomainSummary) {
-  // The record proves control of the *registrable* domain (eTLD+1) — a
-  // claim for `sub.acme.co.uk` is verified via a record published on
-  // `acme.co.uk` (see core's `challengeHost`/`registrableDomain`), so a
-  // subdomain claim's copy shouldn't claim to prove the subdomain itself.
-  // (Whether a claim should even be allowed to name a subdomain at all,
-  // given it verifies at the registrable domain, is a separate product
-  // question — this only fixes the copy to match what's actually true
-  // today.)
-  const provesControlOf = registrableDomain(summary.domain)
+  // The record proves control of the exact claimed hostname — see core's
+  // `challengeHost`, which roots the record at `summary.domain` itself
+  // rather than its registrable domain (eTLD+1).
+  const provesControlOf = summary.domain
   const recordStatus = recordStatusFor(summary.status)
 
   return {

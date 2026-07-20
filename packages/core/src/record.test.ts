@@ -21,9 +21,15 @@ describe('challengeHost', () => {
     )
   })
 
-  it('returns the TXT challenge host rooted at the registrable domain', () => {
+  it('returns the TXT challenge host rooted at the exact claimed hostname, not its registrable domain', () => {
     expect(challengeHost('sub.acme.co.uk', BRAND_SLUG)).toBe(
-      '_domainproof-challenge.acme.co.uk',
+      '_domainproof-challenge.sub.acme.co.uk',
+    )
+  })
+
+  it('returns the TXT challenge host for a multi-level subdomain claim', () => {
+    expect(challengeHost('dashboard.api.acme.com', BRAND_SLUG)).toBe(
+      '_domainproof-challenge.dashboard.api.acme.com',
     )
   })
 
@@ -33,9 +39,25 @@ describe('challengeHost', () => {
     )
   })
 
+  it('returns the TXT challenge host for a subdomain of a .test sandbox domain', () => {
+    expect(challengeHost('app.verified.test', BRAND_SLUG)).toBe(
+      '_domainproof-challenge.app.verified.test',
+    )
+  })
+
   it('returns a brand-labeled challenge host for a different brand slug', () => {
     expect(challengeHost('sub.acme.co.uk', 'skylane')).toBe(
-      '_skylane-challenge.acme.co.uk',
+      '_skylane-challenge.sub.acme.co.uk',
+    )
+  })
+
+  it('returns the TXT challenge host for an already-punycoded IDN domain', () => {
+    // challengeHost expects its `domain` argument to already have gone
+    // through normalizeDomain, which converts unicode labels to ASCII
+    // punycode (see domain.test.ts) — so this exercises the ASCII form a
+    // real caller would pass, not raw unicode.
+    expect(challengeHost('xn--caf-dma.com', BRAND_SLUG)).toBe(
+      '_domainproof-challenge.xn--caf-dma.com',
     )
   })
 
