@@ -59,6 +59,16 @@ export const projects = pgTable('projects', {
     .notNull()
     .references(() => accounts.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  /**
+   * The project's brand slug, used to namespace DNS verification record
+   * names and values (`_<slug>-challenge.<domain>`, `<slug>-verify=<token>`
+   * — see `@domainproof/core`'s `record.ts`). Derived from the project name
+   * via `modules/projects/domain/brand.ts`'s `deriveProjectSlug` at
+   * creation time; no app code ever leaves this unset, but the column
+   * itself carries no uniqueness constraint — two projects can share a
+   * slug (e.g. both falling back to the same default).
+   */
+  slug: text('slug').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

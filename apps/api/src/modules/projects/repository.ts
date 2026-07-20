@@ -14,6 +14,9 @@ export interface ProjectsRepository {
    * until the dashboard supports multiple projects per account.
    */
   findDefaultProjectId(accountId: string): Promise<string | undefined>
+
+  /** A project's brand slug, e.g. for building its domain verification records. */
+  findSlugById(projectId: string): Promise<string | undefined>
 }
 
 export function createProjectsRepository(db: Database): ProjectsRepository {
@@ -25,6 +28,15 @@ export function createProjectsRepository(db: Database): ProjectsRepository {
         .where(eq(projects.accountId, accountId))
         .limit(1)
       return project?.id
+    },
+
+    async findSlugById(projectId) {
+      const [project] = await db
+        .select({ slug: projects.slug })
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1)
+      return project?.slug
     },
   }
 }

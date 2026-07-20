@@ -8,6 +8,13 @@
       "when": 1784411151920,
       "tag": "0000_secret_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784518867554,
+      "tag": "0001_add_project_slug",
+      "breakpoints": true
     }
   ]
 }

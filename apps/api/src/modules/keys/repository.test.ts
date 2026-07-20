@@ -25,7 +25,11 @@ async function createTestProject(): Promise<string> {
 
   const [project] = await db
     .insert(projects)
-    .values({ accountId: account.id, name: 'Test project' })
+    .values({
+      accountId: account.id,
+      name: 'Test project',
+      slug: 'test-project',
+    })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')
 
