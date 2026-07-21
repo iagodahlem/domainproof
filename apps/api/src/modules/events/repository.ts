@@ -1,10 +1,20 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
-import { events } from '@infra/db/schema'
+import { domains, events } from '@infra/db/schema'
 import type { Mode } from '@shared/events'
 import type { EventsCursor } from './domain/cursor'
 
 export type EventRow = typeof events.$inferSelect
+
+/**
+ * An `EventRow` plus the owning domain's name, joined in from `domains` —
+ * `listByProject`'s row shape. `domain` (and, in practice, `domainId`/
+ * `mode`) is always present here since every row comes from an inner join
+ * on `domains`: a project's events are, by definition, all domain-scoped.
+ */
+export interface EventWithDomainRow extends EventRow {
+  domain: string
+}
 
 export interface EventInsert {
   type: string
@@ -20,6 +30,17 @@ export interface ListDomainEventsOptions {
 
 export interface ListDomainEventsResult {
   rows: EventRow[]
+  /** `true` when more rows exist past the returned page. */
+  hasMore: boolean
+}
+
+export interface ListProjectEventsOptions {
+  limit: number
+  cursor?: EventsCursor
+}
+
+export interface ListProjectEventsResult {
+  rows: EventWithDomainRow[]
   /** `true` when more rows exist past the returned page. */
   hasMore: boolean
 }
@@ -46,6 +67,20 @@ export interface EventsRepository {
     domainId: string,
     options: ListDomainEventsOptions,
   ): Promise<ListDomainEventsResult>
+
+  /**
+   * A project's events across all its domains and both modes, newest
+   * first, cursor-paginated on `(created_at, id)` — the dashboard's
+   * project-wide events table, beside `listByDomain`'s single-domain
+   * timeline. Inner-joins `domains` (scoped to `projectId`) to pull in
+   * each row's domain name, which is not itself a column on `events`.
+   * Fetches `limit + 1` rows to decide `hasMore` without a second
+   * round-trip, then trims back to `limit`, same as `listByDomain`.
+   */
+  listByProject(
+    projectId: string,
+    options: ListProjectEventsOptions,
+  ): Promise<ListProjectEventsResult>
 }
 
 export function createEventsRepository(db: Database): EventsRepository {
@@ -93,6 +128,48 @@ export function createEventsRepository(db: Database): EventsRepository {
             : eq(events.domainId, domainId),
         )
         .orderBy(asc(events.createdAt), asc(events.id))
+        .limit(limit + 1)
+
+      const hasMore = rows.length > limit
+      return { rows: hasMore ? rows.slice(0, limit) : rows, hasMore }
+    },
+
+    async listByProject(projectId, { limit, cursor }) {
+      // Same anchoring approach as `listByDomain` (see its comment): the
+      // cursor row's own stored `(created_at, id)` is looked up server-
+      // side, scoped to this project's domains so a cursor id from
+      // another project's events (or one that no longer exists) just
+      // yields an empty page. Newest-first here (`<` rather than `>`),
+      // matching `domains/repository.ts`'s `listByProjectPaginated` —
+      // the dashboard's tables read newest activity at the top, unlike a
+      // single domain's oldest-first timeline.
+      const cursorCondition = cursor
+        ? sql`(${events.createdAt}, ${events.id}) < (
+            select created_at, id from events
+            where id = ${cursor.id} and domain_id in (
+              select id from domains where project_id = ${projectId}
+            )
+          )`
+        : undefined
+
+      const rows = await db
+        .select({
+          id: events.id,
+          type: events.type,
+          domainId: events.domainId,
+          mode: events.mode,
+          payload: events.payload,
+          createdAt: events.createdAt,
+          domain: domains.domain,
+        })
+        .from(events)
+        .innerJoin(domains, eq(events.domainId, domains.id))
+        .where(
+          cursorCondition
+            ? and(eq(domains.projectId, projectId), cursorCondition)
+            : eq(domains.projectId, projectId),
+        )
+        .orderBy(desc(events.createdAt), desc(events.id))
         .limit(limit + 1)
 
       const hasMore = rows.length > limit
