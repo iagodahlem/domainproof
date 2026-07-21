@@ -22,6 +22,7 @@
   --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-bg-glass: var(--bg-glass);
 
   /* text */
   --color-text: var(--text);
@@ -43,6 +44,17 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+
+  /* border tints */
+  --color-accent-border: var(--accent-border);
+  --color-accent-border-soft: var(--accent-border-soft);
+  --color-accent-border-strong: var(--accent-border-strong);
+  --color-success-border: var(--success-border);
+  --color-success-border-strong: var(--success-border-strong);
+  --color-warning-border: var(--warning-border);
+  --color-warning-border-strong: var(--warning-border-strong);
+  --color-danger-border: var(--danger-border);
+  --color-danger-border-strong: var(--danger-border-strong);
 
   /* type — family */
   --font-sans: var(--font-sans);
@@ -76,4 +88,5 @@
 
   /* shadow */
   --shadow-card: var(--shadow-card);
+  --shadow-current: var(--shadow-current);
 }

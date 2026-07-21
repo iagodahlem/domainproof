@@ -6,10 +6,9 @@ export type CalloutEmphasis = 'solid' | 'dashed'
 
 const SOLID_TONE_CLASSES: Record<CalloutTone, string> = {
   warning:
-    'bg-[var(--warning-soft)] border-[color-mix(in_oklab,var(--warning)_var(--alpha-border),transparent)] [&_strong]:text-[color:var(--warning-strong)]',
-  accent:
-    'bg-[var(--accent-soft)] border-[color-mix(in_oklab,var(--accent)_var(--alpha-border-soft),transparent)] [&_strong]:text-[color:var(--accent)]',
-  neutral: 'bg-[var(--surface-2)] [&_strong]:text-[color:var(--text)]',
+    'bg-warning-soft border-warning-border [&_strong]:text-warning-strong',
+  accent: 'bg-accent-soft border-accent-border-soft [&_strong]:text-accent',
+  neutral: 'bg-surface-2 [&_strong]:text-text',
 }
 
 export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
@@ -28,13 +27,13 @@ export function Callout({
   return (
     <div
       className={cn(
-        'text-[length:var(--text-sm)] text-[color:var(--text-muted)]',
+        'text-[length:var(--text-sm)] text-text-muted',
         emphasis === 'solid'
           ? cn(
-              'rounded-[var(--radius-lg)] border border-transparent p-[var(--pad-card)]',
+              'rounded-lg border border-transparent p-5',
               SOLID_TONE_CLASSES[tone],
             )
-          : 'block border-t border-dashed border-t-[var(--border-strong)] pt-[var(--space-4)]',
+          : 'block border-t border-dashed border-t-border-strong pt-4',
         className,
       )}
       {...props}

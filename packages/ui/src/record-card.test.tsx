@@ -40,8 +40,6 @@ describe('RecordCard', () => {
         <RecordField label="Host" value="acme.co" />
       </RecordCard>,
     )
-    expect(screen.getByText('✓').className).toContain(
-      'text-[color:var(--success)]',
-    )
+    expect(screen.getByText('✓').className).toContain('text-success')
   })
 })

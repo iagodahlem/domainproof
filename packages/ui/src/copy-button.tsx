@@ -7,7 +7,7 @@ import { Button, type ButtonProps } from './button'
 import { cn } from './cn'
 
 const COPIED_CLASSES =
-  'border-[color-mix(in_oklab,var(--success)_var(--alpha-border-strong),transparent)] bg-[var(--success-soft)] text-[color:var(--success)] hover:bg-[var(--success-soft)]'
+  'border-success-border-strong bg-success-soft text-success hover:bg-success-soft'
 
 export interface CopyButtonProps extends Omit<ButtonProps, 'onClick'> {
   value: string

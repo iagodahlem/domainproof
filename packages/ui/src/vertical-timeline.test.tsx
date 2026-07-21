@@ -43,12 +43,8 @@ describe('VerticalTimeline', () => {
         ]}
       />,
     )
-    expect(screen.getByText('Propagating').className).toContain(
-      'text-[color:var(--accent)]',
-    )
-    expect(screen.getByText('3').className).toContain(
-      'text-[color:var(--accent)]',
-    )
+    expect(screen.getByText('Propagating').className).toContain('text-accent')
+    expect(screen.getByText('3').className).toContain('text-accent')
   })
 
   it('fills a done node with the success tone', () => {
@@ -57,7 +53,7 @@ describe('VerticalTimeline', () => {
         steps={[{ id: 'claimed', status: 'done', node: '✓', title: 'Claimed' }]}
       />,
     )
-    expect(screen.getByText('✓').className).toContain('bg-[var(--success)]')
+    expect(screen.getByText('✓').className).toContain('bg-success')
   })
 
   it('omits the connector line after the last step', () => {

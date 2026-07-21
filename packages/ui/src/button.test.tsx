@@ -16,13 +16,13 @@ describe('Button', () => {
   it('applies the primary variant classes', () => {
     render(<Button variant="primary">Recheck now</Button>)
     const el = screen.getByRole('button')
-    expect(el.className).toContain('bg-[var(--accent)]')
+    expect(el.className).toContain('bg-accent')
   })
 
   it('applies the danger-ghost variant classes', () => {
     render(<Button variant="danger-ghost">Remove domain</Button>)
     const el = screen.getByRole('button')
-    expect(el.className).toContain('text-[color:var(--danger)]')
+    expect(el.className).toContain('text-danger')
   })
 
   it('applies the sm size classes', () => {
@@ -34,7 +34,7 @@ describe('Button', () => {
   it('applies the pill shape classes', () => {
     render(<Button shape="pill">Recheck now</Button>)
     const el = screen.getByRole('button')
-    expect(el.className).toContain('rounded-[var(--radius-full)]')
+    expect(el.className).toContain('rounded-full')
   })
 
   it('disables the button and blocks clicks when disabled', () => {

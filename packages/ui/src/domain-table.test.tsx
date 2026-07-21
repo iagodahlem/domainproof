@@ -62,8 +62,8 @@ describe('DomainTableRow', () => {
       />,
     )
     const row = screen.getByTestId('row')
-    expect(row.className).toContain('bg-[var(--accent-soft)]')
-    expect(row.className).toContain('hover:bg-[var(--accent-soft)]')
+    expect(row.className).toContain('bg-accent-soft')
+    expect(row.className).toContain('hover:bg-accent-soft')
   })
 
   it('reorders columns and hides the chevron under the collapse breakpoint', () => {

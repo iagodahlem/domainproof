@@ -15,7 +15,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     const errorId = `${inputId}-error`
 
     return (
-      <div className="flex flex-col gap-[var(--space-2)]">
+      <div className="flex flex-col gap-2">
         <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
         <input
           ref={ref}
@@ -23,8 +23,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn(
-            'rounded-[var(--radius-md)] border bg-[var(--bg)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text)] transition-[background-color,border-color] duration-[var(--duration-fast)] placeholder:text-[color:var(--text-faint)] disabled:cursor-not-allowed disabled:opacity-50',
-            error ? 'border-[var(--danger)]' : 'border-[var(--border)]',
+            'rounded-md border bg-bg px-3 py-2 text-[length:var(--text-sm)] text-text transition-[background-color,border-color] duration-150 placeholder:text-text-faint disabled:cursor-not-allowed disabled:opacity-50',
+            error ? 'border-danger' : 'border-border',
             className,
           )}
           {...props}

@@ -276,12 +276,12 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-bg font-sans text-text"
     >
-      <header className="sticky top-0 z-10 border-b border-border bg-[color-mix(in_oklab,var(--bg)_82%,transparent)] backdrop-blur-[10px] backdrop-saturate-[140%]">
+      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
           <span className="flex items-center gap-2 text-base font-bold whitespace-nowrap">
             <span
               aria-hidden="true"
-              className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[7px] border border-[color-mix(in_oklab,var(--accent)_var(--alpha-border),transparent)] bg-accent-soft text-accent"
+              className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent"
             >
               <Check size={13} strokeWidth={2.2} />
             </span>
@@ -324,7 +324,7 @@ export default function DesignSystemPage() {
                 {SPACE_TOKENS.map((step) => (
                   <div key={step} className="flex items-center gap-4">
                     <span className="w-20 font-mono text-xs text-text-faint">
-                      --space-{step}
+                      space-{step}
                     </span>
                     <div
                       className={`h-2.5 rounded-sm bg-accent ${SPACE_WIDTH_CLASS[step]}`}

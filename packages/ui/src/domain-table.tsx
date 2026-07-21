@@ -5,15 +5,14 @@ import { ChevronRight } from 'lucide-react'
 import { Badge, type Tone } from './badge'
 import { cn } from './cn'
 
-const GRID_COLS =
-  'grid-cols-[20px_1fr_120px_130px_120px_16px] gap-x-[var(--space-4)]'
+const GRID_COLS = 'grid-cols-[20px_1fr_120px_130px_120px_16px] gap-x-4'
 
 const DOT_TONE_CLASSES: Record<Tone, string> = {
-  accent: 'bg-[var(--accent)]',
-  success: 'bg-[var(--success)]',
-  warning: 'bg-[var(--warning)]',
-  danger: 'bg-[var(--danger)]',
-  neutral: 'bg-[var(--text-faint)]',
+  accent: 'bg-accent',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-danger',
+  neutral: 'bg-text-faint',
 }
 
 export function DomainTable({
@@ -23,7 +22,7 @@ export function DomainTable({
   return (
     <div
       className={cn(
-        'mb-[var(--space-6)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]',
+        'mb-6 overflow-hidden rounded-lg border border-border',
         className,
       )}
       {...props}
@@ -38,7 +37,7 @@ export function DomainTableHead({
   return (
     <div
       className={cn(
-        'grid items-center border-b border-[var(--border)] bg-[var(--surface-2)] px-[var(--space-4)] py-[var(--space-3)] font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-[color:var(--text-faint)] uppercase max-[760px]:hidden',
+        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase max-[760px]:hidden',
         GRID_COLS,
         className,
       )}
@@ -95,10 +94,10 @@ export function DomainTableRow({
       onClick={onSelect}
       onKeyDown={handleKeyDown}
       className={cn(
-        'grid items-center border-b border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] transition-colors duration-[var(--duration-fast)] last:border-b-0 hover:bg-[var(--surface-2)]',
+        'grid items-center border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-surface-2',
         GRID_COLS,
-        active && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]',
-        'max-[760px]:flex max-[760px]:flex-wrap max-[760px]:items-center max-[760px]:gap-x-[var(--space-3)] max-[760px]:gap-y-[var(--space-2)] max-[760px]:p-[var(--space-4)]',
+        active && 'bg-accent-soft hover:bg-accent-soft',
+        'max-[760px]:flex max-[760px]:flex-wrap max-[760px]:items-center max-[760px]:gap-x-3 max-[760px]:gap-y-2 max-[760px]:p-4',
         className,
       )}
       {...props}
@@ -110,16 +109,16 @@ export function DomainTableRow({
         )}
       />
       <div className="min-w-0 max-[760px]:order-2 max-[760px]:min-w-0 max-[760px]:flex-1">
-        <div className="truncate font-mono text-[length:var(--text-md)] font-[var(--font-weight-heading)]">
+        <div className="truncate font-mono text-[length:var(--text-md)] font-heading">
           {name}
         </div>
-        <div className="mt-[2px] hidden text-[length:var(--text-2xs)] text-[color:var(--text-faint)] max-[760px]:block">
+        <div className="mt-[2px] hidden text-[length:var(--text-2xs)] text-text-faint max-[760px]:block">
           {statusLabel} · {lastChecked}
         </div>
       </div>
-      <div className="min-w-0 max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-[calc(20px+var(--space-3))]">
+      <div className="min-w-0 max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-[calc(20px+0.75rem)]">
         {provider ?? (
-          <span className="text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
+          <span className="text-[length:var(--text-xs)] text-text-faint">
             —
           </span>
         )}
@@ -127,13 +126,13 @@ export function DomainTableRow({
       <div className="max-[760px]:order-3">
         <Badge tone={statusTone}>{statusLabel}</Badge>
       </div>
-      <span className="text-[length:var(--text-xs)] text-[color:var(--text-faint)] max-[760px]:hidden">
+      <span className="text-[length:var(--text-xs)] text-text-faint max-[760px]:hidden">
         {lastChecked}
       </span>
       <ChevronRight
         aria-hidden="true"
         size={16}
-        className="justify-self-end text-[color:var(--text-faint)] max-[760px]:hidden"
+        className="justify-self-end text-text-faint max-[760px]:hidden"
       />
     </div>
   )
@@ -146,17 +145,17 @@ export function DomainTableRowSkeleton({
   return (
     <div
       className={cn(
-        'grid items-center gap-x-[var(--space-4)] border-b border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] last:border-b-0',
+        'grid items-center gap-x-4 border-b border-border px-4 py-3 last:border-b-0',
         GRID_COLS,
         className,
       )}
       {...props}
     >
-      <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--surface-3)]" />
-      <span className="h-4 w-2/3 animate-pulse rounded-[var(--radius-sm)] bg-[var(--surface-3)]" />
-      <span className="h-4 w-16 animate-pulse rounded-[var(--radius-sm)] bg-[var(--surface-3)]" />
-      <span className="h-5 w-20 animate-pulse rounded-[var(--radius-sm)] bg-[var(--surface-3)]" />
-      <span className="h-4 w-14 animate-pulse rounded-[var(--radius-sm)] bg-[var(--surface-3)]" />
+      <span className="h-2 w-2 animate-pulse rounded-full bg-surface-3" />
+      <span className="h-4 w-2/3 animate-pulse rounded-sm bg-surface-3" />
+      <span className="h-4 w-16 animate-pulse rounded-sm bg-surface-3" />
+      <span className="h-5 w-20 animate-pulse rounded-sm bg-surface-3" />
+      <span className="h-4 w-14 animate-pulse rounded-sm bg-surface-3" />
       <span />
     </div>
   )

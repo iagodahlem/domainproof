@@ -18,8 +18,11 @@ const CLASSES = [
   'bg-danger',
   'rounded-md',
   'shadow-card',
+  'shadow-current',
   'font-heading',
   'leading-body',
+  'border-accent-border',
+  'bg-bg-glass',
 ]
 
 async function compile() {
@@ -72,5 +75,15 @@ describe('theme.css', () => {
     )
     expect(css).toMatch(/font-weight:\s*var\(--font-weight-heading\)/)
     expect(css).toMatch(/line-height:\s*var\(--leading-body\)/)
+  })
+
+  it('points the new border-tint, shadow and duration utilities at the raw token variable', async () => {
+    const css = await compile()
+    expect(css).toMatch(
+      /\.border-accent-border\s*{\s*border-color:\s*var\(--accent-border\);?\s*}/,
+    )
+    expect(css).toMatch(
+      /\.shadow-current\s*{[^}]*--tw-shadow:\s*var\(--shadow-current\)/,
+    )
   })
 })

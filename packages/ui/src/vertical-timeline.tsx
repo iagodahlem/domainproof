@@ -31,19 +31,16 @@ export function VerticalTimeline({
         return (
           <div
             key={step.id}
-            className={cn(
-              'relative flex gap-[var(--space-4)]',
-              !isLast && 'pb-[var(--space-8)]',
-            )}
+            className={cn('relative flex gap-4', !isLast && 'pb-8')}
           >
             <div className="flex w-[28px] flex-shrink-0 flex-col items-center">
               <span
                 className={cn(
-                  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--border-strong)] bg-[var(--surface)] font-mono text-[length:var(--text-xs)] font-[var(--font-weight-bold)] text-[color:var(--text-faint)]',
+                  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface font-mono text-[length:var(--text-xs)] font-bold text-text-faint',
                   step.status === 'done' &&
-                    'border-[var(--success)] bg-[var(--success)] text-[color:var(--success-foreground)]',
+                    'border-success bg-success text-success-foreground',
                   step.status === 'current' &&
-                    'border-[var(--accent)] text-[color:var(--accent)] shadow-[0_0_0_4px_var(--accent-soft)]',
+                    'border-accent text-accent shadow-current',
                 )}
               >
                 {step.node}
@@ -51,8 +48,8 @@ export function VerticalTimeline({
               {!isLast ? (
                 <span
                   className={cn(
-                    'mt-[var(--space-2)] min-h-[16px] w-[2px] flex-1 bg-[var(--border-strong)]',
-                    step.status === 'done' && 'bg-[var(--success)]',
+                    'mt-2 min-h-[16px] w-[2px] flex-1 bg-border-strong',
+                    step.status === 'done' && 'bg-success',
                   )}
                 />
               ) : null}
@@ -60,31 +57,29 @@ export function VerticalTimeline({
             <div className="min-w-0 flex-1 pt-[2px]">
               <div
                 className={cn(
-                  'text-[length:var(--text-base)] font-[var(--font-weight-heading)]',
-                  step.status === 'current' && 'text-[color:var(--accent)]',
+                  'text-[length:var(--text-base)] font-heading',
+                  step.status === 'current' && 'text-accent',
                 )}
               >
                 {step.title}
               </div>
               {step.meta ? (
-                <div className="mt-[2px] font-mono text-[length:var(--text-2xs)] text-[color:var(--text-faint)]">
+                <div className="mt-[2px] font-mono text-[length:var(--text-2xs)] text-text-faint">
                   {step.meta}
                 </div>
               ) : null}
               {step.description ? (
                 <div
                   className={cn(
-                    'mt-[var(--space-2)] max-w-[54ch] text-[length:var(--text-sm)] leading-[var(--leading-body)] text-[color:var(--text-muted)]',
-                    !isLast && 'mb-[var(--space-4)]',
+                    'mt-2 max-w-[54ch] text-[length:var(--text-sm)] leading-body text-text-muted',
+                    !isLast && 'mb-4',
                   )}
                 >
                   {step.description}
                 </div>
               ) : null}
               {step.content ? (
-                <div className="flex flex-col gap-[var(--space-3)]">
-                  {step.content}
-                </div>
+                <div className="flex flex-col gap-3">{step.content}</div>
               ) : null}
             </div>
           </div>

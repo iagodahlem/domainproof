@@ -29,7 +29,7 @@ describe('VerificationLog', () => {
     ).toBeTruthy()
     expect(screen.getByText('Technical detail')).toBeTruthy()
     expect(screen.getByText('no record found').className).toContain(
-      'text-[color:var(--warning-strong)]',
+      'text-warning-strong',
     )
     expect(screen.getByText('1 entry')).toBeTruthy()
   })
@@ -60,8 +60,6 @@ describe('VerificationLogStatus', () => {
     render(
       <VerificationLogStatus tone="ok">record found</VerificationLogStatus>,
     )
-    expect(screen.getByText('record found').className).toContain(
-      'text-[color:var(--success)]',
-    )
+    expect(screen.getByText('record found').className).toContain('text-success')
   })
 })

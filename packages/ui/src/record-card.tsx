@@ -5,8 +5,8 @@ import { cn } from './cn'
 export type RecordCardStepTone = 'accent' | 'success'
 
 const STEP_TONE_CLASSES: Record<RecordCardStepTone, string> = {
-  accent: 'bg-[var(--accent-soft)] text-[color:var(--accent)]',
-  success: 'bg-[var(--success-soft)] text-[color:var(--success)]',
+  accent: 'bg-accent-soft text-accent',
+  success: 'bg-success-soft text-success',
 }
 
 export interface RecordCardProps extends Omit<
@@ -36,28 +36,28 @@ export function RecordCard({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]',
+        'overflow-hidden rounded-lg border border-border',
         className,
       )}
       {...props}
     >
       {title ? (
         <CardHead>
-          <div className="flex items-start gap-[var(--space-3)]">
+          <div className="flex items-start gap-3">
             {step != null ? (
               <span
                 className={cn(
-                  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-[length:var(--text-2xs)] font-[var(--font-weight-bold)]',
+                  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-[length:var(--text-2xs)] font-bold',
                   STEP_TONE_CLASSES[stepTone],
                 )}
               >
                 {step}
               </span>
             ) : null}
-            <div className="text-[length:var(--text-base)] font-[var(--font-weight-heading)]">
+            <div className="text-[length:var(--text-base)] font-heading">
               <div>{title}</div>
               {sub ? (
-                <div className="mt-[2px] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-faint)]">
+                <div className="mt-[2px] text-[length:var(--text-sm)] font-medium text-text-faint">
                   {sub}
                 </div>
               ) : null}

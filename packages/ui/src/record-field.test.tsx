@@ -40,9 +40,7 @@ describe('RecordField', () => {
     )
     const value = screen.getByText('acme.co')
     expect(value.className).toContain('text-[length:var(--text-sm)]')
-    expect(screen.getByTestId('field').className).toContain(
-      'px-[var(--space-4)]',
-    )
+    expect(screen.getByTestId('field').className).toContain('px-4')
   })
 
   it('collapses the label to an auto width under 560px', () => {

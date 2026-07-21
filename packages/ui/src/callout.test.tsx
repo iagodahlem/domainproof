@@ -11,14 +11,14 @@ describe('Callout', () => {
   it('defaults to a solid neutral emphasis', () => {
     render(<Callout>Detail view for acme.co</Callout>)
     const el = screen.getByText('Detail view for acme.co')
-    expect(el.className).toContain('bg-[var(--surface-2)]')
-    expect(el.className).toContain('rounded-[var(--radius-lg)]')
+    expect(el.className).toContain('bg-surface-2')
+    expect(el.className).toContain('rounded-lg')
   })
 
   it('applies the warning tone fill', () => {
     render(<Callout tone="warning">Field names differ slightly</Callout>)
     expect(screen.getByText('Field names differ slightly').className).toContain(
-      'bg-[var(--warning-soft)]',
+      'bg-warning-soft',
     )
   })
 
@@ -28,13 +28,13 @@ describe('Callout', () => {
     )
     expect(
       screen.getByText('Your nameservers look like Cloudflare').className,
-    ).toContain('bg-[var(--accent-soft)]')
+    ).toContain('bg-accent-soft')
   })
 
   it('switches to the dashed emphasis with no fill', () => {
     render(<Callout emphasis="dashed">What's happening under the hood</Callout>)
     const el = screen.getByText("What's happening under the hood")
     expect(el.className).toContain('border-dashed')
-    expect(el.className).not.toContain('bg-[var(--surface-2)]')
+    expect(el.className).not.toContain('bg-surface-2')
   })
 })
