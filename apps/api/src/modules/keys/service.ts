@@ -28,6 +28,27 @@ export interface CreateKeyResult {
   apiKey: ApiKeyListItem
 }
 
+/**
+ * Freshly generated, hashed API key material, not yet persisted — the
+ * `insert` field is ready to hand straight to `KeysRepository.insert`
+ * (minus `projectId`, assigned by the caller). Exposed so a caller minting
+ * more than one key inside its own atomic transaction (see
+ * `modules/projects/service.ts`'s `createProject`, which mints a project's
+ * initial test + live pair alongside the project row) can generate the
+ * material up front without this module owning a transaction it has no
+ * other reason to participate in.
+ */
+export interface ApiKeyMaterial {
+  key: string
+  insert: {
+    mode: ApiKeyMode
+    keyId: string
+    secretHash: string
+    last4: string
+    name: string | null
+  }
+}
+
 export interface KeysService {
   /**
    * Creates a new API key for a project. The full key (including the
@@ -55,6 +76,12 @@ export interface KeysService {
    * anti-enumeration stance used elsewhere in the key lifecycle).
    */
   rotateKey(projectId: string, keyId: string): Promise<CreateKeyResult | null>
+
+  /** The pure half of `createKey` — see {@link ApiKeyMaterial}. */
+  generateKeyMaterial(mode: ApiKeyMode, name?: string): ApiKeyMaterial
+
+  /** Turns a persisted row into its display-safe list form — for callers that insert rows themselves via {@link generateKeyMaterial} instead of `createKey`. */
+  toListItem(row: ApiKeyRow): ApiKeyListItem
 }
 
 function hashSecret(secret: string): string {
@@ -74,23 +101,33 @@ function toListItem(row: ApiKeyRow): ApiKeyListItem {
   }
 }
 
+function generateKeyMaterial(mode: ApiKeyMode, name?: string): ApiKeyMaterial {
+  const keyId = generateKeyId()
+  const secret = generateToken()
+  const key = formatApiKey({ mode, keyId, secret })
+
+  return {
+    key,
+    insert: {
+      mode,
+      keyId,
+      secretHash: hashSecret(secret),
+      last4: secret.slice(-4),
+      name: name ?? null,
+    },
+  }
+}
+
 export function createKeysService(repository: KeysRepository): KeysService {
   return {
+    generateKeyMaterial,
+    toListItem,
+
     async createKey(projectId, mode, name) {
-      const keyId = generateKeyId()
-      const secret = generateToken()
-      const key = formatApiKey({ mode, keyId, secret })
+      const material = generateKeyMaterial(mode, name)
+      const row = await repository.insert({ ...material.insert, projectId })
 
-      const row = await repository.insert({
-        projectId,
-        mode,
-        keyId,
-        secretHash: hashSecret(secret),
-        last4: secret.slice(-4),
-        name: name ?? null,
-      })
-
-      return { key, apiKey: toListItem(row) }
+      return { key: material.key, apiKey: toListItem(row) }
     },
 
     async listKeys(projectId) {

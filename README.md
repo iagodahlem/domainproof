@@ -69,6 +69,8 @@ pnpm dev
 
 To wipe and rebuild the local database from scratch, run `pnpm --filter api db:reset -- --yes` (refuses without `--yes` or `DB_RESET_CONFIRM=1`, and always prints the host it's about to reset).
 
+To seed a demo account, a named project, and its test/live API keys for local testing, run `pnpm --filter api db:seed` (prints both keys once — save them, they're not retrievable afterward). Refuses to reseed an account that already exists, so run `db:reset` first if you want a fresh demo.
+
 ### Run with Docker
 
 `docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`
@@ -95,19 +97,21 @@ on one origin, so the split below is what matters for local development:
   the SDK, CLI, MCP server, and direct integrations use. Domain claiming,
   and running the DNS check that verifies a claim, live here.
 
-| Method | Path                            | Plane     | Description                                                                                |
-| ------ | ------------------------------- | --------- | ------------------------------------------------------------------------------------------ |
-| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                                             |
-| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                                               |
-| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                                                     |
-| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                        |
-| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                             |
-| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge.                         |
-| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                                           |
-| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).                              |
-| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                                                   |
-| POST   | `/v1/domains/:id/verify`        | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.    |
-| GET    | `/v1/domains/:id/events`        | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions). |
+| Method | Path                                                | Plane     | Description                                                                                                             |
+| ------ | --------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`                                           | none      | Liveness check; returns `{ status, version }`.                                                                          |
+| GET    | `/dashboard/projects`                               | Dashboard | Lists the caller's projects (empty for a fresh account).                                                                |
+| POST   | `/dashboard/projects`                               | Dashboard | Creates a named project, minting its test and live API keys in one transaction and returning both one-time key strings. |
+| POST   | `/dashboard/projects/:projectId/keys`               | Dashboard | Creates another API key for the given project.                                                                          |
+| GET    | `/dashboard/projects/:projectId/keys`               | Dashboard | Lists the given project's API keys.                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                                                          |
+| POST   | `/v1/domains`                                       | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
+| GET    | `/v1/domains`                                       | Public    | Lists domains claimed by the key's project/mode.                                                                        |
+| GET    | `/v1/domains/:id`                                   | Public    | Gets a claimed domain and its current verification record(s).                                                           |
+| DELETE | `/v1/domains/:id`                                   | Public    | Releases a domain claim.                                                                                                |
+| POST   | `/v1/domains/:id/verify`                            | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
+| GET    | `/v1/domains/:id/events`                            | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)

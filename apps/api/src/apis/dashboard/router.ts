@@ -7,6 +7,7 @@ import {
   type SessionAuthVariables,
 } from './middlewares/session-auth'
 import { createKeysRoutes } from './routes/keys'
+import { createProjectsRoutes } from './routes/projects'
 
 export interface DashboardRouterDeps {
   keysService: KeysService
@@ -26,8 +27,9 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
 
   router.use('*', createSessionAuthMiddleware(deps.sessionVerifier))
 
+  router.route('/projects', createProjectsRoutes(deps.projectsService))
   router.route(
-    '/keys',
+    '/projects/:projectId/keys',
     createKeysRoutes(deps.keysService, deps.projectsService),
   )
 

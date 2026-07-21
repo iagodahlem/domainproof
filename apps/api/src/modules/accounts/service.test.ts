@@ -22,7 +22,7 @@ function fakeRepository(
     async findByClerkUserId(clerkUserId) {
       return state.get(clerkUserId)
     },
-    async createWithDefaultProject(clerkUserId, email) {
+    async create(clerkUserId, email) {
       if (state.has(clerkUserId)) {
         return undefined
       }
@@ -76,7 +76,7 @@ describe('ensureAccount', () => {
       async findByClerkUserId() {
         return undefined
       },
-      async createWithDefaultProject() {
+      async create() {
         return undefined
       },
       async findEmailByProjectId() {

@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
-import { accounts, projects } from '@infra/db/schema'
-import { createProjectsRepository } from './repository'
+import { accounts } from '@infra/db/schema'
+import {
+  createProjectsRepository,
+  type ProjectApiKeyInsert,
+} from './repository'
 
 const DATABASE_URL =
   process.env.DATABASE_URL ??
@@ -25,6 +28,21 @@ async function createTestAccount(): Promise<string> {
   return account.id
 }
 
+// A real, globally unique keyId (this test runs against a real db, and
+// `api_keys.key_id` carries a real unique constraint shared with every
+// other test file's rows) — a random UUID fragment rather than a fixed
+// suffix avoids collisions with other test files' own key material.
+function keyMaterial(mode: 'test' | 'live'): ProjectApiKeyInsert {
+  const suffix = randomUUID().replace(/-/g, '').slice(0, 12)
+  return {
+    mode,
+    keyId: suffix,
+    secretHash: `hash-${suffix}`,
+    last4: suffix.slice(-4),
+    name: null,
+  }
+}
+
 afterEach(async () => {
   while (createdClerkUserIds.length > 0) {
     const clerkUserId = createdClerkUserIds.pop()
@@ -34,20 +52,71 @@ afterEach(async () => {
   }
 })
 
-describe('findDefaultProjectId', () => {
-  it('returns undefined for an account with no project', async () => {
+describe('listByAccountId', () => {
+  it('returns an empty list for an account with no projects', async () => {
     const accountId = await createTestAccount()
-    expect(await repository.findDefaultProjectId(accountId)).toBeUndefined()
+    expect(await repository.listByAccountId(accountId)).toEqual([])
   })
 
-  it('returns the project id for an account with a project', async () => {
-    const accountId = await createTestAccount()
-    const [project] = await db
-      .insert(projects)
-      .values({ accountId, name: 'Default', slug: 'default' })
-      .returning({ id: projects.id })
+  it("returns only the given account's projects", async () => {
+    const accountA = await createTestAccount()
+    const accountB = await createTestAccount()
 
-    expect(await repository.findDefaultProjectId(accountId)).toBe(project?.id)
+    await repository.createProject(accountA, 'Project A', 'project-a', [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+    await repository.createProject(accountB, 'Project B', 'project-b', [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+
+    const rowsA = await repository.listByAccountId(accountA)
+    expect(rowsA).toHaveLength(1)
+    expect(rowsA[0]?.name).toBe('Project A')
+
+    const rowsB = await repository.listByAccountId(accountB)
+    expect(rowsB).toHaveLength(1)
+    expect(rowsB[0]?.name).toBe('Project B')
+  })
+})
+
+describe('findByIdForAccount', () => {
+  it('returns undefined for an unknown project id', async () => {
+    const accountId = await createTestAccount()
+    expect(
+      await repository.findByIdForAccount(randomUUID(), accountId),
+    ).toBeUndefined()
+  })
+
+  it('returns undefined for a project that belongs to a different account', async () => {
+    const owner = await createTestAccount()
+    const other = await createTestAccount()
+
+    const { project } = await repository.createProject(
+      owner,
+      'Owner project',
+      'owner-project',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+
+    expect(
+      await repository.findByIdForAccount(project.id, other),
+    ).toBeUndefined()
+  })
+
+  it('returns the project when it belongs to the given account', async () => {
+    const accountId = await createTestAccount()
+    const { project } = await repository.createProject(
+      accountId,
+      'Skylane HR',
+      'skylane-hr',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+
+    const found = await repository.findByIdForAccount(project.id, accountId)
+    expect(found?.id).toBe(project.id)
+    expect(found?.slug).toBe('skylane-hr')
   })
 })
 
@@ -58,11 +127,53 @@ describe('findSlugById', () => {
 
   it("returns the project's slug", async () => {
     const accountId = await createTestAccount()
-    const [project] = await db
-      .insert(projects)
-      .values({ accountId, name: 'Skylane HR', slug: 'skylane-hr' })
-      .returning({ id: projects.id })
+    const { project } = await repository.createProject(
+      accountId,
+      'Skylane HR',
+      'skylane-hr',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
 
-    expect(await repository.findSlugById(project?.id ?? '')).toBe('skylane-hr')
+    expect(await repository.findSlugById(project.id)).toBe('skylane-hr')
+  })
+})
+
+describe('createProject', () => {
+  it('creates a project and both of its keys atomically', async () => {
+    const accountId = await createTestAccount()
+
+    const result = await repository.createProject(
+      accountId,
+      'Skylane HR',
+      'skylane-hr',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+
+    expect(result.project.name).toBe('Skylane HR')
+    expect(result.project.slug).toBe('skylane-hr')
+    expect(result.project.accountId).toBe(accountId)
+
+    expect(result.apiKeys).toHaveLength(2)
+    const modes = result.apiKeys.map((key) => key.mode).sort()
+    expect(modes).toEqual(['live', 'test'])
+    for (const key of result.apiKeys) {
+      expect(key.projectId).toBe(result.project.id)
+      expect(key.revokedAt).toBeNull()
+    }
+  })
+
+  it('allows a second project for the same account (no dedup/uniqueness guard)', async () => {
+    const accountId = await createTestAccount()
+
+    await repository.createProject(accountId, 'First', 'first', [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+    await repository.createProject(accountId, 'Second', 'second', [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+
+    expect(await repository.listByAccountId(accountId)).toHaveLength(2)
   })
 })

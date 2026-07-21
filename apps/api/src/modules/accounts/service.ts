@@ -4,17 +4,19 @@ import type { AccountsRepository } from './repository'
 
 export interface EnsureAccountResult {
   accountId: string
-  /** True only when this call created the account (and its default project). */
+  /** True only when this call created the account. */
   created: boolean
   email: string | null
 }
 
 export interface AccountsService {
   /**
-   * Gets or creates the account for a verified Clerk user id, creating a
-   * "Default" project the first time the account is created. On an actual
+   * Gets or creates the account for a verified Clerk user id. On an actual
    * create, publishes `account.created` to the `EventBus` (the welcome
-   * email's trigger — see `modules/notifications/service.ts`).
+   * email's trigger — see `modules/notifications/service.ts`). Creating a
+   * project is a separate, explicit action the caller takes afterward (see
+   * `modules/projects/service.ts`'s `createProject`) — this never creates
+   * one.
    *
    * `emailHint` is the email from the caller's already-verified session
    * claims, if the Clerk instance happens to include one (see
@@ -74,10 +76,7 @@ export function createAccountsService(
         )
       }
 
-      const created = await repository.createWithDefaultProject(
-        clerkUserId,
-        email ?? null,
-      )
+      const created = await repository.create(clerkUserId, email ?? null)
       if (created) {
         await eventBus.publish('account.created', {
           accountId: created.id,
@@ -88,7 +87,7 @@ export function createAccountsService(
       }
 
       // Lost the create race to a concurrent caller — re-read its row
-      // instead of erroring or double-creating a project.
+      // instead of erroring.
       const raced = await repository.findByClerkUserId(clerkUserId)
       if (!raced) {
         // The insert hit the unique conflict (so a row exists) but the
