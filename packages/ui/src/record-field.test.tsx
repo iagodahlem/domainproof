@@ -47,4 +47,17 @@ describe('RecordField', () => {
     render(<RecordField label="Value" value="acme.co" />)
     expect(screen.getByText('Value').className).toContain('max-[560px]:w-auto')
   })
+
+  it('renders a custom action instead of the copy button', () => {
+    render(
+      <RecordField
+        label="Live key"
+        value="dp_live_...ab12"
+        copyable
+        action={<button type="button">Reveal</button>}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Reveal' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull()
+  })
 })

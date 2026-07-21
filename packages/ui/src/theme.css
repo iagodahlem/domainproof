@@ -122,4 +122,9 @@
   /* shadow */
   --shadow-card: var(--shadow-card);
   --shadow-current: var(--shadow-current);
+
+  /* blur — Tailwind's blur-* namespace backs both blur-* and
+     backdrop-blur-* utilities, so mapping --blur-header here gives us
+     backdrop-blur-header for sticky glass chrome (topbar-style headers). */
+  --blur-header: var(--blur-header);
 }

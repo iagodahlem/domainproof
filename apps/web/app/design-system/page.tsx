@@ -285,10 +285,7 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-bg font-sans text-text"
     >
-      <header
-        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off glass-header blur amount, no design token for blur; single use
-        className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]"
-      >
+      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
           <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
             <Logo />

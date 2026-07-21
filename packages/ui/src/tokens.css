@@ -18,6 +18,11 @@
      scale below. Used with a backdrop-blur/saturate pair on sticky chrome
      over scrolling content. */
   --bg-glass: color-mix(in oklab, var(--bg) 82%, transparent);
+  /* sticky glass-header blur amount — shared by every topbar over
+     scrolling content (design-system catalog, landing, locked
+     create-project). Off Tailwind's blur-* scale (no 10px step), same
+     value the board specifies for every .topbar. */
+  --blur-header: 10px;
 
   /* text */
   --text: oklch(0.96 0.004 235);
