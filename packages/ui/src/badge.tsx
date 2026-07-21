@@ -5,6 +5,7 @@ import { cn } from './cn'
 export type Tone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral'
 
 const badgeVariants = cva(
+  // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off badge tracking; doesn't match tracking-label (0.06em) or any Tailwind step, single use
   'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-1.5 py-0.5 font-mono text-3xs font-semibold uppercase tracking-[0.03em]',
   {
     variants: {
@@ -64,7 +65,7 @@ export function ProviderBadge({
   )
 }
 
-export const dotVariants = cva('h-2 w-2 shrink-0 rounded-full', {
+export const dotVariants = cva('inline-block h-2 w-2 shrink-0 rounded-full', {
   variants: {
     tone: {
       accent: 'bg-accent',

@@ -38,7 +38,7 @@ describe('Stepper', () => {
 
   it('renders one fewer connector than steps', () => {
     const { container } = render(<Stepper steps={STEPS} />)
-    const connectors = container.querySelectorAll('span.min-w-\\[12px\\]')
+    const connectors = container.querySelectorAll('span.min-w-3')
     expect(connectors).toHaveLength(STEPS.length - 1)
   })
 
@@ -46,7 +46,7 @@ describe('Stepper', () => {
     const { container } = render(<Stepper steps={STEPS} />)
     expect(container.firstElementChild?.className).toContain('overflow-x-auto')
     expect(container.firstElementChild?.className).not.toContain('flex-wrap')
-    const connector = container.querySelector('span.min-w-\\[12px\\]')
+    const connector = container.querySelector('span.min-w-3')
     expect(connector?.className).not.toContain('hidden')
     expect(screen.getByText('Claimed').closest('div')?.className).toContain(
       'shrink-0',

@@ -6,6 +6,8 @@ import { Badge, dotVariants, type Tone } from './badge'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from './table'
 import { cn } from './cn'
 
+// Bespoke grid-template-columns for this table's exact column shape — no
+// single token models a multi-track template, so this stays arbitrary.
 const GRID_COLS = 'grid-cols-[20px_1fr_120px_130px_120px_16px] gap-x-4'
 
 export function DomainTable({
@@ -87,16 +89,16 @@ export function DomainTableRow({
       )}
       {...props}
     >
-      <TableCell className="max-[760px]:order-1">
+      <TableCell className="flex items-center max-[760px]:order-1">
         <span className={dotVariants({ tone: statusTone })} />
       </TableCell>
       <TableCell className="max-[760px]:order-2 max-[760px]:flex-1">
         <div className="truncate font-mono text-base font-heading">{name}</div>
-        <div className="mt-[2px] hidden text-2xs text-text-faint max-[760px]:block">
+        <div className="mt-0.5 hidden text-2xs text-text-faint max-[760px]:block">
           {statusLabel} · {lastChecked}
         </div>
       </TableCell>
-      <TableCell className="max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-[calc(20px+0.75rem)]">
+      <TableCell className="max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-8">
         {provider ?? <span className="text-xs text-text-faint">—</span>}
       </TableCell>
       <TableCell className="max-[760px]:order-3">

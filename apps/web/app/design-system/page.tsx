@@ -174,6 +174,7 @@ function ColorSwatch({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div
+        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off swatch corner radius, between rounded-sm (6px) and rounded-md (10px); single use
         className={`h-14 rounded-[8px] border border-border ${COLOR_SWATCH_CLASS[token]}`}
       />
       <span className="font-mono text-xs text-text-faint">--{token}</span>
@@ -284,12 +285,16 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-bg font-sans text-text"
     >
-      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]">
+      <header
+        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off glass-header blur amount, no design token for blur; single use
+        className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]"
+      >
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
           <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
             <span
               aria-hidden="true"
-              className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent"
+              // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off logo-mark radius, between rounded-sm (6px) and rounded-md (10px); single use
+              className="flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent"
             >
               <Check size={13} strokeWidth={2.2} />
             </span>
@@ -487,7 +492,7 @@ export default function DesignSystemPage() {
                 </Example>
                 <Example label="emphasis=dashed">
                   <Callout emphasis="dashed" className="max-w-xl">
-                    <div className="mb-2 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
+                    <div className="mb-2 font-mono text-2xs tracking-label text-text-faint uppercase">
                       What&apos;s happening under the hood
                     </div>
                     <p>
@@ -513,7 +518,7 @@ export default function DesignSystemPage() {
                     </CardHead>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-text-faint uppercase">
                           Host
                         </span>
                         <span className="font-mono text-base text-text">
@@ -523,7 +528,7 @@ export default function DesignSystemPage() {
                     </CardRow>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-text-faint uppercase">
                           Value
                         </span>
                         <span className="font-mono text-base text-text">
@@ -683,20 +688,29 @@ export default function DesignSystemPage() {
               </p>
               <Example label="generic 3-column layout">
                 <Table className="w-full">
-                  <TableHeader className="grid-cols-[1fr_120px_80px]">
+                  <TableHeader
+                    // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- bespoke grid-template-columns for this example's 3-column shape; no single token models a multi-track template
+                    className="grid-cols-[1fr_120px_80px]"
+                  >
                     <span>Name</span>
                     <span>Role</span>
                     <span>Seats</span>
                   </TableHeader>
                   <TableBody>
-                    <TableRow className="grid-cols-[1fr_120px_80px]">
+                    <TableRow
+                      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- same bespoke grid template as the header row above
+                      className="grid-cols-[1fr_120px_80px]"
+                    >
                       <TableCell className="font-heading text-text">
                         Acme Inc.
                       </TableCell>
                       <TableCell className="text-text-muted">Owner</TableCell>
                       <TableCell className="text-text-muted">12</TableCell>
                     </TableRow>
-                    <TableRow className="grid-cols-[1fr_120px_80px]">
+                    <TableRow
+                      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- same bespoke grid template as the header row above
+                      className="grid-cols-[1fr_120px_80px]"
+                    >
                       <TableCell className="font-heading text-text">
                         Globex Corp.
                       </TableCell>

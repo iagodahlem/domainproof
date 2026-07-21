@@ -20,7 +20,7 @@ export function TableHeader({
   return (
     <div
       className={cn(
-        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase',
+        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-2xs tracking-label text-text-faint uppercase',
         className,
       )}
       {...props}
@@ -54,5 +54,5 @@ export function TableCell({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('min-w-0', className)} {...props} />
+  return <div className={cn('min-w-0 text-sm', className)} {...props} />
 }

@@ -54,6 +54,8 @@ describe('PathChooser', () => {
         data-testid="chooser"
       />,
     )
+    expect(screen.getByTestId('chooser').className).toContain('flex-nowrap')
+    expect(screen.getByTestId('chooser').className).not.toContain('flex-wrap')
     expect(screen.getByTestId('chooser').className).toContain(
       'max-[780px]:flex-col',
     )
@@ -65,7 +67,7 @@ describe('PathChooser', () => {
   it('keeps option labels on a single line', () => {
     render(<PathChooser options={OPTIONS} value="api" onChange={() => {}} />)
     expect(screen.getByText('Full control, your UI').className).toContain(
-      'whitespace-nowrap',
+      'truncate',
     )
   })
 })

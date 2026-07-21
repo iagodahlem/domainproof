@@ -6,6 +6,7 @@ import { cn } from './cn'
 export type RecordCardStepTone = 'accent' | 'success'
 
 const stepChipVariants = cva(
+  // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off step-chip radius, between rounded-sm (6px) and no smaller token; single use
   'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-2xs font-bold',
   {
     variants: {
@@ -63,7 +64,7 @@ export function RecordCard({
             <div className="text-lg font-heading">
               <div>{title}</div>
               {sub ? (
-                <div className="mt-[2px] text-sm font-medium text-text-faint">
+                <div className="mt-0.5 text-sm font-medium text-text-faint">
                   {sub}
                 </div>
               ) : null}

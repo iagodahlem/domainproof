@@ -30,7 +30,7 @@ export function PathChooser({
     <div
       role="tablist"
       className={cn(
-        'mb-8 flex flex-wrap gap-3 max-[780px]:flex-col',
+        'mb-8 flex flex-nowrap gap-3 max-[780px]:flex-col',
         className,
       )}
       {...props}
@@ -45,7 +45,7 @@ export function PathChooser({
             aria-selected={active}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex shrink-0 items-center gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors duration-150 hover:border-border-strong max-[780px]:w-full',
+              'flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors duration-150 hover:border-border-strong max-[780px]:w-full',
               active && 'border-accent bg-accent-soft',
             )}
           >
@@ -57,16 +57,16 @@ export function PathChooser({
             >
               {option.icon}
             </span>
-            <span className="flex flex-col gap-[2px]">
+            <span className="flex min-w-0 flex-col gap-0.5">
               <span
                 className={cn(
-                  'text-sm font-heading whitespace-nowrap',
+                  'truncate text-sm font-heading',
                   active && 'text-accent',
                 )}
               >
                 {option.label}
               </span>
-              <span className="text-2xs leading-caption whitespace-nowrap text-text-faint">
+              <span className="truncate text-2xs leading-caption text-text-faint">
                 {option.sub}
               </span>
             </span>

@@ -90,6 +90,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 function ButtonSpinner() {
   return (
     <svg
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- sized relative to the button's own font-size, not a fixed token value; the spacing scale is rem-based and can't express "1em"
       className="h-[1em] w-[1em] animate-spin"
       viewBox="0 0 24 24"
       fill="none"

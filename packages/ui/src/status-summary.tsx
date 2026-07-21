@@ -6,7 +6,7 @@ import { cn } from './cn'
 export type StepperStepStatus = 'done' | 'current' | 'upcoming'
 
 const stepNodeVariants = cva(
-  'flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 font-sans text-2xs leading-none font-heading',
+  'flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full border-2 font-sans text-2xs leading-none font-heading',
   {
     variants: {
       status: {
@@ -32,7 +32,7 @@ const stepLabelVariants = cva(
 )
 
 const stepConnectorVariants = cva(
-  'mt-[11px] h-[2px] min-w-[12px] flex-1 bg-border-strong',
+  'mt-2.75 h-0.5 min-w-3 flex-1 bg-border-strong',
   {
     variants: {
       status: {
@@ -60,7 +60,7 @@ export function Stepper({ steps, className, ...props }: StepperProps) {
   return (
     <div
       className={cn(
-        'flex items-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex items-start overflow-x-auto py-1 -my-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
       {...props}

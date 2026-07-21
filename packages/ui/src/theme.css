@@ -105,6 +105,9 @@
   --leading-body: var(--leading-body);
   --leading-code: var(--leading-code);
 
+  /* type — letter-spacing */
+  --tracking-label: var(--tracking-label);
+
   /* radius. --radius-full is left out on purpose: Tailwind's built-in
      `rounded-full` already renders a fully round pill via
      `calc(infinity * 1px)`, which is a strict superset of this token's
