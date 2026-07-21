@@ -6,20 +6,20 @@ import { cn } from './cn'
 export type StepperStepStatus = 'done' | 'current' | 'upcoming'
 
 const stepNodeVariants = cva(
-  'flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface text-text-faint',
+  'flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 font-sans text-2xs leading-none font-heading',
   {
     variants: {
       status: {
         done: 'border-success bg-success text-success-foreground',
-        current: 'border-accent text-accent shadow-current',
-        upcoming: '',
+        current: 'border-accent bg-surface text-accent shadow-current',
+        upcoming: 'border-border-strong bg-surface text-text-faint',
       },
     },
   },
 )
 
 const stepLabelVariants = cva(
-  'text-center text-xs font-heading whitespace-nowrap max-[560px]:text-left max-[560px]:whitespace-normal',
+  'text-center text-xs font-heading whitespace-nowrap',
   {
     variants: {
       status: {
@@ -32,7 +32,7 @@ const stepLabelVariants = cva(
 )
 
 const stepConnectorVariants = cva(
-  'mt-[11px] h-[2px] min-w-[12px] flex-1 bg-border-strong max-[560px]:hidden',
+  'mt-[11px] h-[2px] min-w-[12px] flex-1 bg-border-strong',
   {
     variants: {
       status: {
@@ -60,14 +60,14 @@ export function Stepper({ steps, className, ...props }: StepperProps) {
   return (
     <div
       className={cn(
-        'flex items-start max-[560px]:flex-wrap max-[560px]:gap-x-3 max-[560px]:gap-y-4',
+        'flex items-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
       {...props}
     >
       {steps.map((step, index) => (
         <Fragment key={step.id}>
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-2 max-[560px]:w-[calc(50%-0.5rem)] max-[560px]:flex-none max-[560px]:flex-row max-[560px]:items-center">
+          <div className="flex shrink-0 flex-col items-center gap-2">
             <span className={stepNodeVariants({ status: step.status })}>
               {step.node}
             </span>

@@ -76,4 +76,9 @@ describe('StatusPill', () => {
     )
     expect(screen.getByText('Verified').className).toContain('text-2xs')
   })
+
+  it('defaults to the small size scale', () => {
+    render(<StatusPill tone="success">Verified</StatusPill>)
+    expect(screen.getByText('Verified').className).toContain('text-2xs')
+  })
 })

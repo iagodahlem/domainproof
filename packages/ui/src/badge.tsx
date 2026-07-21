@@ -5,7 +5,7 @@ import { cn } from './cn'
 export type Tone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral'
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-2xs font-bold uppercase tracking-[0.03em]',
+  'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-1.5 py-0.5 font-mono text-3xs font-semibold uppercase tracking-[0.03em]',
   {
     variants: {
       tone: {
@@ -80,7 +80,7 @@ export const dotVariants = cva('h-2 w-2 shrink-0 rounded-full', {
 })
 
 const statusPillVariants = cva(
-  'inline-flex items-center gap-2 rounded-full border font-heading',
+  'inline-flex items-center gap-2 rounded-full border font-semibold',
   {
     variants: {
       tone: {
@@ -98,7 +98,7 @@ const statusPillVariants = cva(
     },
     defaultVariants: {
       tone: 'neutral',
-      size: 'default',
+      size: 'small',
     },
   },
 )
@@ -112,7 +112,7 @@ export interface StatusPillProps extends HTMLAttributes<HTMLSpanElement> {
 
 export function StatusPill({
   tone = 'neutral',
-  size = 'default',
+  size = 'small',
   pulse = false,
   className,
   children,

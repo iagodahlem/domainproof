@@ -45,7 +45,7 @@ describe('PathChooser', () => {
     expect(onChange).toHaveBeenCalledWith('hosted')
   })
 
-  it('collapses to two columns under 780px', () => {
+  it('stacks into full-width cards under 780px instead of wrapping text', () => {
     render(
       <PathChooser
         options={OPTIONS}
@@ -55,7 +55,17 @@ describe('PathChooser', () => {
       />,
     )
     expect(screen.getByTestId('chooser').className).toContain(
-      'max-[780px]:grid-cols-2',
+      'max-[780px]:flex-col',
+    )
+    expect(screen.getByRole('tab', { name: /API/ }).className).toContain(
+      'max-[780px]:w-full',
+    )
+  })
+
+  it('keeps option labels on a single line', () => {
+    render(<PathChooser options={OPTIONS} value="api" onChange={() => {}} />)
+    expect(screen.getByText('Full control, your UI').className).toContain(
+      'whitespace-nowrap',
     )
   })
 })
