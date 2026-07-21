@@ -1,5 +1,7 @@
+import { isNotNull } from 'drizzle-orm'
 import { DOMAIN_STATUSES } from '@domainproof/core'
 import {
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -161,6 +163,16 @@ export const domains = pgTable(
       table.domain,
       table.mode,
     ),
+    /**
+     * Serves `findDueForRecheck`'s `WHERE next_check_at IS NOT NULL AND
+     * next_check_at <= now() ORDER BY next_check_at LIMIT n` — partial on
+     * `IS NOT NULL` because `failed` domains (and any other terminal state)
+     * always carry a `null` here and would otherwise sit in the index
+     * forever without ever matching the worker's query.
+     */
+    index('domains_next_check_at_idx')
+      .on(table.nextCheckAt)
+      .where(isNotNull(table.nextCheckAt)),
   ],
 )
 

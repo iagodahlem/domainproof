@@ -1,0 +1,1 @@
+CREATE INDEX "domains_next_check_at_idx" ON "domains" USING btree ("next_check_at") WHERE "domains"."next_check_at" is not null;

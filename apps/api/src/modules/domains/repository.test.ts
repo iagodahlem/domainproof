@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, challenges, domains, projects } from '@infra/db/schema'
@@ -545,6 +545,27 @@ describe('findDueForRecheck', () => {
 
     const result = await repository.findDueForRecheck(now, 2)
     expect(result).toHaveLength(2)
+  })
+
+  it('uses the domains_next_check_at_idx partial index', async () => {
+    // `enable_seqscan = off` forces the planner to prefer any usable index
+    // over a sequential scan regardless of table size (this suite's tables
+    // are near-empty) — isolating whether the index shape actually serves
+    // this query from whether the planner would pick it on a bigger table.
+    const rows = await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL enable_seqscan = off`)
+      return tx.execute(sql`
+        EXPLAIN
+        SELECT * FROM ${domains}
+        WHERE ${domains.nextCheckAt} IS NOT NULL
+          AND ${domains.nextCheckAt} <= now()
+        ORDER BY ${domains.nextCheckAt}
+        LIMIT 10
+      `)
+    })
+
+    const plan = rows.map((row) => row['QUERY PLAN']).join('\n')
+    expect(plan).toContain('Index Scan using domains_next_check_at_idx')
   })
 })
 
