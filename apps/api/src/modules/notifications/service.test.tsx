@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import type { Logger } from '@shared/logger'
 import type { EmailMessage, EmailSender } from './ports'
 import { createNotificationsService } from './service'
 
@@ -10,6 +11,21 @@ function fakeEmailSender(): EmailSender & { sent: EmailMessage[] } {
     async send(message) {
       sent.push(message)
     },
+  }
+}
+
+/** A fake `Logger` implementing the port in memory, recording every info call for assertions. */
+function fakeLogger(): Logger & { infos: Record<string, unknown>[] } {
+  const infos: Record<string, unknown>[] = []
+  return {
+    infos,
+    debug() {},
+    info(obj) {
+      infos.push(obj)
+    },
+    warn() {},
+    error() {},
+    isLevelEnabled: () => true,
   }
 }
 
@@ -38,13 +54,12 @@ describe('onAccountCreated', () => {
 
   it('logs and skips when the account has no email', async () => {
     const emailSender = fakeEmailSender()
+    const logger = fakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger,
     })
-    const consoleLog = vi
-      .spyOn(console, 'log')
-      .mockImplementation(() => undefined)
 
     await service.onAccountCreated({
       accountId: 'account_1',
@@ -53,8 +68,8 @@ describe('onAccountCreated', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(consoleLog).toHaveBeenCalled()
-    consoleLog.mockRestore()
+    expect(logger.infos).toHaveLength(1)
+    expect(logger.infos[0]).toMatchObject({ accountId: 'account_1' })
   })
 })
 
@@ -100,13 +115,12 @@ describe('onDomainVerified', () => {
 
   it('logs and skips when the project has no account email on file', async () => {
     const emailSender = fakeEmailSender()
+    const logger = fakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger,
     })
-    const consoleLog = vi
-      .spyOn(console, 'log')
-      .mockImplementation(() => undefined)
 
     await service.onDomainVerified({
       domainId: 'domain_1',
@@ -116,8 +130,8 @@ describe('onDomainVerified', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(consoleLog).toHaveBeenCalled()
-    consoleLog.mockRestore()
+    expect(logger.infos).toHaveLength(1)
+    expect(logger.infos[0]).toMatchObject({ projectId: 'project_1' })
   })
 })
 

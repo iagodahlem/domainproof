@@ -24,6 +24,7 @@ import { createNodeDnsResolver } from '@infra/dns/node-dns'
 import { createSandboxResolver } from '@infra/dns/sandbox'
 import { createInProcessEventBus } from '@infra/events/in-process-bus'
 import { createResendEmailSender } from '@infra/email/resend'
+import { createChildLogger, logger } from '@infra/logging/logger'
 import { isSandboxDomain } from '@domainproof/core'
 import { DOMAIN_EVENT_TYPES } from '@shared/events'
 import { env } from './env'
@@ -128,7 +129,9 @@ export function createApp(deps: AppDependencies = {}) {
   // for every event type, before any other subscriber (notifications,
   // below) — so the events table is a complete record of everything
   // published, regardless of what else reacts to it.
-  const eventBus = createInProcessEventBus()
+  const eventBus = createInProcessEventBus(
+    createChildLogger({ module: 'events' }),
+  )
 
   const eventsRepository = createEventsRepository(db)
   const eventsService = createEventsService(eventsRepository)
@@ -137,7 +140,12 @@ export function createApp(deps: AppDependencies = {}) {
   }
 
   const accountsRepository = createAccountsRepository(db)
-  const accountsService = createAccountsService(accountsRepository, eventBus)
+  const accountsService = createAccountsService(
+    accountsRepository,
+    eventBus,
+    undefined,
+    createChildLogger({ module: 'accounts' }),
+  )
 
   const projectsRepository = createProjectsRepository(db)
   const projectsService = createProjectsService(
@@ -165,16 +173,17 @@ export function createApp(deps: AppDependencies = {}) {
   const emailSender =
     deps.emailSender ??
     (env.RESEND_API_KEY
-      ? createResendEmailSender({
-          apiKey: env.RESEND_API_KEY,
-          from: env.EMAIL_FROM,
-        })
+      ? createResendEmailSender(
+          { apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM },
+          createChildLogger({ module: 'email' }),
+        )
       : undefined)
 
   if (emailSender) {
     const notifications = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: accountsService.getEmailForProject,
+      logger: createChildLogger({ module: 'notifications' }),
     })
     eventBus.subscribe('account.created', notifications.onAccountCreated)
     eventBus.subscribe('domain.verified', notifications.onDomainVerified)
@@ -184,7 +193,8 @@ export function createApp(deps: AppDependencies = {}) {
     )
     eventBus.subscribe('domain.failed', notifications.onDomainFailed)
   } else {
-    console.log(
+    logger.info(
+      {},
       'RESEND_API_KEY not configured — email notifications are disabled',
     )
   }
@@ -200,7 +210,12 @@ export function createApp(deps: AppDependencies = {}) {
 
   // Logs every request, on both planes, before anything else runs — see
   // shared/middlewares/request-logger.ts.
-  app.use('*', createRequestLoggerMiddleware())
+  app.use(
+    '*',
+    createRequestLoggerMiddleware({
+      logger: createChildLogger({ module: 'http' }),
+    }),
+  )
 
   // Confines each configured plane hostname to its own path prefix — see
   // shared/middlewares/host-restriction.ts. Applied once, at the root,
@@ -228,7 +243,12 @@ export function createApp(deps: AppDependencies = {}) {
   )
   app.route(
     '/v1',
-    createV1Router({ keysRepository, domainsService, eventsService }),
+    createV1Router({
+      keysRepository,
+      domainsService,
+      eventsService,
+      logger: createChildLogger({ module: 'v1.api-key' }),
+    }),
   )
 
   app.notFound((c) => {
@@ -236,7 +256,7 @@ export function createApp(deps: AppDependencies = {}) {
   })
 
   app.onError((err, c) => {
-    console.error(err)
+    logger.error({ err }, 'Unhandled error')
     return c.json(apiError('internal_error', 'Internal server error'), 500)
   })
 

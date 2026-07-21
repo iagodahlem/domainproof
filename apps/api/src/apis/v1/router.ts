@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import type { KeysRepository } from '@modules/keys/repository'
 import type { DomainsService } from '@modules/domains/service'
 import type { EventsService } from '@modules/events/service'
+import type { Logger } from '@shared/logger'
+import { noopLogger } from '@shared/logger'
 import { createRateLimitMiddleware } from '@shared/middlewares/rate-limit'
 import {
   createApiKeyAuthMiddleware,
@@ -13,6 +15,8 @@ export interface V1RouterDeps {
   keysRepository: KeysRepository
   domainsService: DomainsService
   eventsService: EventsService
+  /** Threaded into `createApiKeyAuthMiddleware` — see `app.ts`'s wiring. Defaults to a no-op for callers (tests) that don't care about its logs. */
+  logger?: Logger
 }
 
 /**
@@ -30,7 +34,7 @@ export function createV1Router(deps: V1RouterDeps) {
 
   router.use(
     '*',
-    createApiKeyAuthMiddleware(deps.keysRepository),
+    createApiKeyAuthMiddleware(deps.keysRepository, deps.logger ?? noopLogger),
     createRateLimitMiddleware(),
   )
 

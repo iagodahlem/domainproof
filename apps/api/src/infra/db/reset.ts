@@ -13,6 +13,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  * everywhere is throwaway right now), so it refuses to run unless the
  * caller opts in explicitly, and always names the target host first so a
  * misconfigured `DATABASE_URL` is obvious before anything runs.
+ *
+ * Plain `console.*`, not the pino logger, deliberately: this is a `pnpm
+ * db:reset` CLI script run directly by a developer in a terminal — its
+ * stdout is the interface, not a service log stream meant for
+ * aggregation.
  */
 async function main() {
   const host = new URL(env.DATABASE_URL).host

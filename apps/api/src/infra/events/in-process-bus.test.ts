@@ -1,5 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { Logger } from '@shared/logger'
 import { createInProcessEventBus } from './in-process-bus'
+
+/** A fake `Logger` implementing the port in memory, recording every error call for assertions. */
+function fakeLogger(): Logger & { errors: Record<string, unknown>[] } {
+  const errors: Record<string, unknown>[] = []
+  return {
+    errors,
+    debug() {},
+    info() {},
+    warn() {},
+    error(obj) {
+      errors.push(obj)
+    },
+    isLevelEnabled: () => true,
+  }
+}
 
 describe('createInProcessEventBus', () => {
   it('delivers a published event to every subscriber of that type', async () => {
@@ -59,10 +75,8 @@ describe('createInProcessEventBus', () => {
   })
 
   it('logs and continues past a subscriber that throws, without rejecting publish', async () => {
-    const bus = createInProcessEventBus()
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
+    const logger = fakeLogger()
+    const bus = createInProcessEventBus(logger)
     const survivor = vi.fn()
 
     bus.subscribe('domain.failed', () => {
@@ -80,8 +94,8 @@ describe('createInProcessEventBus', () => {
     ).resolves.toBeUndefined()
 
     expect(survivor).toHaveBeenCalled()
-    expect(consoleError).toHaveBeenCalled()
-    consoleError.mockRestore()
+    expect(logger.errors).toHaveLength(1)
+    expect(logger.errors[0]?.type).toBe('domain.failed')
   })
 
   it('is a no-op when nothing is subscribed to a published type', async () => {

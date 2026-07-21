@@ -4,6 +4,8 @@ import type {
   DomainEventType,
   EventBus,
 } from '@shared/events'
+import type { Logger } from '@shared/logger'
+import { noopLogger } from '@shared/logger'
 
 /**
  * The `EventBus` port's in-process implementation: a `Map` of subscriber
@@ -18,7 +20,7 @@ import type {
  * response), and one subscriber's failure must never stop the persistence
  * subscriber (or any other subscriber) for the same event from running.
  */
-export function createInProcessEventBus(): EventBus {
+export function createInProcessEventBus(logger: Logger = noopLogger): EventBus {
   const subscribers = new Map<
     DomainEventType,
     DomainEventSubscriber<DomainEventType>[]
@@ -46,7 +48,7 @@ export function createInProcessEventBus(): EventBus {
         try {
           await subscriber(payload as DomainEventMap[DomainEventType])
         } catch (err) {
-          console.error(`Event subscriber failed for "${type}"`, err)
+          logger.error({ err, type }, 'Event subscriber failed')
         }
       }
     },

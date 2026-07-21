@@ -1,4 +1,6 @@
 import type { DomainEventSubscriber, Mode } from '@shared/events'
+import type { Logger } from '@shared/logger'
+import { noopLogger } from '@shared/logger'
 import { renderEmail } from './domain/render'
 import { DomainVerifiedEmail } from './domain/templates/domain-verified'
 import { GraceWindowEmail } from './domain/templates/grace-window'
@@ -21,6 +23,7 @@ export interface NotificationsDeps {
   emailSender: EmailSender
   /** Resolves the builder email to notify for a domain event's project — see `modules/accounts/service.ts`'s `getEmailForProject`. */
   getAccountEmailByProjectId: (projectId: string) => Promise<string | undefined>
+  logger?: Logger
 }
 
 export interface NotificationsService {
@@ -45,6 +48,8 @@ export interface NotificationsService {
 export function createNotificationsService(
   deps: NotificationsDeps,
 ): NotificationsService {
+  const logger = deps.logger ?? noopLogger
+
   async function sendToAccount(
     projectId: string,
     subject: string,
@@ -53,8 +58,9 @@ export function createNotificationsService(
   ): Promise<void> {
     const email = await deps.getAccountEmailByProjectId(projectId)
     if (!email) {
-      console.log(
-        `Skipping "${subject}" email for project ${projectId}: no account email on file (${context})`,
+      logger.info(
+        { projectId, subject, context },
+        'Skipping email: no account email on file',
       )
       return
     }
@@ -66,8 +72,9 @@ export function createNotificationsService(
   return {
     async onAccountCreated(payload) {
       if (!payload.email) {
-        console.log(
-          `Skipping welcome email for account ${payload.accountId}: no email on file`,
+        logger.info(
+          { accountId: payload.accountId },
+          'Skipping welcome email: no email on file',
         )
         return
       }
