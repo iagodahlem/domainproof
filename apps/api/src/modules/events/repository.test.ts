@@ -13,7 +13,7 @@ const db: Database = createDb(DATABASE_URL)
 const repository = createEventsRepository(db)
 const createdClerkUserIds: string[] = []
 
-async function createTestDomain(): Promise<string> {
+async function createTestProject(): Promise<string> {
   const clerkUserId = `user_${randomUUID()}`
   createdClerkUserIds.push(clerkUserId)
 
@@ -29,18 +29,30 @@ async function createTestDomain(): Promise<string> {
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')
 
+  return project.id
+}
+
+async function createTestDomainForProject(
+  projectId: string,
+  overrides: { domain?: string; mode?: 'test' | 'live' } = {},
+): Promise<string> {
   const [domain] = await db
     .insert(domains)
     .values({
-      projectId: project.id,
-      domain: `example-${randomUUID()}.test`,
-      mode: 'live',
+      projectId,
+      domain: overrides.domain ?? `example-${randomUUID()}.test`,
+      mode: overrides.mode ?? 'live',
       status: 'pending',
     })
     .returning({ id: domains.id })
   if (!domain) throw new Error('failed to create test domain')
 
   return domain.id
+}
+
+async function createTestDomain(): Promise<string> {
+  const projectId = await createTestProject()
+  return createTestDomainForProject(projectId)
 }
 
 afterEach(async () => {
@@ -135,6 +147,89 @@ describe('listByDomain', () => {
     })
 
     const result = await repository.listByDomain(domainA, { limit: 10 })
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]?.domainId).toBe(domainA)
+  })
+})
+
+describe('listByProject', () => {
+  it('returns events across multiple domains interleaved, newest first, cursor-paginated', async () => {
+    const projectId = await createTestProject()
+    const domainA = await createTestDomainForProject(projectId, {
+      domain: 'a.example.test',
+    })
+    const domainB = await createTestDomainForProject(projectId, {
+      domain: 'b.example.test',
+    })
+
+    const inserted = [
+      { domainId: domainA, type: 'domain.claimed' },
+      { domainId: domainB, type: 'domain.claimed' },
+      { domainId: domainA, type: 'domain.check_passed' },
+      { domainId: domainB, type: 'domain.verified' },
+    ]
+    for (const { domainId, type } of inserted) {
+      await repository.insert({
+        type,
+        domainId,
+        mode: 'live',
+        payload: { domainId },
+      })
+    }
+
+    const firstPage = await repository.listByProject(projectId, { limit: 3 })
+    expect(firstPage.rows.map((r) => r.type)).toEqual([
+      'domain.verified',
+      'domain.check_passed',
+      'domain.claimed',
+    ])
+    expect(firstPage.rows.map((r) => r.domain)).toEqual([
+      'b.example.test',
+      'a.example.test',
+      'b.example.test',
+    ])
+    expect(firstPage.hasMore).toBe(true)
+
+    const lastRow = firstPage.rows[firstPage.rows.length - 1]
+    if (!lastRow) throw new Error('expected a last row')
+
+    const secondPage = await repository.listByProject(projectId, {
+      limit: 3,
+      cursor: { id: lastRow.id },
+    })
+    expect(secondPage.rows.map((r) => r.type)).toEqual(['domain.claimed'])
+    expect(secondPage.rows.map((r) => r.domain)).toEqual(['a.example.test'])
+    expect(secondPage.hasMore).toBe(false)
+  })
+
+  it('returns an empty page for a project with no domains/events', async () => {
+    const projectId = await createTestProject()
+
+    const result = await repository.listByProject(projectId, { limit: 10 })
+    expect(result.rows).toEqual([])
+    expect(result.hasMore).toBe(false)
+  })
+
+  it("only returns events for the requested project's domains", async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const domainA = await createTestDomainForProject(projectA)
+    const domainB = await createTestDomainForProject(projectB)
+
+    await repository.insert({
+      type: 'domain.claimed',
+      domainId: domainA,
+      mode: 'live',
+      payload: { domainId: domainA },
+    })
+    await repository.insert({
+      type: 'domain.claimed',
+      domainId: domainB,
+      mode: 'live',
+      payload: { domainId: domainB },
+    })
+
+    const result = await repository.listByProject(projectA, { limit: 10 })
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0]?.domainId).toBe(domainA)
   })

@@ -10,6 +10,7 @@ import {
   type SessionAuthVariables,
 } from './middlewares/session-auth'
 import { createDomainsRoutes } from './routes/domains'
+import { createEventsRoutes } from './routes/events'
 import { createKeysRoutes } from './routes/keys'
 import { createProjectsRoutes } from './routes/projects'
 import { createWebhooksRoutes } from './routes/webhooks'
@@ -47,6 +48,10 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
       deps.eventsService,
       deps.projectsService,
     ),
+  )
+  router.route(
+    '/projects/:projectId/events',
+    createEventsRoutes(deps.eventsService, deps.projectsService),
   )
   router.route(
     '/projects/:projectId/webhooks',
