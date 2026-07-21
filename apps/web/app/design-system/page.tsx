@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Check, ChevronDown, ChevronRight, Copy, Moon, Sun } from 'lucide-react'
 import {
   Badge,
+  BrowserChrome,
   Callout,
   Card,
   CardBody,
@@ -543,6 +544,37 @@ export default function DesignSystemPage() {
                   </Card>
                 </Example>
               </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Browser chrome</ComponentGroupLabel>
+              <Example label="mock window card, composable content">
+                <BrowserChrome
+                  url="app.domainproof.dev/acme-app/events"
+                  className="w-full max-w-xl"
+                >
+                  <div className="flex flex-col divide-y divide-border">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="font-mono text-xs text-text-muted">
+                        domain.claimed
+                      </span>
+                      <Badge tone="accent">200</Badge>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="font-mono text-xs text-text-muted">
+                        domain.propagating
+                      </span>
+                      <Badge tone="warning">200</Badge>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="font-mono text-xs text-text-muted">
+                        domain.verified
+                      </span>
+                      <Badge tone="success">200</Badge>
+                    </div>
+                  </div>
+                </BrowserChrome>
+              </Example>
             </div>
 
             <div>
