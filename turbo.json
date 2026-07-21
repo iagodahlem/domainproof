@@ -3,8 +3,8 @@
   "globalEnv": [
     "DATABASE_URL",
     "CLERK_SECRET_KEY",
-    "CLERK_PUBLISHABLE_KEY",
-    "API_URL"
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_API_URL"
   ],
   "tasks": {
     "build": {
