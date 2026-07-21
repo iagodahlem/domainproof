@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { SessionAuthVariables } from '../middlewares/session-auth'
 import type { ProjectsService } from '@modules/projects/service'
@@ -10,9 +10,16 @@ const createKeyBodySchema = z.object({
   name: z.string().min(1).max(200).optional(),
 })
 
-function notFound() {
+function keyNotFound() {
   return {
     body: apiError('not_found', 'API key not found'),
+    status: 404 as const,
+  }
+}
+
+function projectNotFound() {
+  return {
+    body: apiError('not_found', 'Project not found'),
     status: 404 as const,
   }
 }
@@ -25,13 +32,14 @@ function invalidRequest(message: string) {
 }
 
 /**
- * Dashboard-facing key management routes, mounted at `/keys` under the
- * dashboard plane's router (giving `/dashboard/keys`). Every route is
- * scoped to the caller's account -> project (resolved via
- * `projectsService.getDefaultProjectId`): a `keyId` belonging to another
- * account's project always 404s, matching the anti-enumeration stance
- * used by the public-API key auth middleware — a caller should never be
- * able to distinguish "not yours" from "doesn't exist".
+ * Dashboard-facing key management routes, mounted at
+ * `/projects/:projectId/keys` under the dashboard plane's router (giving
+ * `/dashboard/projects/:projectId/keys`). Every route resolves `:projectId`
+ * against the caller's account via `projectsService.resolveOwnedProject`:
+ * a `projectId` (or, once resolved, a `keyId`) belonging to another
+ * account always 404s, matching the anti-enumeration stance used by the
+ * public-API key auth middleware — a caller should never be able to
+ * distinguish "not yours" from "doesn't exist".
  *
  * Session auth is applied once for the whole plane in
  * `apis/dashboard/router.ts`, not here — by the time a handler in this
@@ -46,6 +54,26 @@ export function createKeysRoutes(
 ) {
   const router = new Hono<{ Variables: SessionAuthVariables }>()
 
+  async function resolveProjectId(
+    c: Context<{ Variables: SessionAuthVariables }>,
+  ): Promise<string | undefined> {
+    // The route is only ever mounted under `/projects/:projectId/keys` (see
+    // `apis/dashboard/router.ts`), so `projectId` is always present at
+    // runtime — `c.req.param` types it as optional only because this
+    // sub-router's own route patterns don't mention a param owned by its
+    // parent mount path.
+    const projectId = c.req.param('projectId')
+    if (!projectId) {
+      return undefined
+    }
+
+    return projectsService.resolveOwnedProject(
+      c.get('userId'),
+      projectId,
+      c.get('userEmail'),
+    )
+  }
+
   router.post('/', async (c) => {
     const json = await c.req.json().catch(() => undefined)
     const parsed = createKeyBodySchema.safeParse(json)
@@ -55,10 +83,12 @@ export function createKeysRoutes(
       return c.json(body, status)
     }
 
-    const projectId = await projectsService.getDefaultProjectId(
-      c.get('userId'),
-      c.get('userEmail'),
-    )
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
     const result = await keysService.createKey(
       projectId,
       parsed.data.mode,
@@ -69,25 +99,28 @@ export function createKeysRoutes(
   })
 
   router.get('/', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(
-      c.get('userId'),
-      c.get('userEmail'),
-    )
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
     const items = await keysService.listKeys(projectId)
 
     return c.json({ apiKeys: items })
   })
 
   router.post('/:keyId/revoke', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(
-      c.get('userId'),
-      c.get('userEmail'),
-    )
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
     const keyId = c.req.param('keyId')
 
     const revoked = await keysService.revokeKey(projectId, keyId)
     if (!revoked) {
-      const { body, status } = notFound()
+      const { body, status } = keyNotFound()
       return c.json(body, status)
     }
 
@@ -95,15 +128,16 @@ export function createKeysRoutes(
   })
 
   router.post('/:keyId/rotate', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(
-      c.get('userId'),
-      c.get('userEmail'),
-    )
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
     const keyId = c.req.param('keyId')
 
     const result = await keysService.rotateKey(projectId, keyId)
     if (!result) {
-      const { body, status } = notFound()
+      const { body, status } = keyNotFound()
       return c.json(body, status)
     }
 

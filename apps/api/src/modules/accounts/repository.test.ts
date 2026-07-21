@@ -33,11 +33,11 @@ afterEach(async () => {
   }
 })
 
-describe('createWithDefaultProject', () => {
-  it('creates an account and a default project for a new clerk user', async () => {
+describe('create', () => {
+  it('creates an account with no project', async () => {
     const clerkUserId = freshClerkUserId()
 
-    const created = await repository.createWithDefaultProject(clerkUserId, null)
+    const created = await repository.create(clerkUserId, null)
     expect(created).toBeDefined()
 
     const [account] = await db
@@ -50,45 +50,30 @@ describe('createWithDefaultProject', () => {
       .select()
       .from(projects)
       .where(eq(projects.accountId, created?.id ?? ''))
-    expect(projectRows).toHaveLength(1)
-    expect(projectRows[0]?.name).toBe('Default')
-    expect(projectRows[0]?.slug).toBe('default')
+    expect(projectRows).toHaveLength(0)
   })
 
-  it('returns undefined without creating a second project when the account already exists', async () => {
+  it('returns undefined when the account already exists', async () => {
     const clerkUserId = freshClerkUserId()
 
-    const first = await repository.createWithDefaultProject(clerkUserId, null)
-    const second = await repository.createWithDefaultProject(clerkUserId, null)
+    const first = await repository.create(clerkUserId, null)
+    const second = await repository.create(clerkUserId, null)
 
     expect(first).toBeDefined()
     expect(second).toBeUndefined()
-
-    const projectRows = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.accountId, first?.id ?? ''))
-    expect(projectRows).toHaveLength(1)
   })
 
   it('is safe under concurrent calls for the same user: exactly one create wins', async () => {
     const clerkUserId = freshClerkUserId()
 
     const [a, b, c] = await Promise.all([
-      repository.createWithDefaultProject(clerkUserId, null),
-      repository.createWithDefaultProject(clerkUserId, null),
-      repository.createWithDefaultProject(clerkUserId, null),
+      repository.create(clerkUserId, null),
+      repository.create(clerkUserId, null),
+      repository.create(clerkUserId, null),
     ])
 
     const results = [a, b, c]
     expect(results.filter((r) => r !== undefined)).toHaveLength(1)
-
-    const winner = results.find((r) => r !== undefined)
-    const projectRows = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.accountId, winner?.id ?? ''))
-    expect(projectRows).toHaveLength(1)
   })
 })
 
@@ -101,7 +86,7 @@ describe('findByClerkUserId', () => {
 
   it("returns the account row after it's created", async () => {
     const clerkUserId = freshClerkUserId()
-    const created = await repository.createWithDefaultProject(clerkUserId, null)
+    const created = await repository.create(clerkUserId, null)
 
     const found = await repository.findByClerkUserId(clerkUserId)
     expect(found?.id).toBe(created?.id)
@@ -109,10 +94,7 @@ describe('findByClerkUserId', () => {
 
   it('persists the email a caller provides at creation', async () => {
     const clerkUserId = freshClerkUserId()
-    const created = await repository.createWithDefaultProject(
-      clerkUserId,
-      'builder@example.com',
-    )
+    const created = await repository.create(clerkUserId, 'builder@example.com')
     expect(created?.email).toBe('builder@example.com')
 
     const found = await repository.findByClerkUserId(clerkUserId)
@@ -123,17 +105,18 @@ describe('findByClerkUserId', () => {
 describe('findEmailByProjectId', () => {
   it("returns the owning account's email", async () => {
     const clerkUserId = freshClerkUserId()
-    const created = await repository.createWithDefaultProject(
-      clerkUserId,
-      'builder@example.com',
-    )
+    const created = await repository.create(clerkUserId, 'builder@example.com')
     if (!created) throw new Error('setup failed')
 
     const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.accountId, created.id))
-    if (!project) throw new Error('setup failed: no default project')
+      .insert(projects)
+      .values({
+        accountId: created.id,
+        name: 'Test project',
+        slug: 'test-project',
+      })
+      .returning({ id: projects.id })
+    if (!project) throw new Error('setup failed: could not create test project')
 
     expect(await repository.findEmailByProjectId(project.id)).toBe(
       'builder@example.com',
@@ -146,14 +129,18 @@ describe('findEmailByProjectId', () => {
 
   it('returns undefined when the owning account has no email on file', async () => {
     const clerkUserId = freshClerkUserId()
-    const created = await repository.createWithDefaultProject(clerkUserId, null)
+    const created = await repository.create(clerkUserId, null)
     if (!created) throw new Error('setup failed')
 
     const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.accountId, created.id))
-    if (!project) throw new Error('setup failed: no default project')
+      .insert(projects)
+      .values({
+        accountId: created.id,
+        name: 'Test project',
+        slug: 'test-project',
+      })
+      .returning({ id: projects.id })
+    if (!project) throw new Error('setup failed: could not create test project')
 
     expect(await repository.findEmailByProjectId(project.id)).toBeUndefined()
   })

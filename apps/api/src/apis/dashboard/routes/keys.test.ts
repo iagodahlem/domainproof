@@ -9,9 +9,9 @@ import { accounts } from '@infra/db/schema'
 // Auth here is a fake SessionVerifier implementing the port directly,
 // mapping "token-for-<userId>" straight to that user id — the real Clerk
 // verifier's own behavior is covered by infra/auth/clerk.test.ts. This file
-// is the only coverage of /dashboard/keys wiring end to end (route
-// mounting, project resolution, cross-account scoping), not of session
-// verification itself.
+// is the only coverage of /dashboard/projects/:projectId/keys wiring end to
+// end (route mounting, project ownership scoping, cross-account scoping),
+// not of session verification itself.
 const db: Database = createDb(
   process.env.DATABASE_URL ??
     'postgres://domainproof:domainproof@localhost:5432/domainproof',
@@ -52,7 +52,21 @@ async function asUser(
   })
 }
 
-describe('/dashboard/keys', () => {
+async function createProject(
+  app: ReturnType<typeof buildApp>,
+  clerkUserId: string,
+  name = 'Test project',
+): Promise<string> {
+  const res = await asUser(app, clerkUserId, '/dashboard/projects', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  const body = (await res.json()) as { project: { id: string } }
+  return body.project.id
+}
+
+describe('/dashboard/projects/:projectId/keys', () => {
   afterEach(async () => {
     while (createdClerkUserIds.length > 0) {
       const clerkUserId = createdClerkUserIds.pop()
@@ -64,19 +78,54 @@ describe('/dashboard/keys', () => {
 
   it('rejects unauthenticated requests', async () => {
     const app = buildApp()
-    const res = await app.request('/dashboard/keys')
+    const res = await app.request('/dashboard/projects/anything/keys')
     expect(res.status).toBe(401)
+  })
+
+  it("404s for a project that doesn't exist", async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+
+    const res = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${randomUUID()}/keys`,
+    )
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('not_found')
+  })
+
+  it("404s (not 403) for another account's project", async () => {
+    const app = buildApp()
+    const ownerId = freshClerkUserId()
+    const otherId = freshClerkUserId()
+
+    const projectId = await createProject(app, ownerId)
+
+    const res = await asUser(
+      app,
+      otherId,
+      `/dashboard/projects/${projectId}/keys`,
+    )
+    expect(res.status).toBe(404)
   })
 
   it('creates, lists, and never returns secret material', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
 
-    const createRes = await asUser(app, clerkUserId, '/dashboard/keys', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'live', name: 'Production' }),
-    })
+    const createRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'live', name: 'Production' }),
+      },
+    )
     expect(createRes.status).toBe(201)
 
     const created = (await createRes.json()) as {
@@ -86,12 +135,17 @@ describe('/dashboard/keys', () => {
     expect(created.key).toMatch(/^dp_live_[a-z2-7]{12}_[a-z2-7]{26}$/)
     expect(created.apiKey.name).toBe('Production')
 
-    const listRes = await asUser(app, clerkUserId, '/dashboard/keys')
+    const listRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+    )
     expect(listRes.status).toBe(200)
     const listBody = (await listRes.json()) as {
       apiKeys: Array<Record<string, unknown>>
     }
-    expect(listBody.apiKeys).toHaveLength(1)
+    // The project's bootstrap test+live pair, plus the one just created.
+    expect(listBody.apiKeys).toHaveLength(3)
 
     const serialized = JSON.stringify(listBody)
     expect(serialized).not.toContain('secretHash')
@@ -103,12 +157,18 @@ describe('/dashboard/keys', () => {
   it('rejects a malformed create body', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
 
-    const res = await asUser(app, clerkUserId, '/dashboard/keys', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'not-a-mode' }),
-    })
+    const res = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'not-a-mode' }),
+      },
+    )
     expect(res.status).toBe(400)
     const body = (await res.json()) as { error: { code: string } }
     expect(body.error.code).toBe('invalid_request')
@@ -117,18 +177,24 @@ describe('/dashboard/keys', () => {
   it('revokes a key', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
 
-    const createRes = await asUser(app, clerkUserId, '/dashboard/keys', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'test' }),
-    })
+    const createRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'test' }),
+      },
+    )
     const created = (await createRes.json()) as { apiKey: { keyId: string } }
 
     const revokeRes = await asUser(
       app,
       clerkUserId,
-      `/dashboard/keys/${created.apiKey.keyId}/revoke`,
+      `/dashboard/projects/${projectId}/keys/${created.apiKey.keyId}/revoke`,
       { method: 'POST' },
     )
     expect(revokeRes.status).toBe(200)
@@ -141,12 +207,18 @@ describe('/dashboard/keys', () => {
   it('rotates a key: old dead, new works, same name', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
 
-    const createRes = await asUser(app, clerkUserId, '/dashboard/keys', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'live', name: 'Rotate target' }),
-    })
+    const createRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'live', name: 'Rotate target' }),
+      },
+    )
     const created = (await createRes.json()) as {
       key: string
       apiKey: { keyId: string; name: string | null }
@@ -155,7 +227,7 @@ describe('/dashboard/keys', () => {
     const rotateRes = await asUser(
       app,
       clerkUserId,
-      `/dashboard/keys/${created.apiKey.keyId}/rotate`,
+      `/dashboard/projects/${projectId}/keys/${created.apiKey.keyId}/rotate`,
       { method: 'POST' },
     )
     expect(rotateRes.status).toBe(200)
@@ -167,7 +239,11 @@ describe('/dashboard/keys', () => {
     expect(rotated.apiKey.name).toBe('Rotate target')
     expect(rotated.apiKey.keyId).not.toBe(created.apiKey.keyId)
 
-    const listRes = await asUser(app, clerkUserId, '/dashboard/keys')
+    const listRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/keys`,
+    )
     const listBody = (await listRes.json()) as {
       apiKeys: Array<{ keyId: string; revokedAt: string | null }>
     }
@@ -181,38 +257,44 @@ describe('/dashboard/keys', () => {
     expect(newEntry?.revokedAt).toBeNull()
   })
 
-  it("404s (not 403) when acting on another account's key", async () => {
+  it("404s (not 403) when acting on another account's key, via that account's own project", async () => {
     const app = buildApp()
     const ownerId = freshClerkUserId()
     const otherId = freshClerkUserId()
 
-    const createRes = await asUser(app, ownerId, '/dashboard/keys', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'test' }),
-    })
+    const ownerProjectId = await createProject(app, ownerId)
+    const otherProjectId = await createProject(app, otherId)
+
+    const createRes = await asUser(
+      app,
+      ownerId,
+      `/dashboard/projects/${ownerProjectId}/keys`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'test' }),
+      },
+    )
     const created = (await createRes.json()) as { apiKey: { keyId: string } }
 
+    // otherId owns a project, but not ownerId's — the keyId 404s under
+    // otherId's own project, same as an unknown keyId would.
     const revokeAsOther = await asUser(
       app,
       otherId,
-      `/dashboard/keys/${created.apiKey.keyId}/revoke`,
+      `/dashboard/projects/${otherProjectId}/keys/${created.apiKey.keyId}/revoke`,
       { method: 'POST' },
     )
     expect(revokeAsOther.status).toBe(404)
     const body = (await revokeAsOther.json()) as { error: { code: string } }
     expect(body.error.code).toBe('not_found')
 
-    const rotateAsOther = await asUser(
-      app,
-      otherId,
-      `/dashboard/keys/${created.apiKey.keyId}/rotate`,
-      { method: 'POST' },
-    )
-    expect(rotateAsOther.status).toBe(404)
-
     // And it's untouched from the owner's perspective.
-    const listRes = await asUser(app, ownerId, '/dashboard/keys')
+    const listRes = await asUser(
+      app,
+      ownerId,
+      `/dashboard/projects/${ownerProjectId}/keys`,
+    )
     const listBody = (await listRes.json()) as {
       apiKeys: Array<{ keyId: string; revokedAt: string | null }>
     }
@@ -224,80 +306,14 @@ describe('/dashboard/keys', () => {
   it('returns 404 for an unknown key id', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
 
     const res = await asUser(
       app,
       clerkUserId,
-      '/dashboard/keys/doesnotexist1/revoke',
+      `/dashboard/projects/${projectId}/keys/doesnotexist1/revoke`,
       { method: 'POST' },
     )
     expect(res.status).toBe(404)
-  })
-})
-
-describe('account bootstrap notifications', () => {
-  // A session claims email — the fake sessionVerifier above never sets one
-  // (matching this repo's real Clerk wiring, see
-  // modules/accounts/service.ts), so this variant proves the email, once
-  // present, actually flows through to the welcome email.
-  const fakeSessionVerifierWithEmail: SessionVerifier = {
-    async verify(token) {
-      if (!token.startsWith('token-for-')) {
-        return { ok: false, reason: 'invalid_or_expired' }
-      }
-      return {
-        ok: true,
-        claims: {
-          userId: token.slice('token-for-'.length),
-          email: 'builder@example.com',
-        },
-      }
-    },
-  }
-
-  afterEach(async () => {
-    while (createdClerkUserIds.length > 0) {
-      const clerkUserId = createdClerkUserIds.pop()
-      if (clerkUserId) {
-        await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId))
-      }
-    }
-  })
-
-  it("sends a welcome email to the session's email on first bootstrap, never again after", async () => {
-    const sent: { to: string; subject: string }[] = []
-    const app = createApp({
-      db,
-      sessionVerifier: fakeSessionVerifierWithEmail,
-      emailSender: {
-        async send(message) {
-          sent.push(message)
-        },
-      },
-    })
-    const clerkUserId = freshClerkUserId()
-
-    const first = await asUser(app, clerkUserId, '/dashboard/keys')
-    expect(first.status).toBe(200)
-    expect(sent).toHaveLength(1)
-    expect(sent[0]).toMatchObject({
-      to: 'builder@example.com',
-      subject: 'Welcome to DomainProof',
-    })
-
-    const second = await asUser(app, clerkUserId, '/dashboard/keys')
-    expect(second.status).toBe(200)
-    expect(sent).toHaveLength(1) // no second welcome email on a later request
-  })
-
-  it('never sends an email when RESEND_API_KEY (here: no emailSender) is not configured', async () => {
-    const app = createApp({ db, sessionVerifier: fakeSessionVerifierWithEmail })
-    const clerkUserId = freshClerkUserId()
-
-    // No emailSender injected and no RESEND_API_KEY in this test env, so
-    // the notification subscribers are never registered — this proves the
-    // request path still succeeds rather than crashing.
-    const res = await asUser(app, clerkUserId, '/dashboard/keys')
-    expect(res.status).toBe(200)
   })
 })

@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { accounts, projects } from '@infra/db/schema'
-import { deriveProjectSlug } from '@modules/projects/domain/brand'
 
 /** A newly (or already) bootstrapped account's id and email. */
 export interface AccountRow {
@@ -19,17 +18,15 @@ export interface AccountsRepository {
   findByClerkUserId(clerkUserId: string): Promise<AccountRow | undefined>
 
   /**
-   * Inserts an account row (with the given email, if any) plus its
-   * "Default" project, atomically, in one transaction — the project
-   * insert only happens if the account insert actually landed. Returns
+   * Inserts an account row (with the given email, if any). Returns
    * `undefined` (rather than throwing) when `clerkUserId` already has an
    * account: the insert hits `clerk_user_id`'s unique constraint via `ON
    * CONFLICT DO NOTHING`, which is what makes two concurrent callers for
    * the same brand-new user safe — exactly one insert succeeds, the other
    * gets `undefined` and falls back to {@link findByClerkUserId} instead
-   * of erroring or double-creating a project.
+   * of erroring.
    */
-  createWithDefaultProject(
+  create(
     clerkUserId: string,
     email: string | null,
   ): Promise<AccountRow | undefined>
@@ -56,27 +53,14 @@ export function createAccountsRepository(db: Database): AccountsRepository {
       return row
     },
 
-    async createWithDefaultProject(clerkUserId, email) {
-      return db.transaction(async (tx) => {
-        const inserted = await tx
-          .insert(accounts)
-          .values({ clerkUserId, email })
-          .onConflictDoNothing({ target: accounts.clerkUserId })
-          .returning({ id: accounts.id, email: accounts.email })
+    async create(clerkUserId, email) {
+      const [account] = await db
+        .insert(accounts)
+        .values({ clerkUserId, email })
+        .onConflictDoNothing({ target: accounts.clerkUserId })
+        .returning({ id: accounts.id, email: accounts.email })
 
-        const account = inserted[0]
-        if (!account) {
-          return undefined
-        }
-
-        await tx.insert(projects).values({
-          accountId: account.id,
-          name: 'Default',
-          slug: deriveProjectSlug('Default'),
-        })
-
-        return account
-      })
+      return account
     },
 
     async findEmailByProjectId(projectId) {

@@ -12,7 +12,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:reset": "tsx --env-file-if-exists=.env src/infra/db/reset.ts"
+    "db:reset": "tsx --env-file-if-exists=.env src/infra/db/reset.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/seed.ts"
   },
   "dependencies": {
     "@domainproof/core": "workspace:*",

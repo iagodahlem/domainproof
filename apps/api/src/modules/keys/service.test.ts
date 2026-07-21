@@ -201,3 +201,48 @@ describe('rotateKey', () => {
     ).toBeNull()
   })
 })
+
+describe('generateKeyMaterial', () => {
+  it('generates a parseable key and insert-ready, hashed material with no secret in it', async () => {
+    const service = createKeysService(fakeRepository())
+
+    const material = service.generateKeyMaterial('live', 'CI key')
+
+    const parsed = parseApiKey(material.key)
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.value.mode).toBe('live')
+      expect(parsed.value.keyId).toBe(material.insert.keyId)
+      expect(material.insert.secretHash).not.toBe(parsed.value.secret)
+    }
+    expect(material.insert.mode).toBe('live')
+    expect(material.insert.name).toBe('CI key')
+    expect(material.insert.last4).toBe(material.key.slice(-4))
+  })
+
+  it('defaults name to null when omitted', async () => {
+    const service = createKeysService(fakeRepository())
+
+    const material = service.generateKeyMaterial('test')
+
+    expect(material.insert.name).toBeNull()
+  })
+
+  it('produces material that inserts and lists the same as createKey', async () => {
+    const repository = fakeRepository()
+    const service = createKeysService(repository)
+
+    const material = service.generateKeyMaterial('test', 'Manual insert')
+    const row = await repository.insert({
+      ...material.insert,
+      projectId: 'project_1',
+    })
+
+    const item = service.toListItem(row)
+    expect(item.mode).toBe('test')
+    expect(item.name).toBe('Manual insert')
+    expect(item.maskedKey).toBe(
+      `dp_test_${material.insert.keyId}_...${material.insert.last4}`,
+    )
+  })
+})

@@ -167,7 +167,13 @@ function fakeProjectsService(
   slugsByProjectId: Record<string, string> = { project_1: 'skylane' },
 ): ProjectsService {
   return {
-    async getDefaultProjectId() {
+    async listProjects() {
+      throw new Error('not used by domains service')
+    },
+    async createProject() {
+      throw new Error('not used by domains service')
+    },
+    async resolveOwnedProject() {
       throw new Error('not used by domains service')
     },
     async getProjectSlug(projectId) {

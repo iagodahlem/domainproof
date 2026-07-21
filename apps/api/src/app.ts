@@ -4,16 +4,29 @@ import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import type { SessionVerifier } from '@modules/accounts/ports'
 import { createAccountsRepository } from '@modules/accounts/repository'
-import { createAccountsService } from '@modules/accounts/service'
+import {
+  createAccountsService,
+  type AccountsService,
+} from '@modules/accounts/service'
 import { createProjectsRepository } from '@modules/projects/repository'
-import { createProjectsService } from '@modules/projects/service'
+import {
+  createProjectsService,
+  type ProjectsService,
+} from '@modules/projects/service'
 import { createKeysRepository } from '@modules/keys/repository'
-import { createKeysService } from '@modules/keys/service'
+import { createKeysService, type KeysService } from '@modules/keys/service'
+import type { KeysRepository } from '@modules/keys/repository'
 import { createDomainsRepository } from '@modules/domains/repository'
-import { createDomainsService } from '@modules/domains/service'
+import {
+  createDomainsService,
+  type DomainsService,
+} from '@modules/domains/service'
 import type { ResolverForChallenge } from '@modules/domains/ports'
 import { createEventsRepository } from '@modules/events/repository'
-import { createEventsService } from '@modules/events/service'
+import {
+  createEventsService,
+  type EventsService,
+} from '@modules/events/service'
 import { createNotificationsService } from '@modules/notifications/service'
 import type { EmailSender } from '@modules/notifications/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
@@ -111,15 +124,30 @@ export interface AppDependencies {
   emailSender?: EmailSender
 }
 
+export interface AppServices {
+  db: Database
+  accountsService: AccountsService
+  projectsService: ProjectsService
+  keysService: KeysService
+  keysRepository: KeysRepository
+  domainsService: DomainsService
+  eventsService: EventsService
+  sessionVerifier: SessionVerifier | undefined
+}
+
 /**
- * The composition root: every repository, service, and adapter gets built
- * and wired here, exactly once, then handed to the plane routers under
- * `apis/`. Nothing outside this file constructs a `Database`, a
- * repository, or a `SessionVerifier` — modules and planes only ever
- * receive them as arguments.
+ * The composition root's service-wiring half: every repository, service,
+ * and event subscriber gets built and wired here, exactly once. Split out
+ * from `createApp` (below) so `src/seed.ts` — a second entrypoint that
+ * needs the same real services, not a duplicate of their construction —
+ * can reuse this instead of hand-wiring its own modules, which would both
+ * violate "only the composition root imports from `modules/`" and risk
+ * drifting from how `createApp` actually wires things (e.g. forgetting the
+ * `eventBus` a service depends on). Nothing outside this file constructs a
+ * `Database`, a repository, or a `SessionVerifier` — modules and planes
+ * only ever receive them as arguments.
  */
-export function createApp(deps: AppDependencies = {}) {
-  const app = new Hono()
+export function createServices(deps: AppDependencies = {}): AppServices {
   const db = deps.db ?? createDb(env.DATABASE_URL)
 
   // The event bus: every domain status transition and account bootstrap
@@ -139,14 +167,15 @@ export function createApp(deps: AppDependencies = {}) {
   const accountsRepository = createAccountsRepository(db)
   const accountsService = createAccountsService(accountsRepository, eventBus)
 
+  const keysRepository = createKeysRepository(db)
+  const keysService = createKeysService(keysRepository)
+
   const projectsRepository = createProjectsRepository(db)
   const projectsService = createProjectsService(
     projectsRepository,
     accountsService,
+    keysService,
   )
-
-  const keysRepository = createKeysRepository(db)
-  const keysService = createKeysService(keysRepository)
 
   const domainsRepository = createDomainsRepository(db)
   const domainsService = createDomainsService(
@@ -197,6 +226,34 @@ export function createApp(deps: AppDependencies = {}) {
           issuer: env.CLERK_ISSUER,
         })
       : undefined)
+
+  return {
+    db,
+    accountsService,
+    projectsService,
+    keysService,
+    keysRepository,
+    domainsService,
+    eventsService,
+    sessionVerifier,
+  }
+}
+
+/**
+ * The composition root's HTTP half: builds the services (see
+ * {@link createServices}) and mounts them onto the plane routers under
+ * `apis/`, plus the app-wide middleware and error handling.
+ */
+export function createApp(deps: AppDependencies = {}) {
+  const app = new Hono()
+  const {
+    keysService,
+    keysRepository,
+    projectsService,
+    domainsService,
+    eventsService,
+    sessionVerifier,
+  } = createServices(deps)
 
   // Logs every request, on both planes, before anything else runs — see
   // shared/middlewares/request-logger.ts.
