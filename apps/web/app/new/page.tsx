@@ -5,6 +5,7 @@ import { SignOutButton } from '@clerk/nextjs'
 import { Button, Logo } from '@domainproof/ui'
 import { dashboardApi } from '@/lib/api'
 import { CreateProjectFlow } from '@/components/create-project-flow'
+import { ApiErrorState } from '@/components/api-error-state'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',
@@ -18,9 +19,17 @@ export const metadata: Metadata = {
  */
 export default async function NewProjectPage() {
   const { getToken } = await auth()
-  const { projects } = await dashboardApi.listProjects(await getToken())
 
-  if (projects.length > 0) {
+  let hasProjects = false
+  let loadFailed = false
+  try {
+    const { projects } = await dashboardApi.listProjects(await getToken())
+    hasProjects = projects.length > 0
+  } catch {
+    loadFailed = true
+  }
+
+  if (hasProjects) {
     redirect('/dashboard')
   }
 
@@ -47,7 +56,7 @@ export default async function NewProjectPage() {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <CreateProjectFlow />
+        {loadFailed ? <ApiErrorState /> : <CreateProjectFlow />}
       </main>
     </div>
   )

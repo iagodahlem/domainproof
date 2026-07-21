@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { SignOutButton } from '@clerk/nextjs'
 import { Button, Card, CardBody, Logo } from '@domainproof/ui'
-import { dashboardApi } from '@/lib/api'
+import { dashboardApi, type ProjectSummary } from '@/lib/api'
+import { ApiErrorState } from '@/components/api-error-state'
 
 export const metadata: Metadata = {
   title: 'Dashboard — DomainProof',
@@ -18,9 +19,16 @@ export const metadata: Metadata = {
  */
 export default async function DashboardPage() {
   const { getToken } = await auth()
-  const { projects } = await dashboardApi.listProjects(await getToken())
 
-  if (projects.length === 0) {
+  let projects: ProjectSummary[] = []
+  let loadFailed = false
+  try {
+    ;({ projects } = await dashboardApi.listProjects(await getToken()))
+  } catch {
+    loadFailed = true
+  }
+
+  if (!loadFailed && projects.length === 0) {
     redirect('/new')
   }
 
@@ -48,18 +56,24 @@ export default async function DashboardPage() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
         <h1 className="text-2xl font-heading text-text">Your projects</h1>
-        <div className="mt-6 flex flex-col gap-3">
-          {projects.map((project) => (
-            <Card key={project.id}>
-              <CardBody>
-                <p className="font-heading text-text">{project.name}</p>
-                <p className="mt-1 font-mono text-xs text-text-faint">
-                  {project.slug}
-                </p>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
+        {loadFailed ? (
+          <div className="mt-6">
+            <ApiErrorState />
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col gap-3">
+            {projects.map((project) => (
+              <Card key={project.id}>
+                <CardBody>
+                  <p className="font-heading text-text">{project.name}</p>
+                  <p className="mt-1 font-mono text-xs text-text-faint">
+                    {project.slug}
+                  </p>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   )
