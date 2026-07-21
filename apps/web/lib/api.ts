@@ -108,4 +108,35 @@ export const dashboardApi = {
       body: JSON.stringify({ name }),
     })
   },
+
+  updateProject(token: string | null, projectId: string, name: string) {
+    return request<{ project: ProjectSummary }>(
+      `/dashboard/projects/${projectId}`,
+      token,
+      { method: 'PATCH', body: JSON.stringify({ name }) },
+    )
+  },
+
+  listKeys(token: string | null, projectId: string) {
+    return request<{ apiKeys: ApiKeyListItem[] }>(
+      `/dashboard/projects/${projectId}/keys`,
+      token,
+    )
+  },
+
+  rotateKey(token: string | null, projectId: string, keyId: string) {
+    return request<CreateKeyResult>(
+      `/dashboard/projects/${projectId}/keys/${keyId}/rotate`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  revokeKey(token: string | null, projectId: string, keyId: string) {
+    return request<{ apiKey: ApiKeyListItem }>(
+      `/dashboard/projects/${projectId}/keys/${keyId}/revoke`,
+      token,
+      { method: 'POST' },
+    )
+  },
 }
