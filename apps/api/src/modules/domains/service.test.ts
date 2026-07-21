@@ -14,6 +14,7 @@ import type {
   ClaimInsert,
   DomainRow,
   DomainsRepository,
+  RegenerateChallengeInsert,
 } from './repository'
 import { createDomainsService } from './service'
 
@@ -132,6 +133,16 @@ function fakeRepository(): DomainsRepository {
       return row
     },
 
+    async releaseByProjectId(projectId, id) {
+      const row = domainRows.get(id)
+      if (!row || row.projectId !== projectId) {
+        return undefined
+      }
+      domainRows.delete(id)
+      challengesByDomainId.delete(id)
+      return row
+    },
+
     async recordVerificationAttempt(values) {
       const row = domainRows.get(values.domainId)
       if (!row) {
@@ -147,6 +158,41 @@ function fakeRepository(): DomainsRepository {
       domainRows.set(row.id, updated)
 
       return updated
+    },
+
+    async regenerateChallenge(values: RegenerateChallengeInsert) {
+      const row = domainRows.get(values.domainId)
+      if (!row) {
+        throw new Error(`No domain found for id ${values.domainId}`)
+      }
+
+      const supersededAt = new Date()
+      const existing = (challengesByDomainId.get(values.domainId) ?? []).map(
+        (challenge) =>
+          challenge.supersededAt ? challenge : { ...challenge, supersededAt },
+      )
+
+      const challengeRow: ChallengeRow = {
+        id: randomUUID(),
+        domainId: values.domainId,
+        method: values.challenge.method,
+        token: values.challenge.token,
+        recordHost: values.challenge.recordHost,
+        recordValue: values.challenge.recordValue,
+        expiresAt: values.challenge.expiresAt,
+        supersededAt: null,
+        createdAt: new Date(),
+      }
+      challengesByDomainId.set(values.domainId, [...existing, challengeRow])
+
+      const updated: DomainRow = {
+        ...row,
+        status: values.nextStatus,
+        updatedAt: new Date(),
+      }
+      domainRows.set(row.id, updated)
+
+      return { domain: updated, challenge: challengeRow }
     },
   }
 }

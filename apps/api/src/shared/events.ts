@@ -37,6 +37,8 @@ export interface DomainEventMap {
   }
   /** A project claimed a domain and got a fresh verification challenge. */
   'domain.claimed': DomainEventPayload
+  /** A domain's challenge was regenerated (a fresh token issued), restarting verification. */
+  'domain.challenge_regenerated': DomainEventPayload
   /** A verification attempt's DNS check found the expected record. */
   'domain.check_passed': DomainEventPayload
   /** A verification attempt's DNS check did not find the expected record (or the attempt window expired). */
@@ -55,6 +57,7 @@ export type DomainEventType = keyof DomainEventMap
 export const DOMAIN_EVENT_TYPES: DomainEventType[] = [
   'account.created',
   'domain.claimed',
+  'domain.challenge_regenerated',
   'domain.check_passed',
   'domain.check_failed',
   'domain.verified',

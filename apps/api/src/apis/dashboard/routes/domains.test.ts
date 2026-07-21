@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
+import { DEFAULT_TOKEN_TTL_MS } from '@domainproof/core'
 import { createApp } from '../../../app'
 import type { SessionVerifier } from '@modules/accounts/ports'
 import { createDb, type Database } from '@infra/db/client'
@@ -10,9 +11,11 @@ import { accounts, challenges, domains, events } from '@infra/db/schema'
 // as `routes/keys.test.ts` — the real Clerk verifier's own behavior is
 // covered by `infra/auth/clerk.test.ts`. This file is the only coverage of
 // `/dashboard/projects/:projectId/domains` wiring end to end: route
-// mounting, project ownership scoping, and pagination. There's no dashboard
-// write path to claim a domain through, so test domains are inserted
-// directly (like `modules/events/repository.test.ts`'s `createTestDomain`).
+// mounting, project ownership scoping, and pagination. The read tests below
+// mostly insert test domains directly (like
+// `modules/events/repository.test.ts`'s `createTestDomain`) since they only
+// care about a domain already existing; the write tests exercise
+// `createDomain` (this plane's own claim route) instead.
 const db: Database = createDb(
   process.env.DATABASE_URL ??
     'postgres://domainproof:domainproof@localhost:5432/domainproof',
@@ -34,8 +37,8 @@ function freshClerkUserId() {
   return id
 }
 
-function buildApp() {
-  return createApp({ db, sessionVerifier: fakeSessionVerifier })
+function buildApp(overrides: { now?: () => Date } = {}) {
+  return createApp({ db, sessionVerifier: fakeSessionVerifier, ...overrides })
 }
 
 async function asUser(
@@ -100,6 +103,36 @@ async function createTestDomain(
   }
 
   return domain.id
+}
+
+interface DomainResponseBody {
+  domain: {
+    id: string
+    domain: string
+    mode: string
+    status: string
+    verificationUrl: string
+    records: Array<{
+      type: string
+      name: string
+      value: string
+      status: string
+    }>
+  }
+}
+
+/** Claims a domain through the write route under test, defaulting to test mode. */
+async function createDomain(
+  app: ReturnType<typeof buildApp>,
+  clerkUserId: string,
+  projectId: string,
+  overrides: { domain: string; mode?: 'test' | 'live' },
+) {
+  return asUser(app, clerkUserId, `/dashboard/projects/${projectId}/domains`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mode: 'test', ...overrides }),
+  })
 }
 
 describe('/dashboard/projects/:projectId/domains', () => {
@@ -423,5 +456,472 @@ describe('/dashboard/projects/:projectId/domains', () => {
       const body = (await res.json()) as { error: { code: string } }
       expect(body.error.code).toBe('not_found')
     })
+  })
+
+  describe('POST /', () => {
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request('/dashboard/projects/anything/domains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'example.test', mode: 'test' }),
+      })
+      expect(res.status).toBe(401)
+    })
+
+    it('claims a domain with a TXT record and a hosted verification URL', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+      })
+      expect(res.status).toBe(201)
+      const body = (await res.json()) as DomainResponseBody
+      expect(body.domain.domain).toBe('example.test')
+      expect(body.domain.mode).toBe('test')
+      expect(body.domain.status).toBe('pending')
+      expect(body.domain.verificationUrl).toContain(body.domain.id)
+      expect(body.domain.records).toHaveLength(1)
+      expect(body.domain.records[0]?.type).toBe('TXT')
+      expect(body.domain.records[0]?.status).toBe('pending')
+    })
+
+    it('rejects a request body missing mode', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ domain: 'example.test' }),
+        },
+      )
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_request')
+    })
+
+    it('rejects a domain that is not a valid hostname', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'not a hostname',
+      })
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_request')
+    })
+
+    it('rejects a .test sandbox domain claimed in live mode', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+        mode: 'live',
+      })
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('sandbox_requires_test_mode')
+    })
+
+    it('returns 409 for a duplicate (project, domain, mode) claim', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      await createDomain(app, clerkUserId, projectId, { domain: 'dup.test' })
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'dup.test',
+      })
+      expect(res.status).toBe(409)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('domain_already_claimed')
+    })
+
+    it('allows the same domain to be claimed again under a different project', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectAId = await createProject(app, clerkUserId, 'Project A')
+      const projectBId = await createProject(app, clerkUserId, 'Project B')
+
+      await createDomain(app, clerkUserId, projectAId, {
+        domain: 'shared.test',
+      })
+      const res = await createDomain(app, clerkUserId, projectBId, {
+        domain: 'shared.test',
+      })
+      expect(res.status).toBe(201)
+    })
+
+    it("404s (not 403) for another account's project", async () => {
+      const app = buildApp()
+      const ownerId = freshClerkUserId()
+      const otherId = freshClerkUserId()
+      const projectId = await createProject(app, ownerId)
+
+      const res = await createDomain(app, otherId, projectId, {
+        domain: 'example.test',
+      })
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+  })
+
+  describe('POST /:domainId/verify', () => {
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(
+        `/dashboard/projects/anything/domains/${randomUUID()}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("verifies a 'verified.test' sandbox domain immediately", async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const createRes = await createDomain(app, clerkUserId, projectId, {
+        domain: 'verified.test',
+      })
+      const { domain: created } = (await createRes.json()) as DomainResponseBody
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        domain: { status: string; records: Array<{ status: string }> }
+        check: { outcome: string; checkedAt: string; explanation?: string }
+      }
+      expect(body.check.outcome).toBe('found')
+      expect(body.check.explanation).toBeUndefined()
+      expect(body.domain.status).toBe('verified')
+      expect(body.domain.records[0]?.status).toBe('verified')
+    })
+
+    it("returns the expected/detected mismatch for a 'wrong-value.test' sandbox domain", async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const createRes = await createDomain(app, clerkUserId, projectId, {
+        domain: 'wrong-value.test',
+      })
+      const { domain: created } = (await createRes.json()) as DomainResponseBody
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        domain: { status: string }
+        check: {
+          outcome: string
+          expected?: string
+          detected?: string[]
+        }
+      }
+      expect(body.check.outcome).toBe('wrong_value')
+      expect(typeof body.check.expected).toBe('string')
+      expect(body.check.detected).toEqual(
+        expect.arrayContaining([expect.any(String)]),
+      )
+      expect(body.domain.status).toBe('failed')
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${randomUUID()}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s (not 403) for another project's domain", async () => {
+      const app = buildApp()
+      const ownerId = freshClerkUserId()
+      const otherId = freshClerkUserId()
+      const ownerProjectId = await createProject(app, ownerId)
+      const otherProjectId = await createProject(app, otherId)
+      const domainId = await createTestDomain(ownerProjectId)
+
+      const res = await asUser(
+        app,
+        otherId,
+        `/dashboard/projects/${otherProjectId}/domains/${domainId}/verify`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('POST /:domainId/regenerate', () => {
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(
+        `/dashboard/projects/anything/domains/${randomUUID()}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it('issues a fresh challenge for a failed domain and moves it back to pending', async () => {
+      let clockOffsetMs = 0
+      const app = buildApp({ now: () => new Date(Date.now() + clockOffsetMs) })
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      // `nxdomain.test` never resolves, so pushing the clock past the
+      // verification window hard-fails it without a real DNS dependency.
+      const createRes = await createDomain(app, clerkUserId, projectId, {
+        domain: 'nxdomain.test',
+      })
+      const { domain: created } = (await createRes.json()) as DomainResponseBody
+      const oldRecordValue = created.records[0]?.value
+
+      clockOffsetMs = DEFAULT_TOKEN_TTL_MS
+      const verifyRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/verify`,
+        { method: 'POST' },
+      )
+      const verifyBody = (await verifyRes.json()) as DomainResponseBody
+      expect(verifyBody.domain.status).toBe('failed')
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as DomainResponseBody
+      expect(body.domain.status).toBe('pending')
+      expect(body.domain.records).toHaveLength(1)
+      expect(body.domain.records[0]?.value).not.toBe(oldRecordValue)
+    })
+
+    it('rejects regenerating a verified domain', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const createRes = await createDomain(app, clerkUserId, projectId, {
+        domain: 'verified.test',
+      })
+      const { domain: created } = (await createRes.json()) as DomainResponseBody
+      await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/verify`,
+        { method: 'POST' },
+      )
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(409)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_status')
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${randomUUID()}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s (not 403) for another project's domain", async () => {
+      const app = buildApp()
+      const ownerId = freshClerkUserId()
+      const otherId = freshClerkUserId()
+      const ownerProjectId = await createProject(app, ownerId)
+      const otherProjectId = await createProject(app, otherId)
+      const domainId = await createTestDomain(ownerProjectId, {
+        mode: 'test',
+      })
+
+      const res = await asUser(
+        app,
+        otherId,
+        `/dashboard/projects/${otherProjectId}/domains/${domainId}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('DELETE /:domainId', () => {
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(
+        `/dashboard/projects/anything/domains/${randomUUID()}`,
+        { method: 'DELETE' },
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it('releases a domain, and it is gone afterward', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const createRes = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+      })
+      const { domain: created } = (await createRes.json()) as DomainResponseBody
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}`,
+        { method: 'DELETE' },
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as DomainResponseBody
+      expect(body.domain.id).toBe(created.id)
+
+      const getRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${created.id}`,
+      )
+      expect(getRes.status).toBe(404)
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains/${randomUUID()}`,
+        { method: 'DELETE' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s (not 403) for another project's domain", async () => {
+      const app = buildApp()
+      const ownerId = freshClerkUserId()
+      const otherId = freshClerkUserId()
+      const ownerProjectId = await createProject(app, ownerId)
+      const otherProjectId = await createProject(app, otherId)
+      const domainId = await createTestDomain(ownerProjectId)
+
+      const res = await asUser(
+        app,
+        otherId,
+        `/dashboard/projects/${otherProjectId}/domains/${domainId}`,
+        { method: 'DELETE' },
+      )
+      expect(res.status).toBe(404)
+    })
+  })
+
+  it('runs the full create -> verify -> regenerate -> delete journey, with every step visible on the event timeline', async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+    const projectId = await createProject(app, clerkUserId)
+
+    const createRes = await createDomain(app, clerkUserId, projectId, {
+      domain: 'wrong-value.test',
+    })
+    expect(createRes.status).toBe(201)
+    const { domain: created } = (await createRes.json()) as DomainResponseBody
+
+    const verifyRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/domains/${created.id}/verify`,
+      { method: 'POST' },
+    )
+    expect(verifyRes.status).toBe(200)
+    const verifyBody = (await verifyRes.json()) as DomainResponseBody
+    // pending -> failed: a wrong-but-valid-looking record is an actionable
+    // mismatch, not "still propagating".
+    expect(verifyBody.domain.status).toBe('failed')
+
+    const regenerateRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/domains/${created.id}/regenerate`,
+      { method: 'POST' },
+    )
+    expect(regenerateRes.status).toBe(200)
+    const regenerateBody = (await regenerateRes.json()) as DomainResponseBody
+    expect(regenerateBody.domain.status).toBe('pending')
+
+    const eventsRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/domains/${created.id}/events`,
+    )
+    expect(eventsRes.status).toBe(200)
+    const eventsBody = (await eventsRes.json()) as {
+      events: Array<{ type: string }>
+    }
+    expect(eventsBody.events.map((e) => e.type)).toEqual([
+      'domain.claimed',
+      'domain.check_failed',
+      'domain.failed',
+      'domain.challenge_regenerated',
+    ])
+
+    const deleteRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/domains/${created.id}`,
+      { method: 'DELETE' },
+    )
+    expect(deleteRes.status).toBe(200)
+
+    const getRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/domains/${created.id}`,
+    )
+    expect(getRes.status).toBe(404)
   })
 })
