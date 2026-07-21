@@ -1,0 +1,6 @@
+extends:
+  - recommended
+rules:
+  # The local-development server entry is intentional (see README.md's
+  # "Local development" table) — not a placeholder left behind by mistake.
+  no-server-example.com: off

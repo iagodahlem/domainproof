@@ -1,5 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { describeRoute, resolver } from 'hono-openapi'
+import type { OpenAPIV3_1 } from 'openapi-types'
+import { DOMAIN_STATUSES } from '@domainproof/core'
 import type {
   DomainsService,
   DomainSummary,
@@ -10,6 +13,11 @@ import type { EventSummary, EventsService } from '@modules/events/service'
 import type { ProjectsService } from '@modules/projects/service'
 import type { RateLimitVariables } from '@shared/middlewares/rate-limit'
 import { apiError } from '@shared/http-errors'
+import {
+  errorResponse,
+  rateLimitedResponse,
+  toParameters,
+} from '@shared/openapi'
 import { createCheckRateLimitMiddlewares } from '../middlewares/token-rate-limit'
 
 const DEFAULT_EVENTS_PAGE_LIMIT = 20
@@ -136,6 +144,86 @@ export async function resolveProjectName(
 }
 
 /**
+ * OpenAPI response schemas mirroring `serializeVerification`/`serializeEvent`
+ * above — documentation only, kept next to the functions they describe.
+ * `verificationResponseDoc` is exported for reuse by
+ * `routes/component-sessions.ts`'s claim response, which extends this exact
+ * shape with the claim's own `frontendToken`.
+ */
+const frontendRecordDoc = z.object({
+  label: z.string(),
+  type: z.string(),
+  value: z.string(),
+})
+
+const frontendCheckDoc = z
+  .object({
+    outcome: z.enum([
+      'found',
+      'wrong_value',
+      'not_found',
+      'unreachable',
+      'expired',
+    ]),
+    checkedAt: z.iso.datetime(),
+    expected: z.string().optional(),
+    detected: z.array(z.string()).optional(),
+  })
+  .nullable()
+
+export const verificationResponseDoc = z
+  .object({
+    domain: z.string(),
+    mode: z.enum(['test', 'live']),
+    status: z.enum(DOMAIN_STATUSES),
+    projectName: z.string(),
+    records: z.array(frontendRecordDoc),
+    check: frontendCheckDoc,
+    updatedAt: z.iso.datetime(),
+  })
+  .meta({ ref: 'Verification' })
+
+const frontendEventDoc = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    mode: z.enum(['test', 'live']),
+    createdAt: z.iso.datetime(),
+    outcome: z.string().optional(),
+  })
+  .meta({ ref: 'FrontendEvent' })
+
+const frontendEventListDoc = z
+  .object({
+    events: z.array(frontendEventDoc),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ ref: 'FrontendEventList' })
+
+/**
+ * The unguessable `:token` path segment is this plane's entire credential
+ * (see the route factory's doc comment below) — described here rather than
+ * modeled as an OpenAPI security scheme, since there's no clean fit for
+ * "bearer token embedded in a path parameter" in the security-scheme
+ * vocabulary, and the parameter is already required and documented either
+ * way.
+ */
+const tokenPathParameter: OpenAPIV3_1.ParameterObject[] = [
+  {
+    name: 'token',
+    in: 'path',
+    required: true,
+    description:
+      'The domain claim’s unguessable frontendToken (embedded in verificationUrl) — the sole credential for this plane.',
+    schema: { type: 'string' },
+  },
+]
+
+const notFoundResponse = errorResponse(
+  'Unknown token, or a released domain’s now-defunct token',
+)
+
+/**
  * The Frontend API plane's routes, mounted at `/verifications` under
  * `apis/frontend/router.ts` (giving `/frontend/verifications`) —
  * token-scoped read + bounded re-check access to exactly one domain claim,
@@ -156,21 +244,64 @@ export function createVerificationsRoutes(
 ) {
   const router = new Hono<{ Variables: RateLimitVariables }>()
 
-  router.get('/:token', async (c) => {
-    const domain = await domainsService.getDomainByFrontendToken(
-      c.req.param('token'),
-    )
-    if (!domain) {
-      const { body, status } = verificationNotFound()
-      return c.json(body, status)
-    }
+  router.get(
+    '/:token',
+    describeRoute({
+      tags: ['Verifications'],
+      summary: 'Read a domain claim’s verification status',
+      description:
+        'Reads a claim’s status, record instructions, and last check outcome by its frontendToken.',
+      // No formal security scheme: the unguessable `:token` path parameter
+      // (documented above) is the entire credential — see this file's route
+      // factory doc comment.
+      security: [],
+      parameters: tokenPathParameter,
+      responses: {
+        200: {
+          description: 'The verification',
+          content: {
+            'application/json': { schema: resolver(verificationResponseDoc) },
+          },
+        },
+        404: notFoundResponse,
+      },
+    }),
+    async (c) => {
+      const domain = await domainsService.getDomainByFrontendToken(
+        c.req.param('token'),
+      )
+      if (!domain) {
+        const { body, status } = verificationNotFound()
+        return c.json(body, status)
+      }
 
-    const projectName = await resolveProjectName(projectsService, domain)
-    return c.json(serializeVerification(domain, projectName, domain.lastCheck))
-  })
+      const projectName = await resolveProjectName(projectsService, domain)
+      return c.json(
+        serializeVerification(domain, projectName, domain.lastCheck),
+      )
+    },
+  )
 
   router.post(
     '/:token/check',
+    describeRoute({
+      tags: ['Verifications'],
+      summary: 'Run the verification check for a domain claim',
+      description:
+        'Runs the DNS check for a claim (rate limited: 1 per 15s, 20 per hour, per token) and returns the same shape as the GET above.',
+      security: [],
+      parameters: tokenPathParameter,
+      responses: {
+        200: {
+          description: 'The verification, after the check runs',
+          content: {
+            'application/json': { schema: resolver(verificationResponseDoc) },
+          },
+        },
+        404: notFoundResponse,
+        429: rateLimitedResponse,
+      },
+    }),
     ...createCheckRateLimitMiddlewares(),
     async (c) => {
       // Hono's literal path-param typing (`c.req.param('token')` -> `string`)
@@ -196,31 +327,55 @@ export function createVerificationsRoutes(
     },
   )
 
-  router.get('/:token/events', async (c) => {
-    const domain = await domainsService.getDomainByFrontendToken(
-      c.req.param('token'),
-    )
-    if (!domain) {
-      const { body, status } = verificationNotFound()
-      return c.json(body, status)
-    }
-
-    const parsed = listEventsQuerySchema.safeParse(c.req.query())
-    if (!parsed.success) {
-      const { body, status } = invalidRequest('Invalid query parameters')
-      return c.json(body, status)
-    }
-
-    const { events, nextCursor } = await eventsService.listDomainEvents(
-      domain.id,
-      {
-        limit: parsed.data.limit ?? DEFAULT_EVENTS_PAGE_LIMIT,
-        cursor: parsed.data.cursor,
+  router.get(
+    '/:token/events',
+    describeRoute({
+      tags: ['Verifications'],
+      summary: 'List a domain claim’s event timeline',
+      description:
+        'Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.',
+      security: [],
+      parameters: [
+        ...tokenPathParameter,
+        ...toParameters(listEventsQuerySchema, 'query'),
+      ],
+      responses: {
+        200: {
+          description: 'A page of events',
+          content: {
+            'application/json': { schema: resolver(frontendEventListDoc) },
+          },
+        },
+        404: notFoundResponse,
+        400: errorResponse('Invalid query parameters'),
       },
-    )
+    }),
+    async (c) => {
+      const domain = await domainsService.getDomainByFrontendToken(
+        c.req.param('token'),
+      )
+      if (!domain) {
+        const { body, status } = verificationNotFound()
+        return c.json(body, status)
+      }
 
-    return c.json({ events: events.map(serializeEvent), nextCursor })
-  })
+      const parsed = listEventsQuerySchema.safeParse(c.req.query())
+      if (!parsed.success) {
+        const { body, status } = invalidRequest('Invalid query parameters')
+        return c.json(body, status)
+      }
+
+      const { events, nextCursor } = await eventsService.listDomainEvents(
+        domain.id,
+        {
+          limit: parsed.data.limit ?? DEFAULT_EVENTS_PAGE_LIMIT,
+          cursor: parsed.data.cursor,
+        },
+      )
+
+      return c.json({ events: events.map(serializeEvent), nextCursor })
+    },
+  )
 
   return router
 }

@@ -1,8 +1,16 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { describeRoute, resolver } from 'hono-openapi'
 import type { ApiKeyAuthVariables } from '../middlewares/api-key'
 import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import { apiError } from '@shared/http-errors'
+import {
+  apiKeySecurity,
+  apiKeyUnauthorizedResponse,
+  errorResponse,
+  rateLimitedResponse,
+  toJsonSchema,
+} from '@shared/openapi'
 
 // Generous enough for a real-world external id (a uuid, a database primary
 // key, a Stripe-style `cus_...` id) without inviting a caller to stuff
@@ -19,6 +27,13 @@ function invalidRequest(message: string) {
     status: 400 as const,
   }
 }
+
+const createSessionResponseDoc = z
+  .object({
+    sessionToken: z.string(),
+    expiresAt: z.iso.datetime(),
+  })
+  .meta({ ref: 'ComponentSession' })
 
 /**
  * Public-API component-session minting, mounted at `/component-sessions`
@@ -37,29 +52,58 @@ export function createComponentSessionsRoutes(
 ) {
   const router = new Hono<{ Variables: ApiKeyAuthVariables }>()
 
-  router.post('/', async (c) => {
-    const json = await c.req.json().catch(() => undefined)
-    const parsed = createSessionBodySchema.safeParse(json ?? {})
-
-    if (!parsed.success) {
-      const { body, status } = invalidRequest('Invalid request body')
-      return c.json(body, status)
-    }
-
-    const result = await componentSessionsService.createSession({
-      projectId: c.get('projectId'),
-      mode: c.get('mode'),
-      externalId: parsed.data.externalId,
-    })
-
-    return c.json(
-      {
-        sessionToken: result.sessionToken,
-        expiresAt: result.expiresAt,
+  router.post(
+    '/',
+    describeRoute({
+      tags: ['Component Sessions'],
+      summary: 'Mint a component session',
+      description:
+        'Mints a short-lived, single-use session token for a drop-in component to claim one domain on the caller’s behalf, without handing the component the api key itself.',
+      security: apiKeySecurity,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: toJsonSchema(createSessionBodySchema),
+          },
+        },
       },
-      201,
-    )
-  })
+      responses: {
+        201: {
+          description: 'The minted session',
+          content: {
+            'application/json': { schema: resolver(createSessionResponseDoc) },
+          },
+        },
+        400: errorResponse('Invalid request body'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      const json = await c.req.json().catch(() => undefined)
+      const parsed = createSessionBodySchema.safeParse(json ?? {})
+
+      if (!parsed.success) {
+        const { body, status } = invalidRequest('Invalid request body')
+        return c.json(body, status)
+      }
+
+      const result = await componentSessionsService.createSession({
+        projectId: c.get('projectId'),
+        mode: c.get('mode'),
+        externalId: parsed.data.externalId,
+      })
+
+      return c.json(
+        {
+          sessionToken: result.sessionToken,
+          expiresAt: result.expiresAt,
+        },
+        201,
+      )
+    },
+  )
 
   return router
 }
