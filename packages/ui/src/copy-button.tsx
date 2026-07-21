@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Copy } from 'lucide-react'
 import { Button, type ButtonProps } from './button'
 import { cn } from './cn'
 
@@ -52,6 +53,7 @@ export function CopyButton({
       className={cn(copied && COPIED_CLASSES, className)}
       {...props}
     >
+      <Copy aria-hidden="true" size={13} />
       {copied ? copiedLabel : children}
     </Button>
   )

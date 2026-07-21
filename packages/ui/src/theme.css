@@ -12,10 +12,7 @@
    (e.g. --text-sm is 13px here vs Tailwind's default 14px), and those
    built-in utilities are already in use across the app. Namespacing our
    ramp under Tailwind's default names would silently change unrelated
-   text. --font-mono is also intentionally left out — apps/web binds the
-   `font-mono` utility to its loaded Geist Mono variable, not to this
-   token's system-stack fallback, and that binding lives in apps/web's own
-   globals.css, not here.
+   text.
    ========================================================================= */
 @theme inline {
   /* surfaces */
@@ -47,8 +44,9 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
 
-  /* type — family. font-mono stays out, see file header. */
+  /* type — family */
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 
   /* type — weight */
   --font-weight-medium: var(--font-weight-medium);
