@@ -117,6 +117,7 @@ describe('record', () => {
       projectId: 'project_1',
       mode: 'test',
       domain: 'example.com',
+      externalId: null,
     })
 
     const { events } = await service.listDomainEvents('domain_1', {
@@ -158,6 +159,7 @@ describe('listDomainEvents', () => {
         projectId: 'project_1',
         mode: 'live',
         domain: 'example.com',
+        externalId: null,
       })
     }
 
@@ -182,6 +184,7 @@ describe('listDomainEvents', () => {
       projectId: 'project_1',
       mode: 'test',
       domain: 'example.com',
+      externalId: null,
     })
 
     const result = await service.listDomainEvents('domain_1', {
@@ -200,6 +203,7 @@ describe('listDomainEvents', () => {
       projectId: 'project_1',
       mode: 'test',
       domain: 'example.com',
+      externalId: null,
     })
 
     const unresolvableCursor = encodeEventsCursor({
@@ -224,18 +228,21 @@ describe('listProjectEvents', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'a.com',
+      externalId: null,
     })
     await service.record('domain.claimed', {
       domainId: 'domain_2',
       projectId: 'project_1',
       mode: 'test',
       domain: 'b.com',
+      externalId: null,
     })
     await service.record('domain.verified', {
       domainId: 'domain_1',
       projectId: 'project_1',
       mode: 'live',
       domain: 'a.com',
+      externalId: null,
     })
 
     const { events } = await service.listProjectEvents('project_1', {
@@ -264,12 +271,14 @@ describe('listProjectEvents', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'a.com',
+      externalId: null,
     })
     await service.record('domain.claimed', {
       domainId: 'domain_2',
       projectId: 'project_2',
       mode: 'live',
       domain: 'b.com',
+      externalId: null,
     })
 
     const { events } = await service.listProjectEvents('project_1', {
@@ -289,6 +298,7 @@ describe('listProjectEvents', () => {
         projectId: 'project_1',
         mode: 'live',
         domain: 'a.com',
+        externalId: null,
       })
     }
 

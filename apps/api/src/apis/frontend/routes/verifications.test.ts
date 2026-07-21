@@ -75,6 +75,7 @@ async function claimDomain(
   app: ReturnType<typeof buildApp>,
   key: string,
   domain: string,
+  options: { externalId?: string } = {},
 ): Promise<{ id: string; token: string }> {
   const res = await app.request('/v1/domains', {
     method: 'POST',
@@ -82,7 +83,7 @@ async function claimDomain(
       Authorization: `Bearer ${key}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ domain }),
+    body: JSON.stringify({ domain, external_id: options.externalId }),
   })
   expect(res.status).toBe(201)
   const body = (await res.json()) as {
@@ -158,6 +159,28 @@ describe('/frontend/verifications', () => {
       expect(raw).not.toContain('projectId')
       expect(raw).not.toContain('keyId')
       expect(raw).not.toContain('secretHash')
+    })
+
+    it("never leaks the claiming project's external_id — that's the builder's internal identifier for their end user, not something the end user's own hosted verification page should see", async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+      const { token } = await claimDomain(
+        app,
+        apiKey.key,
+        'external-id-no-leak.test',
+        { externalId: 'customer_42' },
+      )
+
+      const res = await app.request(`/frontend/verifications/${token}`)
+      expect(res.status).toBe(200)
+      const raw = await res.clone().text()
+      expect(raw).not.toContain('customer_42')
+      expect(raw).not.toContain('external_id')
+      expect(raw).not.toContain('externalId')
+
+      const body = (await res.json()) as Record<string, unknown>
+      expect(body).not.toHaveProperty('externalId')
+      expect(body).not.toHaveProperty('external_id')
     })
 
     it('returns 404 for an unknown token', async () => {

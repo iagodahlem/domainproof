@@ -75,6 +75,7 @@ describe('onDomainVerified', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent).toHaveLength(1)
@@ -97,6 +98,7 @@ describe('onDomainVerified', () => {
       projectId: 'project_1',
       mode: 'test',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent[0]?.subject).toBe('[test] example.com is verified')
@@ -116,6 +118,7 @@ describe('onDomainVerified', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent).toHaveLength(0)
@@ -139,6 +142,7 @@ describe('onDomainTemporarilyFailed', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent[0]).toMatchObject({
@@ -163,6 +167,7 @@ describe('onDomainFailed', () => {
       projectId: 'project_1',
       mode: 'live',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent[0]).toMatchObject({
@@ -184,6 +189,7 @@ describe('onDomainFailed', () => {
       projectId: 'project_1',
       mode: 'test',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(emailSender.sent[0]?.subject).toBe(

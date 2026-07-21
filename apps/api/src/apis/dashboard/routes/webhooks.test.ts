@@ -452,6 +452,85 @@ describe('deliveries and redeliver', () => {
     )
   })
 
+  it('carries the claim’s external_id through every delivered event payload', async () => {
+    const { sender, calls } = fakeWebhookSender()
+    const app = buildApp({ webhookSender: sender })
+    const clerkUserId = freshClerkUserId()
+    const { projectId, testKey: apiKey } = await createProject(app, clerkUserId)
+
+    await createEndpoint(app, clerkUserId, projectId, {
+      mode: 'test',
+      eventTypes: ['domain.claimed', 'domain.check_passed', 'domain.verified'],
+    })
+
+    const claimRes = await withKey(app, apiKey, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        domain: 'verified.test',
+        external_id: 'customer_1',
+      }),
+    })
+    expect(claimRes.status).toBe(201)
+    const claimed = (await claimRes.json()) as { domain: { id: string } }
+
+    await withKey(app, apiKey, `/v1/domains/${claimed.domain.id}/verify`, {
+      method: 'POST',
+    })
+
+    expect(calls.length).toBeGreaterThan(0)
+    for (const call of calls) {
+      const envelope = JSON.parse(call.body) as { data: { externalId: string } }
+      expect(envelope.data.externalId).toBe('customer_1')
+    }
+  })
+
+  it("carries a component session's externalId through delivered event payloads exactly like a v1-claimed domain", async () => {
+    const { sender, calls } = fakeWebhookSender()
+    const app = buildApp({ webhookSender: sender })
+    const clerkUserId = freshClerkUserId()
+    const { projectId, testKey: apiKey } = await createProject(app, clerkUserId)
+
+    await createEndpoint(app, clerkUserId, projectId, {
+      mode: 'test',
+      eventTypes: ['domain.claimed', 'domain.check_passed', 'domain.verified'],
+    })
+
+    const sessionRes = await withKey(app, apiKey, '/v1/component-sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ externalId: 'customer_2' }),
+    })
+    expect(sessionRes.status).toBe(201)
+    const { sessionToken } = (await sessionRes.json()) as {
+      sessionToken: string
+    }
+
+    // No api key here — a drop-in component spends the session token
+    // directly, same as a real end user's browser would.
+    const claimRes = await app.request(
+      `/frontend/component-sessions/${sessionToken}/claim`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'verified.test' }),
+      },
+    )
+    expect(claimRes.status).toBe(201)
+    const claimed = (await claimRes.json()) as { frontendToken: string }
+
+    await app.request(
+      `/frontend/verifications/${claimed.frontendToken}/check`,
+      { method: 'POST' },
+    )
+
+    expect(calls.length).toBeGreaterThan(0)
+    for (const call of calls) {
+      const envelope = JSON.parse(call.body) as { data: { externalId: string } }
+      expect(envelope.data.externalId).toBe('customer_2')
+    }
+  })
+
   it('paginates the delivery log with a cursor', async () => {
     const { sender } = fakeWebhookSender()
     const app = buildApp({ webhookSender: sender })

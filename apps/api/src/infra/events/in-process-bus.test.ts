@@ -16,6 +16,7 @@ describe('createInProcessEventBus', () => {
       projectId: 'p1',
       mode: 'live' as const,
       domain: 'example.com',
+      externalId: null,
     }
     await bus.publish('domain.verified', payload)
 
@@ -33,6 +34,7 @@ describe('createInProcessEventBus', () => {
       projectId: 'p1',
       mode: 'live',
       domain: 'example.com',
+      externalId: null,
     })
 
     expect(subscriber).not.toHaveBeenCalled()
@@ -75,6 +77,7 @@ describe('createInProcessEventBus', () => {
         projectId: 'p1',
         mode: 'live',
         domain: 'example.com',
+        externalId: null,
       }),
     ).resolves.toBeUndefined()
 
@@ -92,6 +95,7 @@ describe('createInProcessEventBus', () => {
         projectId: 'p1',
         mode: 'test',
         domain: 'example.com',
+        externalId: null,
       }),
     ).resolves.toBeUndefined()
   })

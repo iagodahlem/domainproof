@@ -18,8 +18,16 @@ import { apiError } from '@shared/http-errors'
 // on it.
 const MAX_DOMAIN_LENGTH = 253
 
+// The claiming project's own end-user identifier — an opaque string, no
+// particular format expected, just a sane upper bound (matches
+// `infra/db/schema.ts`'s `externalId` column).
+const MAX_EXTERNAL_ID_LENGTH = 256
+
 const DEFAULT_EVENTS_PAGE_LIMIT = 20
 const MAX_EVENTS_PAGE_LIMIT = 100
+
+const DEFAULT_DOMAINS_PAGE_LIMIT = 20
+const MAX_DOMAINS_PAGE_LIMIT = 100
 
 const listEventsQuerySchema = z.object({
   limit: z.coerce
@@ -31,8 +39,27 @@ const listEventsQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
 })
 
+// `external_id`/`domain` stay snake_case/bare on the wire (query params and
+// the claim body's `external_id`) rather than following this plane's
+// otherwise-camelCase convention — `external_id` is a fixed integration
+// term callers correlate against their own systems, not a shape this API
+// invented, so it keeps the casing every other DomainProof surface (and
+// most vendor APIs with an equivalent field) uses for it.
+const listDomainsQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(MAX_DOMAINS_PAGE_LIMIT)
+    .optional(),
+  cursor: z.string().min(1).optional(),
+  external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
+  domain: z.string().min(1).max(MAX_DOMAIN_LENGTH).optional(),
+})
+
 const claimDomainBodySchema = z.object({
   domain: z.string().min(1).max(MAX_DOMAIN_LENGTH),
+  external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
 })
 
 const VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
@@ -129,6 +156,7 @@ function serializeDomain(summary: DomainSummary) {
     domain: summary.domain,
     mode: summary.mode,
     status: summary.status,
+    external_id: summary.externalId,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
     verifiedAt: summary.verifiedAt,
@@ -237,6 +265,7 @@ export function createDomainsRoutes(
       projectId: c.get('projectId'),
       mode: c.get('mode'),
       domain: parsed.data.domain,
+      externalId: parsed.data.external_id,
     })
 
     if (!result.ok) {
@@ -260,11 +289,23 @@ export function createDomainsRoutes(
   })
 
   router.get('/', async (c) => {
-    const domains = await domainsService.listDomains(
+    const parsed = listDomainsQuerySchema.safeParse(c.req.query())
+    if (!parsed.success) {
+      const { body, status } = invalidRequest('Invalid query parameters')
+      return c.json(body, status)
+    }
+
+    const { domains, nextCursor } = await domainsService.listDomains(
       c.get('projectId'),
       c.get('mode'),
+      {
+        limit: parsed.data.limit ?? DEFAULT_DOMAINS_PAGE_LIMIT,
+        cursor: parsed.data.cursor,
+        externalId: parsed.data.external_id,
+        domain: parsed.data.domain,
+      },
     )
-    return c.json({ domains: domains.map(serializeDomain) })
+    return c.json({ domains: domains.map(serializeDomain), nextCursor })
   })
 
   router.get('/:id', async (c) => {

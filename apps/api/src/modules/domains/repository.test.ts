@@ -38,12 +38,14 @@ function claimValues(
     domain: string
     mode: 'test' | 'live'
     frontendToken: string
+    externalId: string
   }> = {},
 ) {
   return {
     projectId,
     mode: overrides.mode ?? ('live' as const),
     domain: overrides.domain ?? `example-${randomUUID()}.test`,
+    externalId: overrides.externalId,
     status: 'pending' as const,
     nextCheckAt: new Date(Date.now() + 60_000),
     frontendToken: overrides.frontendToken ?? `frontend-token-${randomUUID()}`,
@@ -109,6 +111,38 @@ describe('claim', () => {
     expect(result.challenge.recordHost).toBe('_test-challenge.example.test')
   })
 
+  it('persists externalId when given, and defaults to null otherwise', async () => {
+    const projectId = await createTestProject()
+
+    const withExternalId = await repository.claim(
+      claimValues(projectId, { externalId: 'customer_1' }),
+    )
+    expect(withExternalId?.domain.externalId).toBe('customer_1')
+
+    const withoutExternalId = await repository.claim(claimValues(projectId))
+    expect(withoutExternalId?.domain.externalId).toBeNull()
+  })
+
+  it('does not enforce uniqueness on externalId across multiple domains', async () => {
+    const projectId = await createTestProject()
+
+    const first = await repository.claim(
+      claimValues(projectId, {
+        domain: 'first-customer-domain.test',
+        externalId: 'customer_1',
+      }),
+    )
+    const second = await repository.claim(
+      claimValues(projectId, {
+        domain: 'second-customer-domain.test',
+        externalId: 'customer_1',
+      }),
+    )
+
+    expect(first).toBeDefined()
+    expect(second).toBeDefined()
+  })
+
   it('returns undefined on a (project, domain, mode) conflict', async () => {
     const projectId = await createTestProject()
     const domain = `example-${randomUUID()}.test`
@@ -119,7 +153,10 @@ describe('claim', () => {
     const second = await repository.claim(claimValues(projectId, { domain }))
     expect(second).toBeUndefined()
 
-    const rows = await repository.listByProject(projectId, 'live')
+    const { rows } = await repository.listByProjectPaginated(projectId, {
+      limit: 10,
+      mode: 'live',
+    })
     expect(rows).toHaveLength(1)
   })
 
@@ -151,8 +188,8 @@ describe('claim', () => {
   })
 })
 
-describe('listByProject', () => {
-  it('only returns domains for the given project and mode', async () => {
+describe('listByProjectPaginated', () => {
+  it('narrows to one mode when `mode` is given', async () => {
     const projectA = await createTestProject()
     const projectB = await createTestProject()
 
@@ -160,14 +197,93 @@ describe('listByProject', () => {
     await repository.claim(claimValues(projectA, { mode: 'test' }))
     await repository.claim(claimValues(projectB, { mode: 'live' }))
 
-    expect(await repository.listByProject(projectA, 'live')).toHaveLength(1)
-    expect(await repository.listByProject(projectA, 'test')).toHaveLength(1)
-    expect(await repository.listByProject(projectB, 'live')).toHaveLength(1)
-    expect(await repository.listByProject(projectB, 'test')).toHaveLength(0)
-  })
-})
+    const countFor = async (projectId: string, mode: 'test' | 'live') =>
+      (await repository.listByProjectPaginated(projectId, { limit: 10, mode }))
+        .rows.length
 
-describe('listByProjectPaginated', () => {
+    expect(await countFor(projectA, 'live')).toBe(1)
+    expect(await countFor(projectA, 'test')).toBe(1)
+    expect(await countFor(projectB, 'live')).toBe(1)
+    expect(await countFor(projectB, 'test')).toBe(0)
+  })
+
+  it('filters by externalId, matching several domains under the same one', async () => {
+    const projectId = await createTestProject()
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'customer-a.test',
+        externalId: 'customer_1',
+      }),
+    )
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'customer-a-alt.test',
+        externalId: 'customer_1',
+      }),
+    )
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'customer-b.test',
+        externalId: 'customer_2',
+      }),
+    )
+
+    const { rows } = await repository.listByProjectPaginated(projectId, {
+      limit: 10,
+      externalId: 'customer_1',
+    })
+    expect(rows.map((r) => r.domain).sort()).toEqual([
+      'customer-a-alt.test',
+      'customer-a.test',
+    ])
+  })
+
+  it('filters by an exact domain match', async () => {
+    const projectId = await createTestProject()
+    await repository.claim(claimValues(projectId, { domain: 'acme.test' }))
+    await repository.claim(claimValues(projectId, { domain: 'other.test' }))
+
+    const { rows } = await repository.listByProjectPaginated(projectId, {
+      limit: 10,
+      domain: 'acme.test',
+    })
+    expect(rows.map((r) => r.domain)).toEqual(['acme.test'])
+  })
+
+  it('combines mode, externalId, and domain filters', async () => {
+    const projectId = await createTestProject()
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'acme.test',
+        mode: 'live',
+        externalId: 'customer_1',
+      }),
+    )
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'acme.test',
+        mode: 'test',
+        externalId: 'customer_1',
+      }),
+    )
+    await repository.claim(
+      claimValues(projectId, {
+        domain: 'other.test',
+        mode: 'live',
+        externalId: 'customer_1',
+      }),
+    )
+
+    const { rows } = await repository.listByProjectPaginated(projectId, {
+      limit: 10,
+      mode: 'live',
+      externalId: 'customer_1',
+      domain: 'acme.test',
+    })
+    expect(rows.map((r) => r.domain)).toEqual(['acme.test'])
+    expect(rows[0]?.mode).toBe('live')
+  })
+
   it('returns domains for the project only, newest first, paginated', async () => {
     const projectId = await createTestProject()
     const otherProjectId = await createTestProject()

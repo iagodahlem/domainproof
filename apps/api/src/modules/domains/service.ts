@@ -15,6 +15,7 @@ import {
 import type { ProjectsService } from '@modules/projects/service'
 import type { DomainEventMap, EventBus, Mode } from '@shared/events'
 import { decodeDomainsCursor, encodeDomainsCursor } from './domain/cursor'
+import { normalizeDomainFilter } from './domain/filters'
 import {
   computeRecheckSchedule,
   firstPendingCheckAt,
@@ -70,7 +71,13 @@ export interface DomainSummary {
   frontendToken: string
   /** `null` until the first check ever runs. See {@link LastCheckSummary}. */
   lastCheck: LastCheckSummary | null
-  /** Stamped from a component session's mint-time `externalId`, if this claim was made through one — see `infra/db/schema.ts`'s `domains.externalId` doc comment. `null` for every other claim path. */
+  /**
+   * Set only at claim time, never changed afterward — either stamped
+   * verbatim from `POST /v1/domains`'/the dashboard create route's
+   * `external_id`, or threaded through from a component session's
+   * mint-time `externalId` (see `infra/db/schema.ts`'s `domains.externalId`
+   * doc comment). `null` when the claim didn't set one.
+   */
   externalId: string | null
 }
 
@@ -78,7 +85,13 @@ export interface ClaimDomainInput {
   projectId: string
   mode: DomainMode
   domain: string
-  /** Stamped onto the created claim — see `DomainSummary.externalId`. Only ever populated by `modules/component-sessions/service.ts`'s `claimDomain`, which threads through its session's own `externalId`. */
+  /**
+   * Attaches this claim to the caller's own end user — see
+   * `DomainSummary.externalId`'s doc comment. Populated either directly
+   * from `POST /v1/domains`'/the dashboard create route's `external_id`,
+   * or threaded through by `modules/component-sessions/service.ts`'s
+   * `claimDomain` from its session's own `externalId`.
+   */
   externalId?: string
 }
 
@@ -125,9 +138,26 @@ export type RegenerateChallengeResult =
 export interface ListProjectDomainsOptions {
   limit: number
   cursor?: string
+  /** Exact match against the domain's `external_id`. */
+  externalId?: string
 }
 
 export interface ListProjectDomainsResult {
+  domains: DomainSummary[]
+  /** `null` once the last page has been reached. */
+  nextCursor: string | null
+}
+
+export interface ListDomainsOptions {
+  limit: number
+  cursor?: string
+  /** Exact match against the domain's `external_id`. */
+  externalId?: string
+  /** Exact match against the claimed hostname — normalized the same way `claimDomain` normalizes its input, so casing/punycode differences from how it was claimed don't cause a miss. */
+  domain?: string
+}
+
+export interface ListDomainsResult {
   domains: DomainSummary[]
   /** `null` once the last page has been reached. */
   nextCursor: string | null
@@ -170,8 +200,18 @@ export interface DomainsService {
    */
   claimDomain(input: ClaimDomainInput): Promise<ClaimDomainResult>
 
-  /** All domains claimed by a project in the given mode. */
-  listDomains(projectId: string, mode: DomainMode): Promise<DomainSummary[]>
+  /**
+   * A project's domains in the given mode, newest first, cursor-paginated,
+   * optionally narrowed by `externalId` and/or an exact-match `domain` —
+   * the public API's `GET /v1/domains`, e.g. a middleware's "is acme.co
+   * verified for this key's project?" check, or "list every domain this
+   * customer brought" via `externalId`. Both filters are combinable.
+   */
+  listDomains(
+    projectId: string,
+    mode: DomainMode,
+    options: ListDomainsOptions,
+  ): Promise<ListDomainsResult>
 
   /**
    * A project's domains across both modes, newest first, cursor-paginated
@@ -179,7 +219,8 @@ export interface DomainsService {
    * a dashboard caller resolves `projectId` via `resolveOwnedProject` and
    * has no api-key `mode` to scope by, since the dashboard shows a
    * project's test and live claims together (with `mode` as a per-row
-   * field, not a filter).
+   * field, not a filter). `options.externalId` narrows the same way it
+   * does for `listDomains`.
    */
   listProjectDomains(
     projectId: string,
@@ -406,6 +447,7 @@ async function publishVerifyDomainEvents(
     projectId: string
     mode: Mode
     domain: string
+    externalId: string | null
     outcome: VerifyDomainCheck['outcome']
     previousStatus: DomainStatus
     nextStatus: DomainStatus
@@ -416,6 +458,7 @@ async function publishVerifyDomainEvents(
     projectId,
     mode,
     domain,
+    externalId,
     outcome,
     previousStatus,
     nextStatus,
@@ -425,6 +468,7 @@ async function publishVerifyDomainEvents(
     projectId,
     mode,
     domain,
+    externalId,
   }
 
   if (outcome === 'found') {
@@ -553,6 +597,7 @@ export function createDomainsService(
         projectId: row.projectId,
         mode: row.mode,
         domain: row.domain,
+        externalId: row.externalId,
         outcome: 'expired',
         previousStatus: currentStatus,
         nextStatus,
@@ -632,6 +677,7 @@ export function createDomainsService(
       projectId: row.projectId,
       mode: row.mode,
       domain: row.domain,
+      externalId: row.externalId,
       outcome: result.outcome,
       previousStatus: currentStatus,
       nextStatus,
@@ -702,6 +748,7 @@ export function createDomainsService(
       projectId: row.projectId,
       mode: row.mode,
       domain: row.domain,
+      externalId: row.externalId,
     })
 
     return {
@@ -759,6 +806,7 @@ export function createDomainsService(
         projectId,
         mode,
         domain: normalized.domain,
+        externalId,
         status: started.next,
         nextCheckAt: firstPendingCheckAt(now()),
         // A fresh, unrelated 128-bit token — not derived from the
@@ -767,7 +815,6 @@ export function createDomainsService(
         // for the Frontend API plane and must never be guessable from
         // (or leak into) anything DNS-visible.
         frontendToken: generateToken(),
-        externalId,
         challenge: {
           method,
           token,
@@ -786,6 +833,7 @@ export function createDomainsService(
         projectId,
         mode,
         domain: normalized.domain,
+        externalId: result.domain.externalId,
       })
 
       return {
@@ -794,21 +842,39 @@ export function createDomainsService(
       }
     },
 
-    async listDomains(projectId, mode) {
-      const rows = await repository.listByProject(projectId, mode)
-      return Promise.all(
+    async listDomains(projectId, mode, { limit, cursor, externalId, domain }) {
+      const decodedCursor = cursor ? decodeDomainsCursor(cursor) : undefined
+      const { rows, hasMore } = await repository.listByProjectPaginated(
+        projectId,
+        {
+          limit,
+          cursor: decodedCursor,
+          mode,
+          externalId,
+          domain:
+            domain !== undefined ? normalizeDomainFilter(domain) : undefined,
+        },
+      )
+
+      const summaries = await Promise.all(
         rows.map(async (row) => {
           const challenge = await repository.findLatestChallenge(row.id)
           return toSummary(row, challenge ? [challenge] : [])
         }),
       )
+
+      const lastRow = rows[rows.length - 1]
+      const nextCursor =
+        hasMore && lastRow ? encodeDomainsCursor({ id: lastRow.id }) : null
+
+      return { domains: summaries, nextCursor }
     },
 
-    async listProjectDomains(projectId, { limit, cursor }) {
+    async listProjectDomains(projectId, { limit, cursor, externalId }) {
       const decodedCursor = cursor ? decodeDomainsCursor(cursor) : undefined
       const { rows, hasMore } = await repository.listByProjectPaginated(
         projectId,
-        { limit, cursor: decodedCursor },
+        { limit, cursor: decodedCursor, externalId },
       )
 
       const summaries = await Promise.all(
@@ -989,6 +1055,7 @@ export function createDomainsService(
               projectId: row.projectId,
               mode: row.mode,
               domain: row.domain,
+              externalId: row.externalId,
             })
           } catch (err) {
             errors.push({

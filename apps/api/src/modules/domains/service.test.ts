@@ -50,6 +50,7 @@ function fakeRepository(): DomainsRepository {
         projectId: values.projectId,
         domain: values.domain,
         mode: values.mode,
+        externalId: values.externalId ?? null,
         status: values.status,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -60,7 +61,6 @@ function fakeRepository(): DomainsRepository {
         graceExpiresAt: null,
         frontendToken: values.frontendToken,
         lastCheckResult: null,
-        externalId: values.externalId ?? null,
       }
       domainRows.set(domainRow.id, domainRow)
 
@@ -80,20 +80,23 @@ function fakeRepository(): DomainsRepository {
       return { domain: domainRow, challenge: challengeRow }
     },
 
-    async listByProject(projectId, mode) {
-      return [...domainRows.values()].filter(
-        (row) => row.projectId === projectId && row.mode === mode,
-      )
-    },
-
-    async listByProjectPaginated(projectId, { limit, cursor }) {
+    async listByProjectPaginated(
+      projectId,
+      { limit, cursor, mode, externalId, domain },
+    ) {
       // Insertion order into `domainRows` (a `Map`) is already
       // chronological, reversed for newest-first — no lossy db round-trip
       // to worry about here, unlike the real repository (see
       // `domain/cursor.ts`). Same approach as the events module's
       // `fakeRepository` in `service.test.ts`.
       const rows = [...domainRows.values()]
-        .filter((row) => row.projectId === projectId)
+        .filter(
+          (row) =>
+            row.projectId === projectId &&
+            (mode === undefined || row.mode === mode) &&
+            (externalId === undefined || row.externalId === externalId) &&
+            (domain === undefined || row.domain === domain),
+        )
         .reverse()
 
       const anchorIndex = cursor
@@ -335,6 +338,70 @@ describe('claimDomain', () => {
     expect(record?.method).toBe('dns_txt')
     expect(record?.recordHost).toBe('_skylane-challenge.example.com')
     expect(record?.recordValue).toMatch(/^skylane-verify=[a-z2-7]{26}$/)
+  })
+
+  it('persists and returns externalId when given', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+      externalId: 'customer_1',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.domain.externalId).toBe('customer_1')
+  })
+
+  it('defaults externalId to null when not given', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.domain.externalId).toBeNull()
+  })
+
+  it('publishes domain.claimed with the externalId attached', async () => {
+    const published: Array<{ type: DomainEventType; payload: unknown }> = []
+    const eventBus: EventBus = {
+      publish: async (type, payload) => {
+        published.push({ type, payload })
+      },
+      subscribe: () => {},
+    }
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+      undefined,
+      undefined,
+      eventBus,
+    )
+
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+      externalId: 'customer_1',
+    })
+
+    const claimedEvent = published.find((e) => e.type === 'domain.claimed')
+    expect(
+      (claimedEvent?.payload as DomainEventMap['domain.claimed'])?.externalId,
+    ).toBe('customer_1')
   })
 
   it('normalizes the input domain (case, trailing dot, pasted URL)', async () => {
@@ -615,9 +682,20 @@ describe('listDomains', () => {
       domain: 'b.com',
     })
 
-    expect(await service.listDomains('project_a', 'live')).toHaveLength(1)
-    expect(await service.listDomains('project_a', 'test')).toHaveLength(1)
-    expect(await service.listDomains('project_b', 'live')).toHaveLength(1)
+    const forProjectALive = await service.listDomains('project_a', 'live', {
+      limit: 10,
+    })
+    expect(forProjectALive.domains).toHaveLength(1)
+
+    const forProjectATest = await service.listDomains('project_a', 'test', {
+      limit: 10,
+    })
+    expect(forProjectATest.domains).toHaveLength(1)
+
+    const forProjectBLive = await service.listDomains('project_b', 'live', {
+      limit: 10,
+    })
+    expect(forProjectBLive.domains).toHaveLength(1)
   })
 
   it('includes each domain’s current record', async () => {
@@ -631,8 +709,129 @@ describe('listDomains', () => {
       domain: 'example.com',
     })
 
-    const [summary] = await service.listDomains('project_1', 'live')
-    expect(summary?.challenges).toHaveLength(1)
+    const { domains } = await service.listDomains('project_1', 'live', {
+      limit: 10,
+    })
+    expect(domains[0]?.challenges).toHaveLength(1)
+  })
+
+  it('filters by externalId, matching every domain claimed under it', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'customer-a.com',
+      externalId: 'customer_1',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'customer-a-alt.com',
+      externalId: 'customer_1',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'customer-b.com',
+      externalId: 'customer_2',
+    })
+
+    const { domains } = await service.listDomains('project_1', 'live', {
+      limit: 10,
+      externalId: 'customer_1',
+    })
+    expect(domains.map((d) => d.domain).sort()).toEqual([
+      'customer-a-alt.com',
+      'customer-a.com',
+    ])
+  })
+
+  it('filters by an exact domain match, normalizing the filter value', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'acme.co',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'other.co',
+    })
+
+    const { domains } = await service.listDomains('project_1', 'live', {
+      limit: 10,
+      domain: 'ACME.CO',
+    })
+    expect(domains.map((d) => d.domain)).toEqual(['acme.co'])
+  })
+
+  it('combines externalId and domain filters', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'acme.co',
+      externalId: 'customer_1',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'other.co',
+      externalId: 'customer_1',
+    })
+
+    const { domains } = await service.listDomains('project_1', 'live', {
+      limit: 10,
+      externalId: 'customer_1',
+      domain: 'acme.co',
+    })
+    expect(domains).toHaveLength(1)
+    expect(domains[0]?.domain).toBe('acme.co')
+  })
+
+  it('paginates with a cursor and reports nextCursor until the last page', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'first.com',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'second.com',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'third.com',
+    })
+
+    const firstPage = await service.listDomains('project_1', 'live', {
+      limit: 2,
+    })
+    expect(firstPage.domains).toHaveLength(2)
+    expect(firstPage.nextCursor).not.toBeNull()
+
+    const secondPage = await service.listDomains('project_1', 'live', {
+      limit: 2,
+      cursor: firstPage.nextCursor ?? undefined,
+    })
+    expect(secondPage.domains).toHaveLength(1)
+    expect(secondPage.nextCursor).toBeNull()
   })
 })
 

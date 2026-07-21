@@ -74,7 +74,7 @@ function fakeDomainsService(
       throw new Error('not implemented')
     },
     async listDomains() {
-      return []
+      return { domains: [], nextCursor: null }
     },
     async listProjectDomains() {
       return { domains: [], nextCursor: null }

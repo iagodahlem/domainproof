@@ -125,8 +125,8 @@ so the split below is what matters for local development:
 | GET    | `/dashboard/projects/:projectId/keys`                                                  | Dashboard | Lists the given project's API keys.                                                                                     |
 | POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke`                                    | Dashboard | Revokes an API key.                                                                                                     |
 | POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate`                                    | Dashboard | Revokes an API key and issues its replacement.                                                                          |
-| POST   | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Claims a domain for the given project and an explicit `mode`, issuing a challenge.                                      |
-| GET    | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first.                                         |
+| POST   | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Claims a domain for the given project and an explicit `mode`, issuing a challenge. Accepts an optional `external_id`.   |
+| GET    | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first. Filterable by `external_id`.            |
 | GET    | `/dashboard/projects/:projectId/domains/:domainId`                                     | Dashboard | Gets a domain and its current verification record instructions.                                                         |
 | POST   | `/dashboard/projects/:projectId/domains/:domainId/verify`                              | Dashboard | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
 | POST   | `/dashboard/projects/:projectId/domains/:domainId/regenerate`                          | Dashboard | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
@@ -140,8 +140,8 @@ so the split below is what matters for local development:
 | POST   | `/dashboard/projects/:projectId/webhooks/:endpointId/enable`                           | Dashboard | Resumes deliveries to a disabled endpoint.                                                                              |
 | GET    | `/dashboard/projects/:projectId/webhooks/:endpointId/deliveries`                       | Dashboard | Cursor-paginated delivery log for an endpoint, newest first.                                                            |
 | POST   | `/dashboard/projects/:projectId/webhooks/:endpointId/deliveries/:deliveryId/redeliver` | Dashboard | Fires a fresh delivery of a past delivery's event.                                                                      |
-| POST   | `/v1/domains`                                                                          | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
-| GET    | `/v1/domains`                                                                          | Public    | Lists domains claimed by the key's project/mode.                                                                        |
+| POST   | `/v1/domains`                                                                          | Public    | Claims a domain for the key's project/mode and issues a challenge. Accepts an optional `external_id`.                   |
+| GET    | `/v1/domains`                                                                          | Public    | Cursor-paginated list of domains claimed by the key's project/mode. Filterable by `external_id` and/or `domain`.        |
 | GET    | `/v1/domains/:id`                                                                      | Public    | Gets a claimed domain and its current verification record(s).                                                           |
 | DELETE | `/v1/domains/:id`                                                                      | Public    | Releases a domain claim.                                                                                                |
 | POST   | `/v1/domains/:id/verify`                                                               | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
@@ -196,6 +196,21 @@ Claiming a `.test` sandbox domain (see the domains module's DNS testing
 fixtures) requires a test-mode key; a live-mode key gets
 `400 sandbox_requires_test_mode`.
 
+`POST /v1/domains` accepts an optional `external_id` — an opaque identifier
+the claiming project attaches to correlate a domain with its own end user,
+for the multi-tenant case where a builder brings a custom domain per
+customer (e.g. a SaaS platform letting each of its customers connect
+`shop.customer.com`). It's set only at claim time, returned on every domain
+response (both planes) and on every event/webhook payload for that domain,
+and carries no uniqueness constraint — the same `external_id` can own
+several domains.
+
+`GET /v1/domains` is cursor-paginated (`?limit=`/`?cursor=`, default 20,
+max 100) and supports two combinable filters: `?external_id=` (every domain
+claimed under that identifier) and `?domain=` (an exact match on the
+claimed hostname — e.g. a middleware's "is acme.co verified for this
+project?" check).
+
 `GET /v1/domains/:id/events` returns a domain's full timeline, oldest
 first — every `domain.claimed`/`domain.check_passed`/`domain.check_failed`/
 `domain.verified`/`domain.temporarily_failed`/`domain.failed` event
@@ -220,15 +235,17 @@ Paginated with `?limit=` (default 20, max 100) and `?cursor=`, the opaque
 `nextCursor` from the previous page; `nextCursor` is `null` once there's
 nothing left to fetch.
 
-The dashboard's domain routes (`GET /dashboard/projects/:projectId/domains`,
-`/:domainId`, `/:domainId/events`) are read-only mirrors of the same domains
-module for the dashboard's own pages — no claim/release/verify there, that
-stays on `/v1/domains`. The list spans both `test` and `live` claims for the
-project (`mode` is a field on each row, not something to filter by), newest
-first, cursor-paginated the same way as `/v1/domains/:id/events` above
-(`?limit=`/`?cursor=`, default 20, max 100). `:domainId` follows the same
-anti-enumeration 404 as `:projectId` and `:keyId` elsewhere on this plane —
-a domain belonging to another project reads as not found, not forbidden.
+The dashboard's own `POST`/`GET /dashboard/projects/:projectId/domains`
+share the same `modules/domains` use cases `/v1/domains` calls — claiming
+accepts the same optional `external_id`, and the list accepts the same
+`?external_id=` filter (no `?domain=` filter on this plane yet — that's a
+dashboard UI addition for later). The list spans both `test` and `live`
+claims for the project (`mode` is a field on each row, not something to
+filter by), newest first, cursor-paginated the same way as
+`/v1/domains/:id/events` above (`?limit=`/`?cursor=`, default 20, max 100).
+`:domainId` follows the same anti-enumeration 404 as `:projectId` and
+`:keyId` elsewhere on this plane — a domain belonging to another project
+reads as not found, not forbidden.
 
 ### Frontend API
 
@@ -355,7 +372,8 @@ Each subscribed event is delivered as an HTTP `POST` with this JSON body:
     "domainId": "...",
     "projectId": "...",
     "mode": "live",
-    "domain": "example.com"
+    "domain": "example.com",
+    "externalId": "customer_123"
   }
 }
 ```
@@ -363,6 +381,9 @@ Each subscribed event is delivered as an HTTP `POST` with this JSON body:
 `data` is the event's own payload (see `shared/events.ts`'s
 `DomainEventMap`) — it always carries `mode`, so a single endpoint
 subscribed across both test and live keys can tell which is which.
+`externalId` is `null` when the claim didn't set one — a stable field to
+correlate a delivery back to the claiming project's own end user without a
+separate lookup.
 
 Every delivery carries three headers alongside `content-type:
 application/json`:

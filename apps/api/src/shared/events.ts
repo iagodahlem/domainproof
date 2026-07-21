@@ -16,6 +16,8 @@ interface DomainEventPayload {
   projectId: string
   mode: Mode
   domain: string
+  /** The claim's `external_id`, if the claiming project set one — lets a webhook subscriber correlate deliveries back to its own end user without a lookup. `null` when unset. */
+  externalId: string | null
 }
 
 /**
