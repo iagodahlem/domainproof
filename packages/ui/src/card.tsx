@@ -5,7 +5,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]',
+        'overflow-hidden rounded-lg border border-border bg-surface shadow-card',
         className,
       )}
       {...props}
@@ -20,7 +20,7 @@ export function CardHead({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-start justify-between gap-[var(--space-3)] border-b border-[var(--border)] bg-[var(--surface-2)] p-[var(--pad-row)]',
+        'flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface-2 py-4 px-5',
         className,
       )}
       {...props}
@@ -32,7 +32,7 @@ export function CardBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-[var(--pad-card)]', className)} {...props} />
+  return <div className={cn('p-5', className)} {...props} />
 }
 
 export function CardRow({
@@ -42,7 +42,7 @@ export function CardRow({
   return (
     <div
       className={cn(
-        'border-b border-[var(--border)] p-[var(--pad-row)] last:border-b-0',
+        'border-b border-border py-4 px-5 last:border-b-0',
         className,
       )}
       {...props}

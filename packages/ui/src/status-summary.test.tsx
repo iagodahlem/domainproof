@@ -47,7 +47,7 @@ describe('Stepper', () => {
     const connector = container.querySelector('span.min-w-\\[12px\\]')
     expect(connector?.className).toContain('max-[560px]:hidden')
     expect(screen.getByText('Claimed').closest('div')?.className).toContain(
-      'max-[560px]:w-[calc(50%-var(--space-2))]',
+      'max-[560px]:w-[calc(50%-0.5rem)]',
     )
   })
 })

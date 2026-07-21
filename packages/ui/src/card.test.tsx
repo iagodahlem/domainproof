@@ -22,14 +22,14 @@ describe('Card composition', () => {
   it('gives the card the surface/border/shadow treatment', () => {
     render(<Card data-testid="card">content</Card>)
     const el = screen.getByTestId('card')
-    expect(el.className).toContain('bg-[var(--surface)]')
-    expect(el.className).toContain('rounded-[var(--radius-lg)]')
+    expect(el.className).toContain('bg-surface')
+    expect(el.className).toContain('rounded-lg')
   })
 
   it('gives the head a raised surface and bottom border', () => {
     render(<CardHead data-testid="head">Ownership record</CardHead>)
     const el = screen.getByTestId('head')
-    expect(el.className).toContain('bg-[var(--surface-2)]')
+    expect(el.className).toContain('bg-surface-2')
     expect(el.className).toContain('border-b')
   })
 

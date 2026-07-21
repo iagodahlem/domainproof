@@ -6,15 +6,13 @@ describe('Badge', () => {
   it('renders its tone classes', () => {
     render(<Badge tone="danger">Needs attention</Badge>)
     expect(screen.getByText('Needs attention').className).toContain(
-      'text-[color:var(--danger)]',
+      'text-danger',
     )
   })
 
   it('defaults to the neutral tone', () => {
     render(<Badge>Not found</Badge>)
-    expect(screen.getByText('Not found').className).toContain(
-      'text-[color:var(--text-muted)]',
-    )
+    expect(screen.getByText('Not found').className).toContain('text-text-muted')
   })
 
   it('drops the visible border in mode-pill treatment', () => {
@@ -76,8 +74,6 @@ describe('StatusPill', () => {
         Verified
       </StatusPill>,
     )
-    expect(screen.getByText('Verified').className).toContain(
-      'text-[length:var(--text-2xs)]',
-    )
+    expect(screen.getByText('Verified').className).toContain('text-2xs')
   })
 })

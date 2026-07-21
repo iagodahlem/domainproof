@@ -4,26 +4,25 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border font-[var(--font-weight-semibold)] text-[length:var(--text-sm)] text-[color:var(--text)] transition-[background-color,border-color,color,transform] duration-[var(--duration-fast)] active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0',
+  'inline-flex items-center gap-2 rounded-md border font-semibold text-sm text-text transition-[background-color,border-color,color,transform] duration-150 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0',
   {
     variants: {
       variant: {
-        default:
-          'border-[var(--border-strong)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)]',
+        default: 'border-border-strong bg-surface-2 hover:bg-surface-3',
         primary:
-          'border-transparent bg-[var(--accent)] text-[color:var(--accent-foreground)] hover:bg-[var(--accent-strong)] focus-visible:[--focus-ring-color:var(--accent-foreground)]',
+          'border-transparent bg-accent text-accent-foreground hover:bg-accent-strong focus-visible:[--focus-ring-color:var(--accent-foreground)]',
         ghost:
-          'border-transparent bg-transparent text-[color:var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[color:var(--text)]',
+          'border-transparent bg-transparent text-text-muted hover:bg-surface-2 hover:text-text',
         'danger-ghost':
-          'border-[color-mix(in_oklab,var(--danger)_var(--alpha-border),transparent)] bg-transparent text-[color:var(--danger)] hover:bg-[var(--danger-soft)]',
+          'border-danger-border bg-transparent text-danger hover:bg-danger-soft',
       },
       size: {
-        default: 'px-[var(--space-4)] py-[var(--space-2)]',
-        sm: 'px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)]',
+        default: 'px-4 py-2',
+        sm: 'px-3 py-1 text-xs',
       },
       shape: {
         default: '',
-        pill: 'rounded-[var(--radius-full)]',
+        pill: 'rounded-full',
       },
     },
     defaultVariants: {

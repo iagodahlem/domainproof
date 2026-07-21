@@ -30,46 +30,40 @@ export function VerificationLog({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]',
+        'overflow-hidden rounded-lg border border-border',
         className,
       )}
       {...props}
     >
-      <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)] bg-[var(--surface-2)] px-[var(--space-5)] py-[var(--space-3)]">
-        <div className="flex items-center gap-[var(--space-2)] font-mono text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] tracking-[0.04em] text-[color:var(--text-muted)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-2 px-5 py-3">
+        <div className="flex items-center gap-2 font-mono text-xs font-semibold tracking-[0.04em] text-text-muted">
           {title}
         </div>
-        {meta ? (
-          <span className="text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-            {meta}
-          </span>
-        ) : null}
+        {meta ? <span className="text-xs text-text-faint">{meta}</span> : null}
       </div>
-      <div className="px-[var(--space-5)] pt-[var(--space-3)] pb-[var(--space-4)]">
+      <div className="px-5 pt-3 pb-4">
         {entries.length === 0 ? (
-          <p className="py-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-faint)]">
-            {emptyState}
-          </p>
+          <p className="py-2 text-sm text-text-faint">{emptyState}</p>
         ) : (
           entries.map((entry, index) => (
             <div
               key={entry.id}
               className={cn(
-                'flex gap-[var(--space-4)] border-b border-[var(--border)] py-[var(--space-3)]',
+                'flex gap-4 border-b border-border py-3',
                 index === entries.length - 1 && 'border-b-0',
               )}
             >
-              <span className="w-16 flex-shrink-0 pt-[2px] font-mono text-[length:var(--text-2xs)] text-[color:var(--text-faint)]">
+              <span className="w-16 flex-shrink-0 pt-[2px] font-mono text-2xs text-text-faint">
                 {entry.time}
               </span>
-              <div className="text-[length:var(--text-sm)] leading-[var(--leading-body)] text-[color:var(--text-muted)]">
+              <div className="text-sm leading-body text-text-muted">
                 {entry.summary}
                 {entry.detail ? (
-                  <details className="group mt-[var(--space-2)]">
-                    <summary className="inline-flex list-none items-center gap-[var(--space-1)] font-mono text-[length:var(--text-2xs)] tracking-[0.05em] text-[color:var(--text-faint)] uppercase before:content-['▸'] before:text-[0.6rem] group-open:before:content-['▾'] [&::-webkit-details-marker]:hidden">
+                  <details className="group mt-2">
+                    <summary className="inline-flex list-none items-center gap-1 font-mono text-2xs tracking-[0.05em] text-text-faint uppercase before:content-['▸'] before:text-3xs group-open:before:content-['▾'] [&::-webkit-details-marker]:hidden">
                       Technical detail
                     </summary>
-                    <div className="mt-[var(--space-2)] overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-[var(--space-3)] py-[var(--space-2)] font-mono text-[length:var(--text-xs)] whitespace-nowrap">
+                    <div className="mt-2 overflow-x-auto rounded-sm border border-border bg-bg px-3 py-2 font-mono text-xs whitespace-nowrap">
                       {entry.detail}
                     </div>
                   </details>
@@ -93,10 +87,8 @@ export function VerificationLogStatus({
   return (
     <span
       className={cn(
-        'font-[var(--font-weight-semibold)]',
-        tone === 'ok'
-          ? 'text-[color:var(--success)]'
-          : 'text-[color:var(--warning-strong)]',
+        'font-semibold',
+        tone === 'ok' ? 'text-success' : 'text-warning-strong',
       )}
     >
       {children}

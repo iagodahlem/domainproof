@@ -30,7 +30,7 @@ export function PathChooser({
     <div
       role="tablist"
       className={cn(
-        'mb-[var(--space-8)] grid grid-cols-4 gap-[var(--space-3)] max-[780px]:grid-cols-2',
+        'mb-8 grid grid-cols-4 gap-3 max-[780px]:grid-cols-2',
         className,
       )}
       {...props}
@@ -45,29 +45,25 @@ export function PathChooser({
             aria-selected={active}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--pad-card)] text-left transition-colors duration-[var(--duration-fast)] hover:border-[var(--border-strong)]',
-              active && 'border-[var(--accent)] bg-[var(--accent-soft)]',
+              'flex min-w-0 items-center gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors duration-150 hover:border-border-strong',
+              active && 'border-accent bg-accent-soft',
             )}
           >
             <span
               className={cn(
-                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-2)] text-[color:var(--text-faint)] transition-colors duration-[var(--duration-fast)]',
-                active &&
-                  'bg-[var(--accent)] text-[color:var(--accent-foreground)]',
+                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-text-faint transition-colors duration-150',
+                active && 'bg-accent text-accent-foreground',
               )}
             >
               {option.icon}
             </span>
             <span className="flex min-w-0 flex-col gap-[2px]">
               <span
-                className={cn(
-                  'text-[length:var(--text-sm)] font-[var(--font-weight-heading)]',
-                  active && 'text-[color:var(--accent)]',
-                )}
+                className={cn('text-sm font-heading', active && 'text-accent')}
               >
                 {option.label}
               </span>
-              <span className="text-[length:var(--text-2xs)] leading-[var(--leading-caption)] text-[color:var(--text-faint)]">
+              <span className="text-2xs leading-caption text-text-faint">
                 {option.sub}
               </span>
             </span>

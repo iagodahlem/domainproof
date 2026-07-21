@@ -14,6 +14,10 @@
   --surface-3: oklch(0.25 0.012 235);
   --border: oklch(1 0 0 / 8%);
   --border-strong: oklch(1 0 0 / 16%);
+  /* glass-blur tint — a fill-percentage mix, not part of the border alpha
+     scale below. Used with a backdrop-blur/saturate pair on sticky chrome
+     over scrolling content. */
+  --bg-glass: color-mix(in oklab, var(--bg) 82%, transparent);
 
   /* text */
   --text: oklch(0.96 0.004 235);
@@ -51,27 +55,6 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 999px;
-
-  /* spacing rhythm — base 4px. Steps 7/9/11/13-15/17-19/21-23 are skipped on
-     purpose (8pt-ish curation, not a typo) — add a step only when a real
-     component needs that exact rhythm. */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-
-  /* semantic padding tokens — every bordered/filled container draws its
-     inner padding from one of these, never a bare value. */
-  --pad-card: var(--space-5); /* cards, panels, banners, pills */
-  --pad-row: var(--space-4) var(--space-5); /* table/record/log rows, banners, topbar strips */
 
   /* type — family */
   --font-sans:
@@ -118,8 +101,16 @@
   --leading-code: 1.7; /* code-block */
 
   --shadow-card: 0 1px 2px oklch(0 0 0 / 24%), 0 12px 32px oklch(0 0 0 / 32%);
+  --shadow-current: 0 0 0 4px var(--accent-soft); /* glow on the "current" timeline/stepper node */
 
-  /* motion */
+  /* motion. --duration-fast is intentionally NOT mapped in theme.css: unlike
+     color/radius/font-weight, Tailwind v4's transition-duration utility is a
+     purely numeric functional utility (duration-150 -> 150ms) that never
+     consults a --duration-* theme key, so a mapping would compile to a
+     dead custom property with no generated class (verified against the
+     compiled output). Every call site uses Tailwind's built-in `duration-150`
+     instead, which is 0.15s — the same value as this token, same reasoning
+     as --radius-full below deferring to Tailwind's own rounded-full. */
   --duration-fast: 0.15s;
   --duration-base: 0.2s;
 
@@ -129,6 +120,56 @@
   --alpha-border-soft: 30%;
   --alpha-border: 35%;
   --alpha-border-strong: 45%;
+
+  /* border tints — accent/status color mixed down to a border strength via
+     the alpha scale above, for tinted borders on soft-filled surfaces
+     (badges, pills, callouts). Derives from --accent/--success/--warning/
+     --danger, so it re-tints with every theme swap for free. */
+  --accent-border: color-mix(
+    in oklab,
+    var(--accent) var(--alpha-border),
+    transparent
+  );
+  --accent-border-soft: color-mix(
+    in oklab,
+    var(--accent) var(--alpha-border-soft),
+    transparent
+  );
+  --accent-border-strong: color-mix(
+    in oklab,
+    var(--accent) var(--alpha-border-strong),
+    transparent
+  );
+  --success-border: color-mix(
+    in oklab,
+    var(--success) var(--alpha-border),
+    transparent
+  );
+  --success-border-strong: color-mix(
+    in oklab,
+    var(--success) var(--alpha-border-strong),
+    transparent
+  );
+  --warning-border: color-mix(
+    in oklab,
+    var(--warning) var(--alpha-border),
+    transparent
+  );
+  --warning-border-strong: color-mix(
+    in oklab,
+    var(--warning) var(--alpha-border-strong),
+    transparent
+  );
+  --danger-border: color-mix(
+    in oklab,
+    var(--danger) var(--alpha-border),
+    transparent
+  );
+  --danger-border-strong: color-mix(
+    in oklab,
+    var(--danger) var(--alpha-border-strong),
+    transparent
+  );
 
   /* focus ring — inset so it never gets clipped by an ancestor's overflow
      (table rows, scrollable tab strips), accent-based so it stays visible on

@@ -1,7 +1,44 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { cva } from 'class-variance-authority'
 import { cn } from './cn'
 
 export type TimelineStepStatus = 'done' | 'current' | 'upcoming'
+
+const timelineNodeVariants = cva(
+  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface font-mono text-xs font-bold text-text-faint',
+  {
+    variants: {
+      status: {
+        done: 'border-success bg-success text-success-foreground',
+        current: 'border-accent text-accent shadow-current',
+        upcoming: '',
+      },
+    },
+  },
+)
+
+const timelineConnectorVariants = cva(
+  'mt-2 min-h-[16px] w-[2px] flex-1 bg-border-strong',
+  {
+    variants: {
+      status: {
+        done: 'bg-success',
+        current: '',
+        upcoming: '',
+      },
+    },
+  },
+)
+
+const timelineTitleVariants = cva('text-lg font-heading', {
+  variants: {
+    status: {
+      done: '',
+      current: 'text-accent',
+      upcoming: '',
+    },
+  },
+})
 
 export interface VerticalTimelineStep {
   id: string
@@ -31,60 +68,41 @@ export function VerticalTimeline({
         return (
           <div
             key={step.id}
-            className={cn(
-              'relative flex gap-[var(--space-4)]',
-              !isLast && 'pb-[var(--space-8)]',
-            )}
+            className={cn('relative flex gap-4', !isLast && 'pb-8')}
           >
             <div className="flex w-[28px] flex-shrink-0 flex-col items-center">
-              <span
-                className={cn(
-                  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--border-strong)] bg-[var(--surface)] font-mono text-[length:var(--text-xs)] font-[var(--font-weight-bold)] text-[color:var(--text-faint)]',
-                  step.status === 'done' &&
-                    'border-[var(--success)] bg-[var(--success)] text-[color:var(--success-foreground)]',
-                  step.status === 'current' &&
-                    'border-[var(--accent)] text-[color:var(--accent)] shadow-[0_0_0_4px_var(--accent-soft)]',
-                )}
-              >
+              <span className={timelineNodeVariants({ status: step.status })}>
                 {step.node}
               </span>
               {!isLast ? (
                 <span
-                  className={cn(
-                    'mt-[var(--space-2)] min-h-[16px] w-[2px] flex-1 bg-[var(--border-strong)]',
-                    step.status === 'done' && 'bg-[var(--success)]',
-                  )}
+                  className={timelineConnectorVariants({
+                    status: step.status,
+                  })}
                 />
               ) : null}
             </div>
             <div className="min-w-0 flex-1 pt-[2px]">
-              <div
-                className={cn(
-                  'text-[length:var(--text-base)] font-[var(--font-weight-heading)]',
-                  step.status === 'current' && 'text-[color:var(--accent)]',
-                )}
-              >
+              <div className={timelineTitleVariants({ status: step.status })}>
                 {step.title}
               </div>
               {step.meta ? (
-                <div className="mt-[2px] font-mono text-[length:var(--text-2xs)] text-[color:var(--text-faint)]">
+                <div className="mt-[2px] font-mono text-2xs text-text-faint">
                   {step.meta}
                 </div>
               ) : null}
               {step.description ? (
                 <div
                   className={cn(
-                    'mt-[var(--space-2)] max-w-[54ch] text-[length:var(--text-sm)] leading-[var(--leading-body)] text-[color:var(--text-muted)]',
-                    !isLast && 'mb-[var(--space-4)]',
+                    'mt-2 max-w-[54ch] text-sm leading-body text-text-muted',
+                    !isLast && 'mb-4',
                   )}
                 >
                   {step.description}
                 </div>
               ) : null}
               {step.content ? (
-                <div className="flex flex-col gap-[var(--space-3)]">
-                  {step.content}
-                </div>
+                <div className="flex flex-col gap-3">{step.content}</div>
               ) : null}
             </div>
           </div>

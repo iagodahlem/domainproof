@@ -102,7 +102,9 @@ rules, and a "where does X go?" decision table. The short version:
 
 These are enforced by eslint (`no-restricted-imports`, see
 `eslint.base.mjs`) and reviewed by the `architecture-reviewer` agent
-(`.claude/agents/architecture-reviewer.md`) on every PR.
+(`.claude/agents/architecture-reviewer.md`) on every PR; PRs touching
+`packages/ui` or `apps/web`'s UI are also reviewed by the
+`frontend-reviewer` agent (`.claude/agents/frontend-reviewer.md`).
 
 Standing rules for every PR, regardless of size:
 
