@@ -1,6 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
-import { challenges, domains, verificationEvents } from '@infra/db/schema'
+import { challenges, domains } from '@infra/db/schema'
 import type { DomainStatus } from '@domainproof/core'
 
 export type DomainRow = typeof domains.$inferSelect
@@ -16,11 +16,6 @@ export interface ChallengeInsert {
   expiresAt: Date
 }
 
-export interface VerificationEventInsert {
-  type: string
-  detail: unknown
-}
-
 export interface ClaimInsert {
   projectId: string
   mode: DomainMode
@@ -28,7 +23,6 @@ export interface ClaimInsert {
   /** The status the new domain row is created with — computed by the caller via core's state machine. */
   status: DomainStatus
   challenge: ChallengeInsert
-  event: VerificationEventInsert
 }
 
 export interface DomainWithChallenge {
@@ -48,23 +42,26 @@ export interface VerificationAttemptInsert {
    * domain doesn't erase when it was last confirmed good).
    */
   verifiedAt?: Date
-  event: VerificationEventInsert
 }
 
 /**
- * All db access for the domains module — the `domains`, `challenges`, and
- * `verification_events` tables, which together form one bounded context
- * (a domain claim, its current challenge, and its timeline). This is the
- * only file in `modules/domains` allowed to import `@infra/db`.
+ * All db access for the domains module — the `domains` and `challenges`
+ * tables, which together form one bounded context (a domain claim and its
+ * current challenge). This is the only file in `modules/domains` allowed
+ * to import `@infra/db`. The domain's event timeline is a separate
+ * concern owned by `modules/events` — this repository no longer writes
+ * timeline rows itself; `domains/service.ts` publishes to the `EventBus`
+ * instead, after each of these calls commits.
  */
 export interface DomainsRepository {
   /**
-   * Inserts a domain, its initial challenge, and a timeline event for the
-   * claim, atomically in one transaction. Returns `undefined` (rather than
-   * throwing) on a `(project_id, domain, mode)` conflict — the insert hits
-   * that unique constraint via `ON CONFLICT DO NOTHING`, so the caller can
-   * distinguish "already claimed" from every other failure without parsing
-   * a driver error.
+   * Inserts a domain and its initial challenge, atomically in one
+   * transaction. Returns `undefined` (rather than throwing) on a
+   * `(project_id, domain, mode)` conflict — the insert hits that unique
+   * constraint via `ON CONFLICT DO NOTHING`, so the caller can distinguish
+   * "already claimed" from every other failure without parsing a driver
+   * error. The caller (`domains/service.ts`) publishes `domain.claimed` to
+   * the `EventBus` after this resolves — not this repository's concern.
    */
   claim(values: ClaimInsert): Promise<DomainWithChallenge | undefined>
 
@@ -83,9 +80,9 @@ export interface DomainsRepository {
 
   /**
    * Deletes the domain claim, scoped to `(projectId, mode)` — a `FOREIGN
-   * KEY ... ON DELETE CASCADE` takes its challenges and timeline events
-   * with it. Returns the deleted row, or `undefined` if no domain with `id`
-   * exists under that project/mode.
+   * KEY ... ON DELETE CASCADE` takes its challenges (and any events
+   * scoped to it) with it. Returns the deleted row, or `undefined` if no
+   * domain with `id` exists under that project/mode.
    */
   release(
     projectId: string,
@@ -94,13 +91,13 @@ export interface DomainsRepository {
   ): Promise<DomainRow | undefined>
 
   /**
-   * Persists the outcome of one `verifyDomain` attempt, atomically: updates
-   * the domain's status (and `verified_at`, if provided) and appends a
-   * `verification_events` row for the attempt, in one transaction. Not
-   * scoped to `(projectId, mode)` — the caller is expected to have already
-   * resolved and authorized `domainId` via `findById`. Throws if `domainId`
-   * doesn't exist (should never happen: the caller just read it in the same
-   * request).
+   * Persists the outcome of one `verifyDomain` attempt: updates the
+   * domain's status (and `verified_at`, if provided). Not scoped to
+   * `(projectId, mode)` — the caller is expected to have already resolved
+   * and authorized `domainId` via `findById`. Throws if `domainId` doesn't
+   * exist (should never happen: the caller just read it in the same
+   * request). The caller publishes the check/transition events to the
+   * `EventBus` after this resolves — not this repository's concern.
    */
   recordVerificationAttempt(
     values: VerificationAttemptInsert,
@@ -144,12 +141,6 @@ export function createDomainsRepository(db: Database): DomainsRepository {
         if (!challengeRow) {
           throw new Error('Failed to create challenge: insert returned no row')
         }
-
-        await tx.insert(verificationEvents).values({
-          domainId: domainRow.id,
-          type: values.event.type,
-          detail: values.event.detail,
-        })
 
         return { domain: domainRow, challenge: challengeRow }
       })
@@ -202,31 +193,23 @@ export function createDomainsRepository(db: Database): DomainsRepository {
     },
 
     async recordVerificationAttempt(values) {
-      return db.transaction(async (tx) => {
-        const [domainRow] = await tx
-          .update(domains)
-          .set({
-            status: values.nextStatus,
-            updatedAt: new Date(),
-            ...(values.verifiedAt ? { verifiedAt: values.verifiedAt } : {}),
-          })
-          .where(eq(domains.id, values.domainId))
-          .returning()
-
-        if (!domainRow) {
-          throw new Error(
-            `No domain found for id ${values.domainId} while recording a verification attempt`,
-          )
-        }
-
-        await tx.insert(verificationEvents).values({
-          domainId: values.domainId,
-          type: values.event.type,
-          detail: values.event.detail,
+      const [domainRow] = await db
+        .update(domains)
+        .set({
+          status: values.nextStatus,
+          updatedAt: new Date(),
+          ...(values.verifiedAt ? { verifiedAt: values.verifiedAt } : {}),
         })
+        .where(eq(domains.id, values.domainId))
+        .returning()
 
-        return domainRow
-      })
+      if (!domainRow) {
+        throw new Error(
+          `No domain found for id ${values.domainId} while recording a verification attempt`,
+        )
+      }
+
+      return domainRow
     },
   }
 }

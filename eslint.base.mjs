@@ -41,7 +41,7 @@ export default function baseConfig(
     ...tseslint.configs.recommended,
     eslintConfigPrettier,
     {
-      files: ['src/**/*.ts'],
+      files: ['src/**/*.ts', 'src/**/*.tsx'],
       languageOptions: {
         parserOptions: {
           projectService: true,

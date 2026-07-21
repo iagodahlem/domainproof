@@ -40,7 +40,14 @@ export function createClerkSessionVerifier(
         return { ok: false, reason: 'missing_subject' }
       }
 
-      return { ok: true, claims: { userId: payload.sub } }
+      // Only present if this Clerk instance is configured to include email
+      // as a custom session token claim — not the default, and not
+      // configured for this repo today. See `modules/accounts/service.ts`'s
+      // `ensureAccount` for the fallback when it's absent.
+      const email =
+        typeof payload.email === 'string' ? payload.email : undefined
+
+      return { ok: true, claims: { userId: payload.sub, email } }
     },
   }
 }

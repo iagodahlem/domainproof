@@ -11,20 +11,25 @@
     "lint": "eslint .",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:reset": "tsx --env-file-if-exists=.env src/infra/db/reset.ts"
   },
   "dependencies": {
     "@domainproof/core": "workspace:*",
     "@hono/node-server": "^2.0.10",
+    "@react-email/render": "^2.1.0",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.30",
     "jose": "^6.2.3",
     "postgres": "^3.4.9",
+    "react": "^19.1.0",
+    "resend": "^6.17.2",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
+    "@types/react": "^19",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.7.0",
     "tsup": "catalog:",

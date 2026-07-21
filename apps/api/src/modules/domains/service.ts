@@ -13,6 +13,7 @@ import {
   transition,
 } from '@domainproof/core'
 import type { ProjectsService } from '@modules/projects/service'
+import type { DomainEventMap, EventBus, Mode } from '@shared/events'
 import { eventForCheckOutcome } from './domain/verification-event'
 import type { ResolverForChallenge } from './ports'
 import type {
@@ -93,8 +94,9 @@ export interface DomainsService {
   /**
    * Claims a domain for a project: normalizes/validates the input,
    * generates a fresh challenge token, and persists the domain + its
-   * initial challenge + a claim timeline event in one call. Returns a
-   * typed `conflict` result (never throws) if `(projectId, domain, mode)`
+   * initial challenge in one call, then publishes `domain.claimed` to the
+   * `EventBus`. Returns a typed `conflict` result (never throws) if
+   * `(projectId, domain, mode)`
    * was already claimed — the exact same domain CAN be claimed again by a
    * different project or a different mode; the constraint is per
    * `(project, domain, mode)`, not global.
@@ -134,8 +136,11 @@ export interface DomainsService {
    * Runs the DNS check for a claimed domain's current challenge, transitions
    * its status through core's state machine (see
    * `domain/verification-event.ts` for the outcome -> event mapping), and
-   * records the attempt on the domain's timeline — always, regardless of
-   * whether the outcome changed anything. Never throws for a domain that
+   * publishes `domain.check_passed`/`domain.check_failed` (plus
+   * `domain.verified`/`domain.temporarily_failed`/`domain.failed` when the
+   * status actually changed) to the `EventBus` — always, regardless of
+   * whether the outcome changed anything (a merely inconclusive
+   * `unreachable` outcome publishes neither). Never throws for a domain that
    * simply isn't ready yet (`not_found`/`unreachable` are normal, expected
    * outcomes, not errors) — only a typed `not_found` result for an unknown
    * (or not-this-project/-mode) `id`. Re-verifying an already-verified (or
@@ -185,6 +190,61 @@ function toSummary(
   }
 }
 
+/**
+ * Publishes the events one `verifyDomain` attempt produces: a
+ * `domain.check_passed`/`domain.check_failed` for the attempt itself (a
+ * merely inconclusive `unreachable` outcome — "we don't know", not a
+ * definitive answer, see `checkTxt`'s doc comment — publishes neither),
+ * plus `domain.verified`/`domain.temporarily_failed`/`domain.failed` when
+ * the status actually changed. Shared by both `verifyDomain` branches (the
+ * expiry short-circuit and the real DNS-check path) so the mapping from
+ * outcome/transition to published events lives in exactly one place.
+ */
+async function publishVerifyDomainEvents(
+  eventBus: EventBus,
+  params: {
+    domainId: string
+    projectId: string
+    mode: Mode
+    domain: string
+    outcome: VerifyDomainCheck['outcome']
+    previousStatus: DomainStatus
+    nextStatus: DomainStatus
+  },
+): Promise<void> {
+  const {
+    domainId,
+    projectId,
+    mode,
+    domain,
+    outcome,
+    previousStatus,
+    nextStatus,
+  } = params
+  const base: DomainEventMap['domain.claimed'] = {
+    domainId,
+    projectId,
+    mode,
+    domain,
+  }
+
+  if (outcome === 'found') {
+    await eventBus.publish('domain.check_passed', base)
+  } else if (outcome !== 'unreachable') {
+    await eventBus.publish('domain.check_failed', { ...base, outcome })
+  }
+
+  if (nextStatus !== previousStatus) {
+    if (nextStatus === 'verified') {
+      await eventBus.publish('domain.verified', base)
+    } else if (nextStatus === 'temporarily_failed') {
+      await eventBus.publish('domain.temporarily_failed', base)
+    } else if (nextStatus === 'failed') {
+      await eventBus.publish('domain.failed', base)
+    }
+  }
+}
+
 export function createDomainsService(
   repository: DomainsRepository,
   projectsService: ProjectsService,
@@ -204,6 +264,15 @@ export function createDomainsService(
   },
   /** Clock, injected for deterministic tests. Default `() => new Date()`. */
   now: () => Date = () => new Date(),
+  /**
+   * Composition-root dependency (see `app.ts`) this service publishes to
+   * after each state transition commits — never before, and never as a
+   * side effect inside core's `transition()` itself (see
+   * ARCHITECTURE.md's "Planned: events"). Defaults to a no-op bus so the
+   * many tests below that don't care about published events don't need to
+   * supply one; tests that do (see `service.test.ts`) pass a fake.
+   */
+  eventBus: EventBus = { publish: async () => {}, subscribe: () => {} },
 ): DomainsService {
   return {
     async claimDomain({ projectId, mode, domain }) {
@@ -262,15 +331,18 @@ export function createDomainsService(
           recordValue: recordValueString,
           expiresAt,
         },
-        event: {
-          type: 'domain_claimed',
-          detail: { method, recordHost, mode },
-        },
       })
 
       if (!result) {
         return { ok: false, error: 'conflict' }
       }
+
+      await eventBus.publish('domain.claimed', {
+        domainId: result.domain.id,
+        projectId,
+        mode,
+        domain: normalized.domain,
+      })
 
       return {
         ok: true,
@@ -359,14 +431,16 @@ export function createDomainsService(
         const updatedRow = await repository.recordVerificationAttempt({
           domainId: row.id,
           nextStatus,
-          event: {
-            type: 'domain_verify_attempted',
-            detail: {
-              outcome: 'expired',
-              previousStatus: currentStatus,
-              nextStatus,
-            },
-          },
+        })
+
+        await publishVerifyDomainEvents(eventBus, {
+          domainId: row.id,
+          projectId,
+          mode,
+          domain: row.domain,
+          outcome: 'expired',
+          previousStatus: currentStatus,
+          nextStatus,
         })
 
         return {
@@ -420,15 +494,16 @@ export function createDomainsService(
         domainId: row.id,
         nextStatus,
         verifiedAt,
-        event: {
-          type: 'domain_verify_attempted',
-          detail: {
-            outcome: result.outcome,
-            previousStatus: currentStatus,
-            nextStatus,
-            ...(detectedValues.length > 0 ? { detected: detectedValues } : {}),
-          },
-        },
+      })
+
+      await publishVerifyDomainEvents(eventBus, {
+        domainId: row.id,
+        projectId,
+        mode,
+        domain: row.domain,
+        outcome: result.outcome,
+        previousStatus: currentStatus,
+        nextStatus,
       })
 
       return {

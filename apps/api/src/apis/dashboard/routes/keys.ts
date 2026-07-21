@@ -55,7 +55,10 @@ export function createKeysRoutes(
       return c.json(body, status)
     }
 
-    const projectId = await projectsService.getDefaultProjectId(c.get('userId'))
+    const projectId = await projectsService.getDefaultProjectId(
+      c.get('userId'),
+      c.get('userEmail'),
+    )
     const result = await keysService.createKey(
       projectId,
       parsed.data.mode,
@@ -66,14 +69,20 @@ export function createKeysRoutes(
   })
 
   router.get('/', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(c.get('userId'))
+    const projectId = await projectsService.getDefaultProjectId(
+      c.get('userId'),
+      c.get('userEmail'),
+    )
     const items = await keysService.listKeys(projectId)
 
     return c.json({ apiKeys: items })
   })
 
   router.post('/:keyId/revoke', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(c.get('userId'))
+    const projectId = await projectsService.getDefaultProjectId(
+      c.get('userId'),
+      c.get('userEmail'),
+    )
     const keyId = c.req.param('keyId')
 
     const revoked = await keysService.revokeKey(projectId, keyId)
@@ -86,7 +95,10 @@ export function createKeysRoutes(
   })
 
   router.post('/:keyId/rotate', async (c) => {
-    const projectId = await projectsService.getDefaultProjectId(c.get('userId'))
+    const projectId = await projectsService.getDefaultProjectId(
+      c.get('userId'),
+      c.get('userEmail'),
+    )
     const keyId = c.req.param('keyId')
 
     const result = await keysService.rotateKey(projectId, keyId)

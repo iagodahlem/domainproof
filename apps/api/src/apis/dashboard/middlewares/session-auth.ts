@@ -6,11 +6,14 @@ import type {
 } from '@modules/accounts/ports'
 
 /**
- * Hono context variable holding the verified session's user id, available
+ * Hono context variables holding the verified session's claims, available
  * to any handler downstream of {@link createSessionAuthMiddleware}.
+ * `userEmail` is `undefined` unless the verifier's claims carried one — see
+ * `SessionClaims.email`.
  */
 export interface SessionAuthVariables {
   userId: string
+  userEmail: string | undefined
 }
 
 function unauthorized(message: string) {
@@ -94,6 +97,7 @@ export function createSessionAuthMiddleware(
     }
 
     c.set('userId', result.claims.userId)
+    c.set('userEmail', result.claims.email)
     await next()
   }
 }

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { KeysRepository } from '@modules/keys/repository'
 import type { DomainsService } from '@modules/domains/service'
+import type { EventsService } from '@modules/events/service'
 import { createRateLimitMiddleware } from '@shared/middlewares/rate-limit'
 import {
   createApiKeyAuthMiddleware,
@@ -11,6 +12,7 @@ import { createDomainsRoutes } from './routes/domains'
 export interface V1RouterDeps {
   keysRepository: KeysRepository
   domainsService: DomainsService
+  eventsService: EventsService
 }
 
 /**
@@ -32,7 +34,10 @@ export function createV1Router(deps: V1RouterDeps) {
     createRateLimitMiddleware(),
   )
 
-  router.route('/domains', createDomainsRoutes(deps.domainsService))
+  router.route(
+    '/domains',
+    createDomainsRoutes(deps.domainsService, deps.eventsService),
+  )
 
   return router
 }

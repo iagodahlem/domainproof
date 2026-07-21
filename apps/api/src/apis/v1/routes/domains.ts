@@ -7,6 +7,7 @@ import type {
   DomainSummary,
   VerifyDomainCheck,
 } from '@modules/domains/service'
+import type { EventSummary, EventsService } from '@modules/events/service'
 import { apiError } from '@shared/http-errors'
 
 // 253 is the maximum length of a fully-qualified DNS domain name (RFC
@@ -16,6 +17,19 @@ import { apiError } from '@shared/http-errors'
 // rather than spending a `normalizeDomain` call (or, worse, a DNS query)
 // on it.
 const MAX_DOMAIN_LENGTH = 253
+
+const DEFAULT_EVENTS_PAGE_LIMIT = 20
+const MAX_EVENTS_PAGE_LIMIT = 100
+
+const listEventsQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(MAX_EVENTS_PAGE_LIMIT)
+    .optional(),
+  cursor: z.string().min(1).optional(),
+})
 
 const claimDomainBodySchema = z.object({
   domain: z.string().min(1).max(MAX_DOMAIN_LENGTH),
@@ -175,15 +189,34 @@ function serializeCheck(check: VerifyDomainCheck, domain: string) {
 }
 
 /**
+ * Builds the public API's view of one timeline event — `domainId` is
+ * omitted since it's already implied by the `:id` in the URL this is
+ * nested under.
+ */
+function serializeEvent(event: EventSummary) {
+  return {
+    id: event.id,
+    type: event.type,
+    mode: event.mode,
+    payload: event.payload,
+    createdAt: event.createdAt,
+  }
+}
+
+/**
  * Public-API domain claiming routes, mounted at `/domains` under the v1
  * plane's router (giving `/v1/domains`). `projectId` and `mode` come from
  * the api-key auth context set by `apis/v1/middlewares/api-key.ts` — every
  * route here is implicitly scoped to the authenticated key's project and
  * mode, the same test/live separation the rest of the public API uses.
- * Parses/validates input, calls the injected `DomainsService`, and maps
- * the result to HTTP — no db or business logic here.
+ * Parses/validates input, calls the injected `DomainsService`/
+ * `EventsService`, and maps the result to HTTP — no db or business logic
+ * here.
  */
-export function createDomainsRoutes(domainsService: DomainsService) {
+export function createDomainsRoutes(
+  domainsService: DomainsService,
+  eventsService: EventsService,
+) {
   const router = new Hono<{ Variables: ApiKeyAuthVariables }>()
 
   router.post('/', async (c) => {
@@ -240,6 +273,37 @@ export function createDomainsRoutes(domainsService: DomainsService) {
       return c.json(body, status)
     }
     return c.json({ domain: serializeDomain(domain) })
+  })
+
+  router.get('/:id/events', async (c) => {
+    // Reuses getDomain purely for its (projectId, mode) authorization —
+    // a `keyId` from another project (or the wrong mode) 404s here the
+    // same way it does on every other domain-scoped route.
+    const domain = await domainsService.getDomain(
+      c.get('projectId'),
+      c.get('mode'),
+      c.req.param('id'),
+    )
+    if (!domain) {
+      const { body, status } = notFound()
+      return c.json(body, status)
+    }
+
+    const parsed = listEventsQuerySchema.safeParse(c.req.query())
+    if (!parsed.success) {
+      const { body, status } = invalidRequest('Invalid query parameters')
+      return c.json(body, status)
+    }
+
+    const { events, nextCursor } = await eventsService.listDomainEvents(
+      domain.id,
+      {
+        limit: parsed.data.limit ?? DEFAULT_EVENTS_PAGE_LIMIT,
+        cursor: parsed.data.cursor,
+      },
+    )
+
+    return c.json({ events: events.map(serializeEvent), nextCursor })
   })
 
   router.delete('/:id', async (c) => {

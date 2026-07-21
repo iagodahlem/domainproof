@@ -6,7 +6,10 @@ import { createProjectsService } from './service'
 function fakeAccountsService(accountId = 'account_1'): AccountsService {
   return {
     async ensureAccount() {
-      return { accountId, created: false }
+      return { accountId, created: false, email: null }
+    },
+    async getEmailForProject() {
+      return undefined
     },
   }
 }

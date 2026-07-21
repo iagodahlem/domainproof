@@ -7,37 +7,27 @@ import {
 } from '@domainproof/core'
 import { createFixtureResolver } from '@domainproof/core/testing'
 import type { ProjectsService } from '@modules/projects/service'
+import type { DomainEventMap, DomainEventType, EventBus } from '@shared/events'
 import type { ResolverForChallenge, ResolverForChallengeInput } from './ports'
 import type {
   ChallengeRow,
   ClaimInsert,
   DomainRow,
   DomainsRepository,
-  VerificationEventInsert,
 } from './repository'
 import { createDomainsService } from './service'
 
 /**
  * A fake DomainsRepository implementing the port directly, in memory — no
  * real db. The repository's own persistence behavior (the unique
- * constraint, the transactional claim + challenge + event insert, cascade
- * delete) is covered by repository.test.ts against a real db; this file
- * only tests the service's own logic: domain normalization, branded record
- * generation, and result mapping.
+ * constraint, the transactional claim + challenge insert, cascade delete)
+ * is covered by repository.test.ts against a real db; this file only
+ * tests the service's own logic: domain normalization, branded record
+ * generation, result mapping, and published events.
  */
-/**
- * The fake repository also exposes `getEvents`, beyond what
- * `DomainsRepository` requires — a superset, so every existing call site
- * that only needs a `DomainsRepository` keeps compiling unchanged, and only
- * `verifyDomain`'s tests use the extra method to assert on the recorded
- * timeline.
- */
-function fakeRepository(): DomainsRepository & {
-  getEvents(domainId: string): VerificationEventInsert[]
-} {
+function fakeRepository(): DomainsRepository {
   const domainRows = new Map<string, DomainRow>()
   const challengesByDomainId = new Map<string, ChallengeRow[]>()
-  const eventsByDomainId = new Map<string, VerificationEventInsert[]>()
 
   function conflicts(values: ClaimInsert): boolean {
     return [...domainRows.values()].some(
@@ -78,9 +68,6 @@ function fakeRepository(): DomainsRepository & {
         createdAt: new Date(),
       }
       challengesByDomainId.set(domainRow.id, [challengeRow])
-      eventsByDomainId.set(domainRow.id, [
-        { type: values.event.type, detail: values.event.detail },
-      ])
 
       return { domain: domainRow, challenge: challengeRow }
     },
@@ -128,15 +115,21 @@ function fakeRepository(): DomainsRepository & {
       }
       domainRows.set(row.id, updated)
 
-      const events = eventsByDomainId.get(row.id) ?? []
-      events.push(values.event)
-      eventsByDomainId.set(row.id, events)
-
       return updated
     },
+  }
+}
 
-    getEvents(domainId) {
-      return eventsByDomainId.get(domainId) ?? []
+/** Records every published event, for assertions. */
+function fakeEventBus(): EventBus & {
+  published: { type: DomainEventType; payload: unknown }[]
+} {
+  const published: { type: DomainEventType; payload: unknown }[] = []
+  return {
+    published,
+    subscribe() {},
+    async publish(type, payload: DomainEventMap[DomainEventType]) {
+      published.push({ type, payload })
     },
   }
 }
@@ -405,6 +398,62 @@ describe('claimDomain', () => {
 
     expect(result.ok).toBe(true)
   })
+
+  it('publishes domain.claimed on a successful claim', async () => {
+    const eventBus = fakeEventBus()
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+      undefined,
+      undefined,
+      eventBus,
+    )
+
+    const result = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+    if (!result.ok) throw new Error('setup failed')
+
+    expect(eventBus.published).toHaveLength(1)
+    expect(eventBus.published[0]).toMatchObject({
+      type: 'domain.claimed',
+      payload: {
+        domainId: result.domain.id,
+        projectId: 'project_1',
+        mode: 'live',
+        domain: 'example.com',
+      },
+    })
+  })
+
+  it('does not publish on a conflict', async () => {
+    const eventBus = fakeEventBus()
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+      undefined,
+      undefined,
+      eventBus,
+    )
+
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+    eventBus.published.length = 0
+
+    const second = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+
+    expect(second).toEqual({ ok: false, error: 'conflict' })
+    expect(eventBus.published).toHaveLength(0)
+  })
 })
 
 describe('listDomains', () => {
@@ -569,12 +618,16 @@ describe('verifyDomain', () => {
 
   it('found: transitions pending -> verified and sets verifiedAt', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()), // seeded below
+      undefined,
+      eventBus,
     )
     const { domainId, challenge } = await claimAndGetChallenge(service)
+    eventBus.published.length = 0 // drop the domain.claimed from setup
 
     const resolver = createFixtureResolver({
       [challenge.recordHost]: [challenge.recordValue],
@@ -583,6 +636,8 @@ describe('verifyDomain', () => {
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(resolver),
+      undefined,
+      eventBus,
     )
 
     const result = await verifyingService.verifyDomain(
@@ -597,16 +652,31 @@ describe('verifyDomain', () => {
     expect(result.check.detectedValues).toEqual([])
     expect(result.domain.status).toBe('verified')
     expect(result.domain.verifiedAt).not.toBeNull()
+
+    expect(eventBus.published).toEqual([
+      {
+        type: 'domain.check_passed',
+        payload: expect.objectContaining({ domainId }),
+      },
+      {
+        type: 'domain.verified',
+        payload: expect.objectContaining({ domainId }),
+      },
+    ])
   })
 
-  it('not_found: stays pending, records the attempt, no explanation baked in at this layer', async () => {
+  it('not_found: stays pending, publishes domain.check_failed, no transition event', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
     )
     const { domainId } = await claimAndGetChallenge(service)
+    eventBus.published.length = 0 // drop the domain.claimed from setup
 
     const result = await service.verifyDomain('project_1', 'live', domainId)
     expect(result.ok).toBe(true)
@@ -616,26 +686,26 @@ describe('verifyDomain', () => {
     expect(result.domain.status).toBe('pending')
     expect(result.domain.verifiedAt).toBeNull()
 
-    const events = repository.getEvents(domainId)
-    expect(events).toHaveLength(2) // domain_claimed, then this attempt
-    expect(events[1]).toMatchObject({
-      type: 'domain_verify_attempted',
-      detail: expect.objectContaining({
-        outcome: 'not_found',
-        previousStatus: 'pending',
-        nextStatus: 'pending',
-      }),
-    })
+    expect(eventBus.published).toEqual([
+      {
+        type: 'domain.check_failed',
+        payload: expect.objectContaining({ domainId, outcome: 'not_found' }),
+      },
+    ])
   })
 
-  it('wrong_value: transitions pending -> failed and records the detected value', async () => {
+  it('wrong_value: transitions pending -> failed, publishes check_failed and domain.failed', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
     )
     const { domainId, challenge } = await claimAndGetChallenge(service)
+    eventBus.published.length = 0 // drop the domain.claimed from setup
 
     const wrongValue = recordValue('someotherrandomtoken1234567', 'skylane')
     const resolver = createFixtureResolver({
@@ -645,6 +715,8 @@ describe('verifyDomain', () => {
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(resolver),
+      undefined,
+      eventBus,
     )
 
     const result = await verifyingService.verifyDomain(
@@ -660,23 +732,30 @@ describe('verifyDomain', () => {
     expect(result.check.expectedValue).toBe(challenge.recordValue)
     expect(result.domain.status).toBe('failed')
 
-    const events = repository.getEvents(domainId)
-    expect(events[1]?.detail).toMatchObject({
-      outcome: 'wrong_value',
-      detected: ['someotherrandomtoken1234567'],
-      previousStatus: 'pending',
-      nextStatus: 'failed',
-    })
+    expect(eventBus.published).toEqual([
+      {
+        type: 'domain.check_failed',
+        payload: expect.objectContaining({ domainId, outcome: 'wrong_value' }),
+      },
+      {
+        type: 'domain.failed',
+        payload: expect.objectContaining({ domainId }),
+      },
+    ])
   })
 
-  it('unreachable: never transitions, regardless of status', async () => {
+  it('unreachable: never transitions, regardless of status, and publishes nothing', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
     )
     const { domainId, challenge } = await claimAndGetChallenge(service)
+    eventBus.published.length = 0 // drop the domain.claimed from setup
 
     const unreachableResolver = createFixtureResolver({
       [challenge.recordHost]: { error: 'timeout' },
@@ -685,6 +764,8 @@ describe('verifyDomain', () => {
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(unreachableResolver),
+      undefined,
+      eventBus,
     )
 
     const result = await verifyingService.verifyDomain(
@@ -697,6 +778,7 @@ describe('verifyDomain', () => {
 
     expect(result.check.outcome).toBe('unreachable')
     expect(result.domain.status).toBe('pending')
+    expect(eventBus.published).toHaveLength(0)
   })
 
   describe('challenge expiry', () => {
@@ -719,11 +801,13 @@ describe('verifyDomain', () => {
           )
         },
       }
+      const eventBus = fakeEventBus()
       const verifyingService = createDomainsService(
         repository,
         fakeProjectsService(),
         fakeResolverForChallenge(explodingResolver),
         () => new Date(Date.now() + DEFAULT_TOKEN_TTL_MS),
+        eventBus,
       )
 
       const result = await verifyingService.verifyDomain(
@@ -738,15 +822,16 @@ describe('verifyDomain', () => {
       expect(result.check.detectedValues).toEqual([])
       expect(result.domain.status).toBe('failed')
 
-      const events = repository.getEvents(domainId)
-      expect(events[1]).toMatchObject({
-        type: 'domain_verify_attempted',
-        detail: {
-          outcome: 'expired',
-          previousStatus: 'pending',
-          nextStatus: 'failed',
+      expect(eventBus.published).toEqual([
+        {
+          type: 'domain.check_failed',
+          payload: expect.objectContaining({ domainId, outcome: 'expired' }),
         },
-      })
+        {
+          type: 'domain.failed',
+          payload: expect.objectContaining({ domainId }),
+        },
+      ])
     })
 
     it('does not expire a domain still inside its verification window', async () => {
@@ -912,10 +997,13 @@ describe('verifyDomain', () => {
 
   it('recheck of a verified domain: a lost or wrong record opens the grace window (temporarily_failed)', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
     )
     const { domainId, challenge } = await claimAndGetChallenge(service)
 
@@ -926,6 +1014,8 @@ describe('verifyDomain', () => {
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(resolver),
+      undefined,
+      eventBus,
     )
 
     const verified = await verifyingService.verifyDomain(
@@ -935,6 +1025,7 @@ describe('verifyDomain', () => {
     )
     if (!verified.ok) throw new Error('setup failed')
     expect(verified.domain.status).toBe('verified')
+    eventBus.published.length = 0 // drop claimed + the first verified pass
 
     resolver.set(challenge.recordHost, []) // record removed -> not_found
     const lost = await verifyingService.verifyDomain(
@@ -946,6 +1037,17 @@ describe('verifyDomain', () => {
     if (!lost.ok) return
     expect(lost.check.outcome).toBe('not_found')
     expect(lost.domain.status).toBe('temporarily_failed')
+
+    expect(eventBus.published).toEqual([
+      {
+        type: 'domain.check_failed',
+        payload: expect.objectContaining({ domainId, outcome: 'not_found' }),
+      },
+      {
+        type: 'domain.temporarily_failed',
+        payload: expect.objectContaining({ domainId }),
+      },
+    ])
   })
 
   it('recheck of a verified domain: unreachable does not open the grace window', async () => {
@@ -988,10 +1090,13 @@ describe('verifyDomain', () => {
 
   it('temporarily_failed recovers to verified on a passing recheck', async () => {
     const repository = fakeRepository()
+    const eventBus = fakeEventBus()
     const service = createDomainsService(
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
     )
     const { domainId, challenge } = await claimAndGetChallenge(service)
 
@@ -1002,6 +1107,8 @@ describe('verifyDomain', () => {
       repository,
       fakeProjectsService(),
       fakeResolverForChallenge(resolver),
+      undefined,
+      eventBus,
     )
 
     await verifyingService.verifyDomain('project_1', 'live', domainId) // -> verified
@@ -1013,6 +1120,7 @@ describe('verifyDomain', () => {
     )
     if (!lost.ok) throw new Error('setup failed')
     expect(lost.domain.status).toBe('temporarily_failed')
+    eventBus.published.length = 0 // drop claimed + verified + temporarily_failed
 
     resolver.set(challenge.recordHost, [challenge.recordValue]) // record restored
     const recovered = await verifyingService.verifyDomain(
@@ -1024,6 +1132,17 @@ describe('verifyDomain', () => {
     if (!recovered.ok) return
     expect(recovered.check.outcome).toBe('found')
     expect(recovered.domain.status).toBe('verified')
+
+    expect(eventBus.published).toEqual([
+      {
+        type: 'domain.check_passed',
+        payload: expect.objectContaining({ domainId }),
+      },
+      {
+        type: 'domain.verified',
+        payload: expect.objectContaining({ domainId }),
+      },
+    ])
   })
 
   it('temporarily_failed stays temporarily_failed on another inconclusive check (grace window continues)', async () => {

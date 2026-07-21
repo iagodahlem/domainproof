@@ -56,6 +56,8 @@ nothing breaks if the file doesn't exist):
 | `DATABASE_URL`                   | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
 | `CLERK_JWKS_URL`, `CLERK_ISSUER` | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
 | `PORT`                           | No        | Defaults to `3001`.                                                                                                                                         |
+| `RESEND_API_KEY`                 | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
+| `EMAIL_FROM`                     | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
 
 ```bash
 docker compose up -d db
@@ -64,6 +66,8 @@ pnpm dev
 ```
 
 `pnpm test` also needs the database up and migrated, same as above.
+
+To wipe and rebuild the local database from scratch, run `pnpm --filter api db:reset -- --yes` (refuses without `--yes` or `DB_RESET_CONFIRM=1`, and always prints the host it's about to reset).
 
 ### Run with Docker
 
@@ -91,18 +95,19 @@ on one origin, so the split below is what matters for local development:
   the SDK, CLI, MCP server, and direct integrations use. Domain claiming,
   and running the DNS check that verifies a claim, live here.
 
-| Method | Path                            | Plane     | Description                                                                             |
-| ------ | ------------------------------- | --------- | --------------------------------------------------------------------------------------- |
-| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                                          |
-| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                                            |
-| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                                                  |
-| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                     |
-| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                          |
-| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge.                      |
-| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                                        |
-| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).                           |
-| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                                                |
-| POST   | `/v1/domains/:id/verify`        | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome. |
+| Method | Path                            | Plane     | Description                                                                                |
+| ------ | ------------------------------- | --------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/health`                       | none      | Liveness check; returns `{ status, version }`.                                             |
+| POST   | `/dashboard/keys`               | Dashboard | Creates an API key for the caller's project.                                               |
+| GET    | `/dashboard/keys`               | Dashboard | Lists the caller's project's API keys.                                                     |
+| POST   | `/dashboard/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                        |
+| POST   | `/dashboard/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                             |
+| POST   | `/v1/domains`                   | Public    | Claims a domain for the key's project/mode and issues a challenge.                         |
+| GET    | `/v1/domains`                   | Public    | Lists domains claimed by the key's project/mode.                                           |
+| GET    | `/v1/domains/:id`               | Public    | Gets a claimed domain and its current verification record(s).                              |
+| DELETE | `/v1/domains/:id`               | Public    | Releases a domain claim.                                                                   |
+| POST   | `/v1/domains/:id/verify`        | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.    |
+| GET    | `/v1/domains/:id/events`        | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions). |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -136,3 +141,27 @@ already-verified domain), not just the first one.
 Claiming a `.test` sandbox domain (see the domains module's DNS testing
 fixtures) requires a test-mode key; a live-mode key gets
 `400 sandbox_requires_test_mode`.
+
+`GET /v1/domains/:id/events` returns a domain's full timeline, oldest
+first — every `domain.claimed`/`domain.check_passed`/`domain.check_failed`/
+`domain.verified`/`domain.temporarily_failed`/`domain.failed` event
+published for it:
+
+```json
+{
+  "events": [
+    {
+      "id": "...",
+      "type": "domain.claimed",
+      "mode": "test",
+      "payload": { "...": "..." },
+      "createdAt": "2026-07-19T12:00:00.000Z"
+    }
+  ],
+  "nextCursor": "eyJpZCI6Ii4uLiJ9"
+}
+```
+
+Paginated with `?limit=` (default 20, max 100) and `?cursor=`, the opaque
+`nextCursor` from the previous page; `nextCursor` is `null` once there's
+nothing left to fetch.

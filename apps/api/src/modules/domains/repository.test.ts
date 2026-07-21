@@ -2,12 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
-import {
-  accounts,
-  challenges,
-  projects,
-  verificationEvents,
-} from '@infra/db/schema'
+import { accounts, challenges, projects } from '@infra/db/schema'
 import { createDomainsRepository } from './repository'
 
 const DATABASE_URL =
@@ -56,10 +51,6 @@ function claimValues(
       recordValue: 'test-verify=abc123',
       expiresAt: new Date(Date.now() + 60_000),
     },
-    event: {
-      type: 'domain_claimed',
-      detail: { method: 'dns_txt' },
-    },
   }
 }
 
@@ -73,7 +64,7 @@ afterEach(async () => {
 })
 
 describe('claim', () => {
-  it('persists a domain, its challenge, and a claim timeline event', async () => {
+  it('persists a domain and its challenge', async () => {
     const projectId = await createTestProject()
     const domain = `example-${randomUUID()}.test`
 
@@ -87,13 +78,6 @@ describe('claim', () => {
     expect(result.domain.status).toBe('pending')
     expect(result.challenge.domainId).toBe(result.domain.id)
     expect(result.challenge.recordHost).toBe('_test-challenge.example.test')
-
-    const events = await db
-      .select()
-      .from(verificationEvents)
-      .where(eq(verificationEvents.domainId, result.domain.id))
-    expect(events).toHaveLength(1)
-    expect(events[0]?.type).toBe('domain_claimed')
   })
 
   it('returns undefined on a (project, domain, mode) conflict', async () => {
@@ -242,12 +226,6 @@ describe('release', () => {
       .from(challenges)
       .where(eq(challenges.domainId, created.domain.id))
     expect(remainingChallenges).toHaveLength(0)
-
-    const remainingEvents = await db
-      .select()
-      .from(verificationEvents)
-      .where(eq(verificationEvents.domainId, created.domain.id))
-    expect(remainingEvents).toHaveLength(0)
   })
 
   it("returns undefined for a domain id that doesn't belong to the project", async () => {
@@ -267,7 +245,7 @@ describe('release', () => {
 })
 
 describe('recordVerificationAttempt', () => {
-  it('updates the domain status and appends a verification_events row', async () => {
+  it('updates the domain status', async () => {
     const projectId = await createTestProject()
     const created = await repository.claim(claimValues(projectId))
     if (!created) throw new Error('setup failed')
@@ -277,24 +255,10 @@ describe('recordVerificationAttempt', () => {
       domainId: created.domain.id,
       nextStatus: 'verified',
       verifiedAt,
-      event: {
-        type: 'domain_verify_attempted',
-        detail: { outcome: 'found' },
-      },
     })
 
     expect(updated.status).toBe('verified')
     expect(updated.verifiedAt?.getTime()).toBe(verifiedAt.getTime())
-
-    const events = await db
-      .select()
-      .from(verificationEvents)
-      .where(eq(verificationEvents.domainId, created.domain.id))
-    // claim() already inserted a `domain_claimed` event; this adds a second.
-    expect(events).toHaveLength(2)
-    expect(
-      events.some((event) => event.type === 'domain_verify_attempted'),
-    ).toBe(true)
   })
 
   it('leaves verifiedAt untouched when not provided', async () => {
@@ -306,10 +270,6 @@ describe('recordVerificationAttempt', () => {
     const updated = await repository.recordVerificationAttempt({
       domainId: created.domain.id,
       nextStatus: 'pending',
-      event: {
-        type: 'domain_verify_attempted',
-        detail: { outcome: 'not_found' },
-      },
     })
 
     expect(updated.status).toBe('pending')
@@ -326,10 +286,6 @@ describe('recordVerificationAttempt', () => {
     const updated = await repository.recordVerificationAttempt({
       domainId: created.domain.id,
       nextStatus: 'pending',
-      event: {
-        type: 'domain_verify_attempted',
-        detail: { outcome: 'not_found' },
-      },
     })
 
     expect(updated.updatedAt.getTime()).toBeGreaterThan(
@@ -342,10 +298,6 @@ describe('recordVerificationAttempt', () => {
       repository.recordVerificationAttempt({
         domainId: randomUUID(),
         nextStatus: 'pending',
-        event: {
-          type: 'domain_verify_attempted',
-          detail: { outcome: 'not_found' },
-        },
       }),
     ).rejects.toThrow(/No domain found/)
   })

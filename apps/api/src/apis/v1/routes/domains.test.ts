@@ -653,4 +653,108 @@ describe('/v1/domains', () => {
       expect(res.status).toBe(401)
     })
   })
+
+  describe('GET /v1/domains/:id/events', () => {
+    interface EventsResponseBody {
+      events: Array<{ id: string; type: string; mode: string | null }>
+      nextCursor: string | null
+    }
+
+    async function claimSandboxDomain(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domain: string,
+    ): Promise<string> {
+      const res = await withKey(app, apiKey.key, '/v1/domains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      })
+      const body = (await res.json()) as { domain: { id: string } }
+      return body.domain.id
+    }
+
+    async function listEvents(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domainId: string,
+      query = '',
+    ): Promise<{ status: number; body: EventsResponseBody }> {
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/events${query}`,
+      )
+      return {
+        status: res.status,
+        body: (await res.json()) as EventsResponseBody,
+      }
+    }
+
+    it('returns the claim + verify timeline in order', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'verified.test')
+      await withKey(app, apiKey.key, `/v1/domains/${domainId}/verify`, {
+        method: 'POST',
+      })
+
+      const { status, body } = await listEvents(app, apiKey, domainId)
+      expect(status).toBe(200)
+      expect(body.events.map((event) => event.type)).toEqual([
+        'domain.claimed',
+        'domain.check_passed',
+        'domain.verified',
+      ])
+      expect(body.events.every((event) => event.mode === 'test')).toBe(true)
+      expect(body.nextCursor).toBeNull()
+    })
+
+    it('paginates with limit and cursor', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, apiKey, 'verified.test')
+      await withKey(app, apiKey.key, `/v1/domains/${domainId}/verify`, {
+        method: 'POST',
+      })
+
+      const firstPage = await listEvents(app, apiKey, domainId, '?limit=2')
+      expect(firstPage.body.events).toHaveLength(2)
+      expect(firstPage.body.nextCursor).not.toBeNull()
+
+      const secondPage = await listEvents(
+        app,
+        apiKey,
+        domainId,
+        `?limit=2&cursor=${encodeURIComponent(firstPage.body.nextCursor ?? '')}`,
+      )
+      expect(secondPage.body.events).toHaveLength(1)
+      expect(secondPage.body.events[0]?.type).toBe('domain.verified')
+      expect(secondPage.body.nextCursor).toBeNull()
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+
+      const { status } = await listEvents(app, apiKey, randomUUID())
+      expect(status).toBe(404)
+    })
+
+    it("404s for another project's domain", async () => {
+      const app = buildApp()
+      const ownerKey = await createTestApiKey({ mode: 'test' })
+      const otherKey = await createTestApiKey({ mode: 'test' })
+      const domainId = await claimSandboxDomain(app, ownerKey, 'verified.test')
+
+      const { status } = await listEvents(app, otherKey, domainId)
+      expect(status).toBe(404)
+    })
+
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(`/v1/domains/${randomUUID()}/events`)
+      expect(res.status).toBe(401)
+    })
+  })
 })
