@@ -31,6 +31,13 @@ describe('Callout', () => {
     ).toContain('bg-accent-soft')
   })
 
+  it('applies the danger tone fill', () => {
+    render(<Callout tone="danger">Deleting this domain is permanent</Callout>)
+    expect(
+      screen.getByText('Deleting this domain is permanent').className,
+    ).toContain('bg-danger-soft')
+  })
+
   it('switches to the dashed emphasis with no fill', () => {
     render(<Callout emphasis="dashed">What's happening under the hood</Callout>)
     const el = screen.getByText("What's happening under the hood")
