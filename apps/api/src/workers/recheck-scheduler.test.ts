@@ -39,6 +39,7 @@ function fakeDomainsService(
     verifyDomain: notUsed('verifyDomain'),
     verifyProjectDomain: notUsed('verifyProjectDomain'),
     regenerateChallenge: notUsed('regenerateChallenge'),
+    regenerateProjectChallenge: notUsed('regenerateProjectChallenge'),
     async recheckDueDomains(now, limit): Promise<RecheckBatchResult> {
       recheckCalls.push({ now, limit })
       return overrides.recheckDueDomains

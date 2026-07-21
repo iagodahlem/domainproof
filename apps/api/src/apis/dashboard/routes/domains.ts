@@ -179,12 +179,13 @@ function serializeEvent(event: EventSummary) {
  *
  * The write routes call the exact same `modules/domains` use cases the
  * public API's `apis/v1/routes/domains.ts` calls — `claimDomain`,
- * `verifyProjectDomain`/`releaseProjectDomain` (the project-scoped
- * counterparts of `verifyDomain`/`releaseDomain`, since this plane has no
- * api-key `mode` to further scope by), and `regenerateChallenge` — never a
- * parallel implementation of verification or persistence logic. Only the
- * HTTP-facing presentation (response copy, error wording) differs per
- * plane, same as the read routes' `serializeDomainDetail` already does.
+ * `verifyProjectDomain`/`releaseProjectDomain`/`regenerateProjectChallenge`
+ * (the project-scoped counterparts of `verifyDomain`/`releaseDomain`/
+ * `regenerateChallenge`, since this plane has no api-key `mode` to further
+ * scope by) — never a parallel implementation of verification or
+ * persistence logic. Only the HTTP-facing presentation (response copy,
+ * error wording) differs per plane, same as the read routes'
+ * `serializeDomainDetail` already does.
  *
  * Session auth is applied once for the whole plane in
  * `apis/dashboard/router.ts` — by the time a handler here runs,
@@ -364,7 +365,7 @@ export function createDomainsRoutes(
       return c.json(body, status)
     }
 
-    const result = await domainsService.regenerateChallenge(
+    const result = await domainsService.regenerateProjectChallenge(
       projectId,
       c.req.param('domainId'),
     )

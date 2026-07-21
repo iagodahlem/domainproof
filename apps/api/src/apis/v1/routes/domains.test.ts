@@ -704,6 +704,147 @@ describe('/v1/domains', () => {
     })
   })
 
+  describe('POST /v1/domains/:id/regenerate', () => {
+    interface RegenerateResponseBody {
+      domain: {
+        id: string
+        status: string
+        records: Array<{ value: string; status: string }>
+      }
+    }
+
+    async function claimDomain(
+      app: ReturnType<typeof buildApp>,
+      apiKey: TestApiKey,
+      domain: string,
+    ): Promise<{ id: string; recordValue: string }> {
+      const res = await withKey(app, apiKey.key, '/v1/domains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      })
+      const body = (await res.json()) as {
+        domain: { id: string; records: Array<{ value: string }> }
+      }
+      return {
+        id: body.domain.id,
+        recordValue: body.domain.records[0]?.value ?? '',
+      }
+    }
+
+    it('issues a fresh challenge for a pending domain and publishes domain.challenge_regenerated', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+      const { id: domainId, recordValue: oldRecordValue } = await claimDomain(
+        app,
+        apiKey,
+        'example.com',
+      )
+
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as RegenerateResponseBody
+      expect(body.domain.id).toBe(domainId)
+      expect(body.domain.status).toBe('pending')
+      expect(body.domain.records).toHaveLength(1)
+      expect(body.domain.records[0]?.value).not.toBe(oldRecordValue)
+
+      const eventsRes = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/events`,
+      )
+      const eventsBody = (await eventsRes.json()) as {
+        events: Array<{ type: string }>
+      }
+      expect(eventsBody.events.map((event) => event.type)).toEqual([
+        'domain.claimed',
+        'domain.challenge_regenerated',
+      ])
+    })
+
+    it('rejects regenerating a verified domain, same rule the dashboard enforces', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey({ mode: 'test' })
+      const { id: domainId } = await claimDomain(app, apiKey, 'verified.test')
+      await withKey(app, apiKey.key, `/v1/domains/${domainId}/verify`, {
+        method: 'POST',
+      })
+
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${domainId}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(409)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_status')
+    })
+
+    it('returns 404 for an unknown domain id', async () => {
+      const app = buildApp()
+      const apiKey = await createTestApiKey()
+
+      const res = await withKey(
+        app,
+        apiKey.key,
+        `/v1/domains/${randomUUID()}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('not_found')
+    })
+
+    it("404s (not 403) for another project's domain", async () => {
+      const app = buildApp()
+      const ownerKey = await createTestApiKey()
+      const otherKey = await createTestApiKey()
+      const { id: domainId } = await claimDomain(app, ownerKey, 'example.com')
+
+      const res = await withKey(
+        app,
+        otherKey.key,
+        `/v1/domains/${domainId}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("404s for the same project's key in the wrong mode", async () => {
+      const app = buildApp()
+      const liveKey = await createTestApiKey({ mode: 'live' })
+      const testKey = await createTestApiKey({
+        mode: 'test',
+        projectId: liveKey.projectId,
+        slug: liveKey.slug,
+      })
+      const { id: domainId } = await claimDomain(app, liveKey, 'example.com')
+
+      const res = await withKey(
+        app,
+        testKey.key,
+        `/v1/domains/${domainId}/regenerate`,
+        { method: 'POST' },
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('rejects unauthenticated requests', async () => {
+      const app = buildApp()
+      const res = await app.request(`/v1/domains/${randomUUID()}/regenerate`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(401)
+    })
+  })
+
   describe('GET /v1/domains/:id/events', () => {
     interface EventsResponseBody {
       events: Array<{ id: string; type: string; mode: string | null }>
