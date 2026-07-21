@@ -129,6 +129,31 @@ export const domains = pgTable(
       .notNull()
       .defaultNow(),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    /**
+     * When the background re-check worker (`workers/`) should next
+     * run this domain's check — a backoff ladder while `pending`, a slow
+     * 24h cadence while `verified`, a tighter 15m cadence while
+     * `temporarily_failed` (its 72h grace window is `grace_expires_at`
+     * below), and `null` once `failed` (no more automatic checks). See
+     * `modules/domains/domain/recheck-schedule.ts`.
+     */
+    nextCheckAt: timestamp('next_check_at', { withTimezone: true }),
+    /** The last time any check (manual or scheduled) ran against this domain. `null` until the first one. */
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
+    /**
+     * Consecutive checks that found the domain still `pending` — the rung
+     * of the pending backoff ladder it currently sits at. Reset to 0
+     * whenever the domain isn't (or stops being) `pending`.
+     */
+    checkAttempts: integer('check_attempts').notNull().default(0),
+    /**
+     * Set when a `verified` domain loses its record and enters the 72h
+     * grace window (`temporarily_failed`); cleared on recovery or expiry.
+     * The scheduled worker expires a domain past this timestamp via core's
+     * `grace_expired` event — never `verifyDomain` itself, see its doc
+     * comment.
+     */
+    graceExpiresAt: timestamp('grace_expires_at', { withTimezone: true }),
   },
   (table) => [
     unique('domains_project_domain_mode_unique').on(

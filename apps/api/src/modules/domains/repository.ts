@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull, lte, sql } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { challenges, domains } from '@infra/db/schema'
 import type { DomainStatus } from '@domainproof/core'
@@ -23,6 +23,8 @@ export interface ClaimInsert {
   domain: string
   /** The status the new domain row is created with — computed by the caller via core's state machine. */
   status: DomainStatus
+  /** The first due-ness checkpoint for the background re-check worker — see `domain/recheck-schedule.ts`'s `firstPendingCheckAt`. */
+  nextCheckAt: Date
   challenge: ChallengeInsert
 }
 
@@ -54,6 +56,17 @@ export interface VerificationAttemptInsert {
    * domain doesn't erase when it was last confirmed good).
    */
   verifiedAt?: Date
+  /** When this attempt (or, for a grace-window expiry, this sweep) ran — persisted as `last_checked_at`. */
+  checkedAt: Date
+  /** The due-ness worker's next checkpoint — see `domain/recheck-schedule.ts`. `null` means "not scheduled" (a `failed` domain). */
+  nextCheckAt: Date | null
+  /** The pending-backoff rung this attempt leaves the domain at — see `domain/recheck-schedule.ts`. */
+  checkAttempts: number
+  /**
+   * `undefined` leaves `grace_expires_at` untouched; `null` clears it;
+   * a `Date` sets it. See `domain/recheck-schedule.ts`.
+   */
+  graceExpiresAt?: Date | null
 }
 
 export interface RegenerateChallengeInsert {
@@ -61,6 +74,14 @@ export interface RegenerateChallengeInsert {
   /** The status computed by the caller via core's state machine. */
   nextStatus: DomainStatus
   challenge: ChallengeInsert
+  /**
+   * A regenerated challenge restarts verification, so it gets the same
+   * fresh due-ness checkpoint a newly claimed domain does — see
+   * `domain/recheck-schedule.ts`'s `firstPendingCheckAt`.
+   */
+  nextCheckAt: Date
+  /** Reset to 0 — a fresh challenge restarts the pending backoff ladder from its first rung. */
+  checkAttempts: number
 }
 
 /**
@@ -140,12 +161,14 @@ export interface DomainsRepository {
 
   /**
    * Persists the outcome of one `verifyDomain` attempt: updates the
-   * domain's status (and `verified_at`, if provided). Not scoped to
-   * `(projectId, mode)` — the caller is expected to have already resolved
-   * and authorized `domainId` via `findById`. Throws if `domainId` doesn't
-   * exist (should never happen: the caller just read it in the same
-   * request). The caller publishes the check/transition events to the
-   * `EventBus` after this resolves — not this repository's concern.
+   * domain's status (and `verified_at`, if provided), plus the background
+   * worker's due-ness bookkeeping (`last_checked_at`, `next_check_at`,
+   * `check_attempts`, `grace_expires_at` — see `domain/recheck-schedule.ts`).
+   * Not scoped to `(projectId, mode)` — the caller is expected to have
+   * already resolved and authorized `domainId` via `findById`. Throws if
+   * `domainId` doesn't exist (should never happen: the caller just read it
+   * in the same request). The caller publishes the check/transition events
+   * to the `EventBus` after this resolves — not this repository's concern.
    */
   recordVerificationAttempt(
     values: VerificationAttemptInsert,
@@ -154,9 +177,10 @@ export interface DomainsRepository {
   /**
    * Regenerates a domain's challenge: marks its current (non-superseded)
    * challenge as superseded and inserts a fresh one, atomically in one
-   * transaction, alongside updating the domain's status — see
+   * transaction, alongside updating the domain's status and due-ness
+   * bookkeeping (`next_check_at`/`check_attempts` — see
    * `infra/db/schema.ts`'s `challenges` table doc comment for why this
-   * supersedes rather than deletes/mutates the old row. Not scoped to
+   * supersedes rather than deletes/mutates the old row). Not scoped to
    * `(projectId, mode)` — the caller is expected to have already resolved
    * and authorized `domainId` (via `findByProjectId`), same contract as
    * `recordVerificationAttempt`.
@@ -164,6 +188,24 @@ export interface DomainsRepository {
   regenerateChallenge(
     values: RegenerateChallengeInsert,
   ): Promise<DomainWithChallenge>
+
+  /**
+   * Every domain (across all projects/modes — this is the background
+   * worker's own selection, not a tenant-scoped read) whose `next_check_at`
+   * has elapsed, oldest-due first, capped at `limit`. `failed` domains are
+   * never returned: their `next_check_at` is `null` (see
+   * `recordVerificationAttempt`).
+   */
+  findDueForRecheck(now: Date, limit: number): Promise<DomainRow[]>
+
+  /**
+   * Every `temporarily_failed` domain whose 72h `grace_expires_at` has
+   * elapsed without recovering, oldest-expired first, capped at `limit` —
+   * the background worker's grace-window expiry sweep (core's
+   * `grace_expired` event, timed here rather than by any single
+   * `verifyDomain` attempt — see its doc comment).
+   */
+  findOverdueGraceWindows(now: Date, limit: number): Promise<DomainRow[]>
 }
 
 export function createDomainsRepository(db: Database): DomainsRepository {
@@ -177,6 +219,7 @@ export function createDomainsRepository(db: Database): DomainsRepository {
             domain: values.domain,
             mode: values.mode,
             status: values.status,
+            nextCheckAt: values.nextCheckAt,
           })
           .onConflictDoNothing({
             target: [domains.projectId, domains.domain, domains.mode],
@@ -306,7 +349,13 @@ export function createDomainsRepository(db: Database): DomainsRepository {
         .set({
           status: values.nextStatus,
           updatedAt: new Date(),
+          lastCheckedAt: values.checkedAt,
+          nextCheckAt: values.nextCheckAt,
+          checkAttempts: values.checkAttempts,
           ...(values.verifiedAt ? { verifiedAt: values.verifiedAt } : {}),
+          ...(values.graceExpiresAt !== undefined
+            ? { graceExpiresAt: values.graceExpiresAt }
+            : {}),
         })
         .where(eq(domains.id, values.domainId))
         .returning()
@@ -350,7 +399,12 @@ export function createDomainsRepository(db: Database): DomainsRepository {
 
         const [domainRow] = await tx
           .update(domains)
-          .set({ status: values.nextStatus, updatedAt: new Date() })
+          .set({
+            status: values.nextStatus,
+            updatedAt: new Date(),
+            nextCheckAt: values.nextCheckAt,
+            checkAttempts: values.checkAttempts,
+          })
           .where(eq(domains.id, values.domainId))
           .returning()
 
@@ -362,6 +416,32 @@ export function createDomainsRepository(db: Database): DomainsRepository {
 
         return { domain: domainRow, challenge: challengeRow }
       })
+    },
+
+    async findDueForRecheck(now, limit) {
+      return db
+        .select()
+        .from(domains)
+        .where(
+          and(isNotNull(domains.nextCheckAt), lte(domains.nextCheckAt, now)),
+        )
+        .orderBy(domains.nextCheckAt)
+        .limit(limit)
+    },
+
+    async findOverdueGraceWindows(now, limit) {
+      return db
+        .select()
+        .from(domains)
+        .where(
+          and(
+            eq(domains.status, 'temporarily_failed'),
+            isNotNull(domains.graceExpiresAt),
+            lte(domains.graceExpiresAt, now),
+          ),
+        )
+        .orderBy(domains.graceExpiresAt)
+        .limit(limit)
     },
   }
 }

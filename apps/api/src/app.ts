@@ -158,12 +158,14 @@ export interface AppServices {
  * and event subscriber gets built and wired here, exactly once. Split out
  * from `createApp` (below) so `src/seed.ts` — a second entrypoint that
  * needs the same real services, not a duplicate of their construction —
- * can reuse this instead of hand-wiring its own modules, which would both
- * violate "only the composition root imports from `modules/`" and risk
- * drifting from how `createApp` actually wires things (e.g. forgetting the
- * `eventBus` a service depends on). Nothing outside this file constructs a
- * `Database`, a repository, or a `SessionVerifier` — modules and planes
- * only ever receive them as arguments.
+ * and `index.ts` — which needs `domainsService` for the background recheck
+ * scheduler (`workers/`), not just the HTTP app — can both reuse this
+ * instead of hand-wiring their own modules, which would both violate "only
+ * the composition root imports from `modules/`" and risk drifting from how
+ * `createApp` actually wires things (e.g. forgetting the `eventBus` a
+ * service depends on). Nothing outside this file constructs a `Database`,
+ * a repository, or a `SessionVerifier` — modules and planes only ever
+ * receive them as arguments.
  */
 export function createServices(deps: AppDependencies = {}): AppServices {
   const db = deps.db ?? createDb(env.DATABASE_URL)
@@ -290,8 +292,19 @@ export function createServices(deps: AppDependencies = {}): AppServices {
  * The composition root's HTTP half: builds the services (see
  * {@link createServices}) and mounts them onto the plane routers under
  * `apis/`, plus the app-wide middleware and error handling.
+ *
+ * Takes an optional pre-built `services` — `index.ts` calls
+ * {@link createServices} once (to get `domainsService` for the background
+ * recheck scheduler in `workers/`, which isn't an HTTP route) and passes
+ * the result here so this doesn't wire a second, independent copy of
+ * every service (a second event bus, a second webhooks repository, ...).
+ * Every other caller (tests) omits it and gets a fresh set built from
+ * `deps`, same as before.
  */
-export function createApp(deps: AppDependencies = {}) {
+export function createApp(
+  deps: AppDependencies = {},
+  services: AppServices = createServices(deps),
+) {
   const app = new Hono()
   const {
     keysService,
@@ -301,7 +314,7 @@ export function createApp(deps: AppDependencies = {}) {
     eventsService,
     webhooksService,
     sessionVerifier,
-  } = createServices(deps)
+  } = services
 
   // Logs every request, on both planes, before anything else runs — see
   // shared/middlewares/request-logger.ts.

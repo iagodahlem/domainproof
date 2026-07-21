@@ -10,7 +10,8 @@
       "@apis/*": ["./src/apis/*"],
       "@infra/*": ["./src/infra/*"],
       "@modules/*": ["./src/modules/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@workers/*": ["./src/workers/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

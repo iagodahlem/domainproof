@@ -44,6 +44,8 @@ apps/api/src/
     accounts/                         #   ports.ts, service.ts, repository.ts
     projects/                          #   service.ts, repository.ts, domain/brand.ts
     keys/                                #   service.ts, repository.ts, domain/{encoding,parse}.ts
+  workers/                          # non-HTTP drivers of modules/ — see "Background workers" below
+    recheck-scheduler.ts              #   setInterval loop driving modules/domains' recheck use cases
 ```
 
 ### API planes
@@ -124,6 +126,37 @@ repository), two thin route files, each in its own plane.
 `apps/web`, `packages/sdk`, `packages/cli`, `packages/mcp` are out of scope
 for this map today — they're thin/stub packages that consume `@domainproof/core`
 and the public API, not participants in the api's internal layering.
+
+### Background workers
+
+`workers/` holds non-HTTP drivers of `modules/` — code that calls a
+module's use cases on a timer instead of in response to a request.
+`workers/recheck-scheduler.ts` is the first one: a `setInterval` loop that
+calls `modules/domains`' `recheckDueDomains`/`expireOverdueGraceWindows`
+each tick, started from `index.ts` alongside the HTTP server.
+
+A worker is a **third kind of module consumer**, alongside `apis/dashboard`
+and `apis/v1` — it depends on a module's service type directly (e.g.
+`import type { DomainsService } from '@modules/domains/service'`), the
+same way a route file does, and for the same reason: it's actively calling
+into the module, not implementing a port a module depends on. That's what
+puts it in `workers/` rather than `infra/` — `infra/` is for adapters a
+module (or `app.ts`) calls _through_ a port it owns (`DnsResolver`,
+`HttpFetcher`, `SessionVerifier`, `EventBus`); a worker is closer in shape
+to a plane's route file than to any of those, it's just triggered by a
+clock instead of an HTTP request. Unlike a route file, it isn't part of
+either authentication plane, so it doesn't belong under `apis/` either —
+hence its own top-level folder.
+
+`app.ts` doesn't build or start a worker itself — `index.ts` calls
+`createServices` (see `AppServices`) once to get `domainsService`, then
+passes that same result into both `createApp` (for HTTP routing) and
+`createRecheckScheduler(...)`, so the HTTP app and the worker share the
+exact same `domainsService` instance rather than `index.ts` duplicating
+`app.ts`'s composition-root wiring to build a second one. A worker file
+still never constructs its own repository or infra adapter — it only ever
+receives an already-wired module service as a constructor argument, same
+as any other consumer.
 
 ### Module anatomy
 
@@ -250,6 +283,7 @@ explicitly rather than papered over:
 | New plane-agnostic middleware (any plane could use it)                                                      | `shared/middlewares/<name>.ts` — don't assume a specific plane's context-variable shape                                                                                                                                                                                                           |
 | New tenant/account/project policy (quotas, plan limits, slug rules)                                         | `apps/api/src/modules/projects/` (or a new module, if it doesn't fit an existing one)                                                                                                                                                                                                             |
 | New cross-module, cross-plane helper (error shape, pagination, result types)                                | `apps/api/src/shared/`                                                                                                                                                                                                                                                                            |
+| New background/scheduled worker (a timer-driven consumer of a module, not an HTTP route)                    | `apps/api/src/workers/<name>.ts` — depends on the module's service type directly, same as a route file; started from `index.ts` using the `domainsService`-shaped instance `createApp` returns alongside `app`, never a second copy built by hand                                                 |
 | A test double for a core port                                                                               | `packages/core/src/testing/` — export it from `testing/index.ts` so it's available via `@domainproof/core/testing`                                                                                                                                                                                |
 | A test double for a module's repository or port                                                             | A fake object implementing the interface, defined right in the test file that needs it (see `keys/service.test.ts`, `accounts/service.test.ts`) — module-specific fakes have no shared testing/ home.                                                                                             |
 | A test double for a shared/ port used across modules and planes (e.g. `Logger`)                             | `apps/api/src/shared/testing/` — export it from `testing/index.ts`, same shape as core's convention (see `createFakeLogger` in `shared/testing/fake-logger.ts`)                                                                                                                                   |
