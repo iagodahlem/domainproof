@@ -245,10 +245,10 @@ export interface DomainsService {
 
   /**
    * Issues a fresh challenge token for a domain, restarting verification —
-   * the dashboard's "regenerate" action for a `pending` domain whose window
-   * is about to (or already did) expire, or a `failed` domain the caller
-   * wants to retry, without releasing and reclaiming it (which would also
-   * reset its event timeline's claim). Routes through core's state machine
+   * the "regenerate" action for a `pending` domain whose window is about to
+   * (or already did) expire, or a `failed` domain the caller wants to
+   * retry, without releasing and reclaiming it (which would also reset its
+   * event timeline's claim). Routes through core's state machine
    * (`challenge_regenerated`), so it's only legal from `pending` or
    * `failed` — a `verified`/`temporarily_failed` domain's current challenge
    * already did its job, and this returns a typed `invalid_status` result
@@ -256,7 +256,7 @@ export interface DomainsService {
    * superseded, not deleted (see `repository.ts`'s `regenerateChallenge`)
    * — publishes `domain.challenge_regenerated` to the `EventBus`. `null`-
    * shaped as a typed `not_found` result if `id` doesn't belong to
-   * `projectId`, same as `getProjectDomain`.
+   * `(projectId, mode)`, same as `getDomain`.
    *
    * Restarts the background worker's due-ness bookkeeping too: the fresh
    * challenge gets the same `next_check_at` a newly claimed domain does
@@ -265,6 +265,19 @@ export interface DomainsService {
    * same as it would for a brand-new claim.
    */
   regenerateChallenge(
+    projectId: string,
+    mode: DomainMode,
+    id: string,
+  ): Promise<RegenerateChallengeResult>
+
+  /**
+   * Like `regenerateChallenge`, but scoped only to `projectId` (no `mode`)
+   * — the dashboard's regenerate route, whose caller has no api-key mode to
+   * further scope by. Same transition-gate/supersede/event-publish/
+   * scheduling-stamp behavior as `regenerateChallenge`; only how the domain
+   * is resolved differs.
+   */
+  regenerateProjectChallenge(
     projectId: string,
     id: string,
   ): Promise<RegenerateChallengeResult>
@@ -571,6 +584,67 @@ export function createDomainsService(
     }
   }
 
+  /**
+   * The body of one `regenerateChallenge` attempt, shared by
+   * `regenerateChallenge` (mode-scoped, v1) and `regenerateProjectChallenge`
+   * (project-scoped, dashboard) — they only differ in how `row` gets
+   * resolved and authorized; once resolved, the transition gate, token
+   * issuance, persistence, and event publish are identical, so it lives
+   * here exactly once rather than being copied per caller (same split as
+   * `verifyRow` above).
+   */
+  async function regenerateRow(
+    row: DomainRow,
+  ): Promise<RegenerateChallengeResult> {
+    const currentStatus = row.status as DomainStatus
+    const transitioned = transition(currentStatus, {
+      type: 'challenge_regenerated',
+    })
+    if (!transitioned.ok) {
+      return { ok: false, error: 'invalid_status' }
+    }
+
+    const slug = await projectsService.getProjectSlug(row.projectId)
+    if (!slug) {
+      // Cannot happen for a domain resolved via `findById`/`findByProjectId`
+      // from an authenticated api key context or an owned project — see the
+      // identical guard in claimDomain.
+      throw new Error(`No project found for id ${row.projectId}`)
+    }
+
+    const token = generateToken()
+    const method: ChallengeMethod = 'dns_txt'
+    const recordHost = challengeHost(row.domain, slug)
+    const recordValueString = recordValue(token, slug)
+    const expiresAt = new Date(Date.now() + DEFAULT_TOKEN_TTL_MS)
+
+    const result = await repository.regenerateChallenge({
+      domainId: row.id,
+      nextStatus: transitioned.next,
+      nextCheckAt: firstPendingCheckAt(now()),
+      checkAttempts: 0,
+      challenge: {
+        method,
+        token,
+        recordHost,
+        recordValue: recordValueString,
+        expiresAt,
+      },
+    })
+
+    await eventBus.publish('domain.challenge_regenerated', {
+      domainId: row.id,
+      projectId: row.projectId,
+      mode: row.mode,
+      domain: row.domain,
+    })
+
+    return {
+      ok: true,
+      domain: toSummary(result.domain, [result.challenge]),
+    }
+  }
+
   return {
     async claimDomain({ projectId, mode, domain }) {
       const normalized = normalizeDomain(domain)
@@ -733,58 +807,20 @@ export function createDomainsService(
       return verifyRow(row)
     },
 
-    async regenerateChallenge(projectId, id) {
+    async regenerateChallenge(projectId, mode, id) {
+      const row = await repository.findById(projectId, mode, id)
+      if (!row) {
+        return { ok: false, error: 'not_found' }
+      }
+      return regenerateRow(row)
+    },
+
+    async regenerateProjectChallenge(projectId, id) {
       const row = await repository.findByProjectId(projectId, id)
       if (!row) {
         return { ok: false, error: 'not_found' }
       }
-
-      const currentStatus = row.status as DomainStatus
-      const transitioned = transition(currentStatus, {
-        type: 'challenge_regenerated',
-      })
-      if (!transitioned.ok) {
-        return { ok: false, error: 'invalid_status' }
-      }
-
-      const slug = await projectsService.getProjectSlug(row.projectId)
-      if (!slug) {
-        // Cannot happen for a domain resolved via `findByProjectId` from
-        // an owned project — see the identical guard in claimDomain.
-        throw new Error(`No project found for id ${row.projectId}`)
-      }
-
-      const token = generateToken()
-      const method: ChallengeMethod = 'dns_txt'
-      const recordHost = challengeHost(row.domain, slug)
-      const recordValueString = recordValue(token, slug)
-      const expiresAt = new Date(Date.now() + DEFAULT_TOKEN_TTL_MS)
-
-      const result = await repository.regenerateChallenge({
-        domainId: row.id,
-        nextStatus: transitioned.next,
-        nextCheckAt: firstPendingCheckAt(now()),
-        checkAttempts: 0,
-        challenge: {
-          method,
-          token,
-          recordHost,
-          recordValue: recordValueString,
-          expiresAt,
-        },
-      })
-
-      await eventBus.publish('domain.challenge_regenerated', {
-        domainId: row.id,
-        projectId: row.projectId,
-        mode: row.mode,
-        domain: row.domain,
-      })
-
-      return {
-        ok: true,
-        domain: toSummary(result.domain, [result.challenge]),
-      }
+      return regenerateRow(row)
     },
 
     async recheckDueDomains(checkNow, limit) {

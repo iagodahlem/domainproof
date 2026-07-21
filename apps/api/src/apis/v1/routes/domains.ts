@@ -82,6 +82,16 @@ function sandboxRequiresTestMode() {
   }
 }
 
+function invalidStatus() {
+  return {
+    body: apiError(
+      'invalid_status',
+      'Only pending or failed domains can have their challenge regenerated.',
+    ),
+    status: 409 as const,
+  }
+}
+
 /**
  * A record's own `status` mirrors the domain's real verification status
  * rather than collapsing everything non-`verified` into `pending` — a
@@ -328,6 +338,25 @@ export function createDomainsRoutes(
       domain: serializeDomain(result.domain),
       check: serializeCheck(result.check, result.domain.domain),
     })
+  })
+
+  router.post('/:id/regenerate', async (c) => {
+    const result = await domainsService.regenerateChallenge(
+      c.get('projectId'),
+      c.get('mode'),
+      c.req.param('id'),
+    )
+    if (!result.ok) {
+      if (result.error === 'not_found') {
+        const { body, status } = notFound()
+        return c.json(body, status)
+      }
+
+      const { body, status } = invalidStatus()
+      return c.json(body, status)
+    }
+
+    return c.json({ domain: serializeDomain(result.domain) })
   })
 
   return router

@@ -133,6 +133,7 @@ on one origin, so the split below is what matters for local development:
 | GET    | `/v1/domains/:id`                                                                      | Public    | Gets a claimed domain and its current verification record(s).                                                           |
 | DELETE | `/v1/domains/:id`                                                                      | Public    | Releases a domain claim.                                                                                                |
 | POST   | `/v1/domains/:id/verify`                                                               | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
+| POST   | `/v1/domains/:id/regenerate`                                                           | Public    | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
 | GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
