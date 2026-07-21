@@ -66,4 +66,12 @@ jobs:
 
       # Runs whatever tasks exist in each workspace package; turbo no-ops
       # cleanly on packages that don't define a given task.
+      #
+      # web#build statically prerenders /sso-callback, which reads Clerk's
+      # publishable key at build time — @clerk/clerk-react throws if it's
+      # missing, failing the whole build. Publishable keys are public by
+      # design, so this reads straight from the repo-level Actions variable,
+      # no secret handling needed.
       - run: pnpm turbo run lint typecheck test build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
