@@ -11,8 +11,22 @@ import {
   ProviderBadge,
   StatusPill,
   Button,
+  RecordCard,
+  RecordField,
+  DomainTable,
+  DomainTableHead,
+  DomainTableRow,
+  DomainTableRowSkeleton,
+  VerticalTimeline,
+  StatusSummary,
+  Stepper,
+  CodePanel,
+  CodeToken,
+  VerificationLog,
+  VerificationLogStatus,
 } from '@domainproof/ui'
 import { ThemeToggle } from './theme-toggle'
+import { PathChooserDemo } from './path-chooser-demo'
 
 export const metadata: Metadata = {
   title: 'Design system — DomainProof',
@@ -143,6 +157,70 @@ function GlobeIcon() {
     </svg>
   )
 }
+
+function CloudIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.3-2A5 5 0 0 0 6 18h11.5Z" />
+    </svg>
+  )
+}
+
+function WorldIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.3 2.4 3.6 5.6 3.6 9s-1.3 6.6-3.6 9c-2.3-2.4-3.6-5.6-3.6-9s1.3-6.6 3.6-9Z" />
+    </svg>
+  )
+}
+
+function CheckIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  )
+}
+
+const CURL_SNIPPET = `curl -X POST https://api.domainproof.dev/v1/domains \\
+  -H "Authorization: Bearer dp_test_51H8..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"domain":"acme.co"}'`
+
+const NODE_SNIPPET = `import { DomainProof } from "domainproof";
+
+const dp = new DomainProof("dp_test_51H8...");
+const { data, error } = await dp.domains.create({
+  domain: "acme.co",
+});`
 
 export default function DesignSystemPage() {
   return (
@@ -477,6 +555,447 @@ export default function DesignSystemPage() {
                       </p>
                     </CardBody>
                   </Card>
+                </Example>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="data-components">
+          <SectionHead eyebrow="Composed" title="Data &amp; flow" />
+
+          <div className="flex flex-col gap-10">
+            <div>
+              <ComponentGroupLabel>Record card &amp; field</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="full — step chip, explain text, copy buttons">
+                  <RecordCard
+                    step="1"
+                    title="Add this DNS record"
+                    sub="Log in to where you manage acme.co's DNS."
+                    trailing={<Badge tone="accent">TXT</Badge>}
+                    className="w-full max-w-xl"
+                  >
+                    <RecordField
+                      label="Host / Name"
+                      value="_acmeapp-challenge.acme.co"
+                      copyable
+                      explain="This subdomain is unique to this request. It doesn't touch your existing DNS, mail, or website."
+                    />
+                    <RecordField
+                      label="Value"
+                      value="acmeapp-verify=8f2c9e1a4b7d3f60"
+                      copyable
+                      explain="A one-time token, generated for this request only. Paste it exactly."
+                    />
+                  </RecordCard>
+                </Example>
+                <Example label="compact — dashboard detail, success step, no copy/explain">
+                  <RecordCard
+                    step={<CheckIcon size={10} />}
+                    stepTone="success"
+                    title="Ownership record"
+                    trailing={<Badge tone="accent">TXT</Badge>}
+                    className="w-full max-w-xl"
+                  >
+                    <RecordField
+                      label="Host / Name"
+                      value="_acmeapp-challenge.acme.co"
+                      compact
+                    />
+                    <RecordField
+                      label="Value"
+                      value="acmeapp-verify=8f2c9e1a4b7d3f60"
+                      compact
+                    />
+                  </RecordCard>
+                </Example>
+                <Example label="headless — onboarding inline, compact + copy, no head">
+                  <RecordCard className="w-full max-w-xl">
+                    <RecordField
+                      label="Host"
+                      value="_acmeapp-challenge.acme.co"
+                      compact
+                      copyable
+                    />
+                    <RecordField
+                      label="Value"
+                      value="acmeapp-verify=8f2c9e1a4b7d3f60"
+                      compact
+                      copyable
+                    />
+                  </RecordCard>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Domain table</ComponentGroupLabel>
+              <p
+                className="mb-4 text-xs"
+                style={{ color: 'var(--text-faint)' }}
+              >
+                Header hides and rows stack into cards below 760px wide — see
+                the mobile screenshot capture for the collapsed layout.
+              </p>
+              <div className="flex flex-col gap-6">
+                <Example label="all six status combinations">
+                  <DomainTable className="w-full">
+                    <DomainTableHead />
+                    <DomainTableRow
+                      statusTone="success"
+                      statusLabel="Verified"
+                      name="acme.co"
+                      provider={
+                        <ProviderBadge icon={<CloudIcon />}>
+                          Cloudflare
+                        </ProviderBadge>
+                      }
+                      lastChecked="2 min ago"
+                      active
+                    />
+                    <DomainTableRow
+                      statusTone="warning"
+                      statusLabel="Propagating"
+                      name="pending-then-verified.test"
+                      provider={
+                        <ProviderBadge style={{ color: 'var(--text-faint)' }}>
+                          Sandbox
+                        </ProviderBadge>
+                      }
+                      lastChecked="just now"
+                    />
+                    <DomainTableRow
+                      statusTone="danger"
+                      statusLabel="Needs attention"
+                      name="wrong-value.test"
+                      provider={
+                        <ProviderBadge icon={<WorldIcon />}>
+                          GoDaddy
+                        </ProviderBadge>
+                      }
+                      lastChecked="4 min ago"
+                    />
+                    <DomainTableRow
+                      statusTone="warning"
+                      statusLabel="Recovering"
+                      name="flaky.test"
+                      provider={
+                        <ProviderBadge icon={<WorldIcon />}>
+                          Route 53
+                        </ProviderBadge>
+                      }
+                      lastChecked="6 min ago"
+                    />
+                    <DomainTableRow
+                      statusTone="success"
+                      statusLabel="Verified"
+                      name="updates.acme.co"
+                      provider={
+                        <ProviderBadge icon={<CloudIcon />}>
+                          Cloudflare
+                        </ProviderBadge>
+                      }
+                      lastChecked="1 hour ago"
+                    />
+                    <DomainTableRow
+                      statusTone="neutral"
+                      statusLabel="Not found"
+                      name="nxdomain.test"
+                      lastChecked="1 hour ago"
+                    />
+                  </DomainTable>
+                </Example>
+                <Example label="loading">
+                  <DomainTable className="w-full">
+                    <DomainTableHead />
+                    <DomainTableRowSkeleton />
+                    <DomainTableRowSkeleton />
+                    <DomainTableRowSkeleton />
+                  </DomainTable>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Vertical timeline</ComponentGroupLabel>
+              <Example label="claimed → record added → propagating (current) → verified">
+                <Card className="w-full max-w-xl">
+                  <CardBody>
+                    <VerticalTimeline
+                      steps={[
+                        {
+                          id: 'claimed',
+                          status: 'done',
+                          node: <CheckIcon />,
+                          title: 'Claimed',
+                          meta: '14:02:11',
+                          description:
+                            'Acme App asked us to verify acme.co on your behalf. We generated a one-time record.',
+                        },
+                        {
+                          id: 'added',
+                          status: 'done',
+                          node: <CheckIcon />,
+                          title: 'Record added',
+                          meta: '14:22:44',
+                          description:
+                            'We saw your TXT record for the first time and confirmed the value matches.',
+                        },
+                        {
+                          id: 'propagating',
+                          status: 'current',
+                          node: '3',
+                          title: 'Propagating',
+                          meta: 'now',
+                          description:
+                            'Your DNS provider is telling the rest of the internet about the change. Usually minutes.',
+                        },
+                        {
+                          id: 'verified',
+                          status: 'upcoming',
+                          node: '4',
+                          title: 'Verified',
+                          meta: '—',
+                          description:
+                            "We'll notify Acme App the moment every region agrees. No action needed from you.",
+                        },
+                      ]}
+                    />
+                  </CardBody>
+                </Card>
+              </Example>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>
+                Status summary &amp; stepper
+              </ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="status summary — all steps done">
+                  <Card className="w-full max-w-xl">
+                    <CardBody>
+                      <StatusSummary
+                        statusBadge={<Badge tone="success">Verified</Badge>}
+                        meta={[
+                          { label: 'Last checked', value: '2 min ago' },
+                          { label: 'Next check', value: 'in ~3 min' },
+                        ]}
+                        steps={[
+                          {
+                            id: 'claimed',
+                            status: 'done',
+                            node: <CheckIcon size={10} />,
+                            label: 'Claimed',
+                            time: '09:41',
+                          },
+                          {
+                            id: 'added',
+                            status: 'done',
+                            node: <CheckIcon size={10} />,
+                            label: 'Record added',
+                            time: '09:52',
+                          },
+                          {
+                            id: 'propagated',
+                            status: 'done',
+                            node: <CheckIcon size={10} />,
+                            label: 'Propagated',
+                            time: '09:58',
+                          },
+                          {
+                            id: 'verified',
+                            status: 'done',
+                            node: <CheckIcon size={10} />,
+                            label: 'Verified',
+                            time: '09:58',
+                          },
+                        ]}
+                      />
+                    </CardBody>
+                  </Card>
+                </Example>
+                <Example label="stepper — in progress, stacks under 560px">
+                  <Card className="w-full max-w-xl">
+                    <CardBody>
+                      <Stepper
+                        steps={[
+                          {
+                            id: 'claimed',
+                            status: 'done',
+                            node: <CheckIcon size={10} />,
+                            label: 'Claimed',
+                            time: '09:41',
+                          },
+                          {
+                            id: 'added',
+                            status: 'current',
+                            node: '2',
+                            label: 'Record added',
+                          },
+                          {
+                            id: 'propagated',
+                            status: 'upcoming',
+                            node: '3',
+                            label: 'Propagated',
+                          },
+                          {
+                            id: 'verified',
+                            status: 'upcoming',
+                            node: '4',
+                            label: 'Verified',
+                          },
+                        ]}
+                      />
+                    </CardBody>
+                  </Card>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Code panel</ComponentGroupLabel>
+              <Example label="tabs + syntax tokens + copy">
+                <CodePanel
+                  className="w-full max-w-xl"
+                  tabs={[
+                    {
+                      id: 'curl',
+                      label: 'cURL',
+                      copyValue: CURL_SNIPPET,
+                      code: (
+                        <>
+                          <CodeToken kind="comment">
+                            # claim a domain, sandbox mode
+                          </CodeToken>
+                          {'\n'}curl -X POST
+                          https://api.domainproof.dev/v1/domains \{'\n'}
+                          {'  '}-H{' '}
+                          <CodeToken kind="string">
+                            &quot;Authorization: Bearer dp_test_51H8...&quot;
+                          </CodeToken>{' '}
+                          \{'\n'}
+                          {'  '}-H{' '}
+                          <CodeToken kind="string">
+                            &quot;Content-Type: application/json&quot;
+                          </CodeToken>{' '}
+                          \{'\n'}
+                          {'  '}-d{' '}
+                          <CodeToken kind="string">
+                            &apos;{'{'}&quot;domain&quot;:&quot;acme.co&quot;
+                            {'}'}&apos;
+                          </CodeToken>
+                        </>
+                      ),
+                    },
+                    {
+                      id: 'node',
+                      label: 'Node.js',
+                      copyValue: NODE_SNIPPET,
+                      code: (
+                        <>
+                          <CodeToken kind="keyword">import</CodeToken>{' '}
+                          {'{ DomainProof }'}{' '}
+                          <CodeToken kind="keyword">from</CodeToken>{' '}
+                          <CodeToken kind="string">
+                            &quot;domainproof&quot;
+                          </CodeToken>
+                          ;{'\n\n'}
+                          <CodeToken kind="keyword">const</CodeToken> dp ={' '}
+                          <CodeToken kind="keyword">new</CodeToken> DomainProof(
+                          <CodeToken kind="string">
+                            &quot;dp_test_51H8...&quot;
+                          </CodeToken>
+                          );{'\n'}
+                          <CodeToken kind="keyword">const</CodeToken>{' '}
+                          {'{ data, error }'} ={' '}
+                          <CodeToken kind="keyword">await</CodeToken>{' '}
+                          dp.domains.create({'{'}
+                          {'\n'}
+                          {'  '}domain:{' '}
+                          <CodeToken kind="string">
+                            &quot;acme.co&quot;
+                          </CodeToken>
+                          ,{'\n'}
+                          {'}'});
+                        </>
+                      ),
+                    },
+                  ]}
+                />
+              </Example>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Path chooser</ComponentGroupLabel>
+              <Example label="4 integration paths, keyboard + click selectable">
+                <PathChooserDemo />
+              </Example>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Verification log</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="entries with a native details/summary technical toggle">
+                  <VerificationLog
+                    className="w-full max-w-xl"
+                    meta="3 entries"
+                    entries={[
+                      {
+                        id: '1',
+                        time: '14:02',
+                        summary:
+                          'Looked for your TXT record — nothing there yet. Totally normal, DNS can take a few minutes to update.',
+                        detail: (
+                          <>
+                            $ dig TXT _acmeapp-challenge.acme.co →{' '}
+                            <VerificationLogStatus tone="warn">
+                              no record found
+                            </VerificationLogStatus>
+                          </>
+                        ),
+                      },
+                      {
+                        id: '2',
+                        time: '14:22',
+                        summary:
+                          'Found your TXT record and the value matches exactly.',
+                        detail: (
+                          <>
+                            $ dig TXT _acmeapp-challenge.acme.co →{' '}
+                            <VerificationLogStatus tone="ok">
+                              record found, value matches
+                            </VerificationLogStatus>
+                          </>
+                        ),
+                      },
+                      {
+                        id: '3',
+                        time: '14:24',
+                        summary:
+                          'Checked from three regions — two confirm it, one still has the old answer cached for about 3 more minutes.',
+                        detail: (
+                          <>
+                            $ check 3 regions → us-east{' '}
+                            <VerificationLogStatus tone="ok">
+                              ok
+                            </VerificationLogStatus>
+                            , eu-west{' '}
+                            <VerificationLogStatus tone="ok">
+                              ok
+                            </VerificationLogStatus>
+                            , ap-southeast{' '}
+                            <VerificationLogStatus tone="warn">
+                              cached, ~3m ttl
+                            </VerificationLogStatus>
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                </Example>
+                <Example label="empty">
+                  <VerificationLog className="w-full max-w-xl" entries={[]} />
                 </Example>
               </div>
             </div>
