@@ -27,6 +27,7 @@ rules.
 | Web (production)           | <https://domainproof.dev>                                                                     |
 | Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
 | Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
+| Frontend API (production)  | `verify.domainproof.dev` — serves `/frontend/*` only; pending DNS — being provisioned         |
 | Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
 | Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
 
@@ -51,17 +52,18 @@ cp apps/api/.env.example apps/api/.env
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
 nothing breaks if the file doesn't exist):
 
-| Var                              | Required? | For                                                                                                                                                         |
-| -------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                   | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER` | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
-| `PORT`                           | No        | Defaults to `3001`.                                                                                                                                         |
-| `RESEND_API_KEY`                 | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
-| `EMAIL_FROM`                     | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
-| `WEBHOOK_MAX_ATTEMPTS`           | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
-| `RECHECK_ENABLED`                | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
-| `RECHECK_INTERVAL_MS`            | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
-| `RECHECK_BATCH_SIZE`             | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
+| Var                                                          | Required? | For                                                                                                                                                         |
+| ------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER`                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
+| `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST` | No        | Production-only host restriction, one per plane (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.  |
+| `PORT`                                                       | No        | Defaults to `3001`.                                                                                                                                         |
+| `RESEND_API_KEY`                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
+| `EMAIL_FROM`                                                 | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
+| `WEBHOOK_MAX_ATTEMPTS`                                       | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
+| `RECHECK_ENABLED`                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
+| `RECHECK_INTERVAL_MS`                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
+| `RECHECK_BATCH_SIZE`                                         | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
 
 ```bash
 docker compose up -d db
@@ -85,12 +87,13 @@ remains the primary dev loop.
 Base URL: `api.domainproof.dev`. Every non-2xx response is
 `{ error: { code, message } }`.
 
-The API has two authentication planes, split by path prefix (see
+The API has three authentication planes, split by path prefix (see
 [ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
 plane is also confined to its own host — `api.domainproof.dev` serves
 `/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
-only — but locally and in the Railway service domain both stay reachable
-on one origin, so the split below is what matters for local development:
+only, `verify.domainproof.dev` serves `/frontend/*` only — but locally
+and in the Railway service domain all three stay reachable on one origin,
+so the split below is what matters for local development:
 
 - **Dashboard API** (`/dashboard/*`) — authenticated by the builder's login
   session (`Authorization: Bearer <session token>`). This is what the
@@ -102,6 +105,14 @@ on one origin, so the split below is what matters for local development:
   claiming and running the DNS check that verifies a claim; the dashboard
   exposes the same domain lifecycle under its own session-authenticated
   routes below.
+- **Frontend API** (`/frontend/*`) — named after Clerk's FAPI: it serves
+  the builder's _customers_ and DomainProof's own frontends, not the
+  builder themselves. No session, no api key — each domain claim carries
+  its own unguessable `frontendToken`, embedded directly in
+  `verificationUrl`, that grants read access plus a rate-limited re-check
+  on that one claim and nothing else. This is what the hosted verification
+  page calls, and the pattern drop-in frontend components will use later.
+  See "Frontend API" below.
 
 | Method | Path                                                                                   | Plane     | Description                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -135,6 +146,9 @@ on one origin, so the split below is what matters for local development:
 | POST   | `/v1/domains/:id/verify`                                                               | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
 | POST   | `/v1/domains/:id/regenerate`                                                           | Public    | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
 | GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
+| GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, and last check outcome by its `frontendToken`.                             |
+| POST   | `/frontend/verifications/:token/check`                                                 | Frontend  | Runs the DNS check for a claim (rate limited) and returns the same shape as the `GET` above.                            |
+| GET    | `/frontend/verifications/:token/events`                                                | Frontend  | Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.                 |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -212,6 +226,57 @@ first, cursor-paginated the same way as `/v1/domains/:id/events` above
 (`?limit=`/`?cursor=`, default 20, max 100). `:domainId` follows the same
 anti-enumeration 404 as `:projectId` and `:keyId` elsewhere on this plane —
 a domain belonging to another project reads as not found, not forbidden.
+
+### Frontend API
+
+`verificationUrl` (returned by every plane that builds one — `/v1/domains`,
+`/dashboard/.../domains`) embeds a domain claim's `frontendToken`: a
+128-bit unguessable credential generated once at claim time, distinct from
+the claim's own `id`. It authorizes exactly three things on exactly that
+one claim, with nothing else to authenticate — no session, no api key:
+
+```json
+{
+  "domain": "example.com",
+  "mode": "live",
+  "status": "pending",
+  "projectName": "Acme",
+  "records": [
+    {
+      "label": "_acme-challenge.example.com",
+      "type": "TXT",
+      "value": "acme-verify=..."
+    }
+  ],
+  "check": {
+    "outcome": "not_found",
+    "checkedAt": "2026-07-19T12:00:00.000Z"
+  },
+  "updatedAt": "2026-07-19T12:00:00.000Z"
+}
+```
+
+`GET /frontend/verifications/:token` returns the shape above; `check` is
+`null` until the first check ever runs, and otherwise carries the same
+`outcome`/`expected`/`detected` material as `/v1/domains/:id/verify`'s
+`check` object (see above) minus the API-consumer-facing `explanation`
+copy. `POST /frontend/verifications/:token/check` runs the exact same
+verify path as `/v1/domains/:id/verify` (bus events fire the same way, the
+domain's status transitions the same way) and returns the identical
+shape — the only difference from the public API's verify endpoint is how
+the claim is resolved (by token, not by api key + id) and that it's rate
+limited: at most one check every 15 seconds and 20 per hour, per token,
+`429 rate_limited` beyond that. `GET /frontend/verifications/:token/events`
+is a cursor-paginated timeline the same shape as the other planes'
+(`?limit=`/`?cursor=`, default 20, max 100), except each event omits
+`domainId`/`projectId`/`domain` from its payload — this plane never
+returns an account id, project id, or key material, only what the hosted
+page renders.
+
+An unknown token, a released domain's now-defunct token, and any other
+lookup miss all 404 identically (`{ "error": { "code": "not_found" } }`)
+— there is no second factor to fail differently once the token itself
+doesn't resolve.
 
 ### Webhooks
 

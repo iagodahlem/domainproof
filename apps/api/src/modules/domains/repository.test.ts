@@ -37,6 +37,7 @@ function claimValues(
   overrides: Partial<{
     domain: string
     mode: 'test' | 'live'
+    frontendToken: string
   }> = {},
 ) {
   return {
@@ -45,6 +46,7 @@ function claimValues(
     domain: overrides.domain ?? `example-${randomUUID()}.test`,
     status: 'pending' as const,
     nextCheckAt: new Date(Date.now() + 60_000),
+    frontendToken: overrides.frontendToken ?? `frontend-token-${randomUUID()}`,
     challenge: {
       method: 'dns_txt' as const,
       token: `token-${randomUUID()}`,
@@ -296,6 +298,26 @@ describe('findByProjectId', () => {
   })
 })
 
+describe('findByFrontendToken', () => {
+  it('finds a domain by its Frontend API token alone, no project/mode scoping', async () => {
+    const projectId = await createTestProject()
+    const token = `frontend-token-${randomUUID()}`
+    const created = await repository.claim(
+      claimValues(projectId, { frontendToken: token }),
+    )
+    if (!created) throw new Error('setup failed')
+
+    const found = await repository.findByFrontendToken(token)
+    expect(found?.id).toBe(created.domain.id)
+  })
+
+  it('returns undefined for an unknown token', async () => {
+    expect(
+      await repository.findByFrontendToken('unknown-token'),
+    ).toBeUndefined()
+  })
+})
+
 describe('findLatestChallenge', () => {
   it('returns the most recently created challenge for a domain', async () => {
     const projectId = await createTestProject()
@@ -493,6 +515,29 @@ describe('recordVerificationAttempt', () => {
       }),
     )
     expect(recovered.graceExpiresAt).toBeNull()
+  })
+
+  it('sets lastCheckResult when provided, and leaves it untouched when omitted', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+    expect(created.domain.lastCheckResult).toBeNull()
+
+    const lastCheckResult = {
+      outcome: 'wrong_value',
+      expectedValue: 'test-verify=abc123',
+      detectedValues: ['test-verify=wrongwrong'],
+    }
+    const checked = await repository.recordVerificationAttempt({
+      ...attemptValues(created.domain.id, { nextStatus: 'pending' }),
+      lastCheckResult,
+    })
+    expect(checked.lastCheckResult).toEqual(lastCheckResult)
+
+    const untouched = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, { nextStatus: 'pending' }),
+    )
+    expect(untouched.lastCheckResult).toEqual(lastCheckResult)
   })
 })
 

@@ -38,13 +38,19 @@ const MODULES_NO_APIS_PATTERN = {
 const NO_APIS_V1_PATTERN = {
   group: ['**/apis/v1/**', '@apis/v1', '@apis/v1/**'],
   message:
-    "apis/dashboard must not import from apis/v1 — the two planes don't depend on each other. Share logic through modules/ instead.",
+    "This plane must not import from apis/v1 — planes don't depend on each other. Share logic through modules/ instead.",
 }
 
 const NO_APIS_DASHBOARD_PATTERN = {
   group: ['**/apis/dashboard/**', '@apis/dashboard', '@apis/dashboard/**'],
   message:
-    "apis/v1 must not import from apis/dashboard — the two planes don't depend on each other. Share logic through modules/ instead.",
+    "This plane must not import from apis/dashboard — planes don't depend on each other. Share logic through modules/ instead.",
+}
+
+const NO_APIS_FRONTEND_PATTERN = {
+  group: ['**/apis/frontend/**', '@apis/frontend', '@apis/frontend/**'],
+  message:
+    "This plane must not import from apis/frontend — planes don't depend on each other. Share logic through modules/ instead.",
 }
 
 // Every group below gets its own full combined pattern list, since flat
@@ -115,14 +121,19 @@ export default [
     },
   },
   {
-    // The two planes don't depend on each other — domains (landing in
-    // apis/v1 next) and dashboard key management (apis/dashboard) share
-    // logic through modules/, never by importing across apis/<plane>/.
+    // No plane depends on any other — domains, keys, etc. share logic
+    // through modules/, never by importing across apis/<plane>/.
     files: ['src/apis/dashboard/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [...EXTENSIONLESS_IMPORT_PATTERNS, NO_APIS_V1_PATTERN] },
+        {
+          patterns: [
+            ...EXTENSIONLESS_IMPORT_PATTERNS,
+            NO_APIS_V1_PATTERN,
+            NO_APIS_FRONTEND_PATTERN,
+          ],
+        },
       ],
     },
   },
@@ -135,6 +146,22 @@ export default [
           patterns: [
             ...EXTENSIONLESS_IMPORT_PATTERNS,
             NO_APIS_DASHBOARD_PATTERN,
+            NO_APIS_FRONTEND_PATTERN,
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/apis/frontend/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...EXTENSIONLESS_IMPORT_PATTERNS,
+            NO_APIS_DASHBOARD_PATTERN,
+            NO_APIS_V1_PATTERN,
           ],
         },
       ],

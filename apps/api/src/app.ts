@@ -38,6 +38,7 @@ import { WEBHOOK_EVENT_TYPES } from '@modules/webhooks/domain/event-types'
 import type { WebhookSender } from '@modules/webhooks/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
+import { createFrontendRouter } from '@apis/frontend/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
 import { createDb, type Database } from '@infra/db/client'
 import { createNodeDnsResolver } from '@infra/dns/node-dns'
@@ -122,6 +123,11 @@ export interface AppDependencies {
    * `shared/middlewares/host-restriction.ts`.
    */
   dashboardApiHost?: string
+  /**
+   * Injected for tests; defaults to `env.FRONTEND_API_HOST`. See
+   * `shared/middlewares/host-restriction.ts`.
+   */
+  frontendApiHost?: string
   /**
    * Injected for tests (a fake — never hit the real Resend network from a
    * test); defaults to a Resend-backed sender built from
@@ -335,6 +341,7 @@ export function createApp(
     createHostRestrictionMiddleware({
       publicApiHost: deps.publicApiHost ?? env.PUBLIC_API_HOST,
       dashboardApiHost: deps.dashboardApiHost ?? env.DASHBOARD_API_HOST,
+      frontendApiHost: deps.frontendApiHost ?? env.FRONTEND_API_HOST,
     }),
   )
 
@@ -364,6 +371,10 @@ export function createApp(
       eventsService,
       logger: createChildLogger({ module: 'v1.api-key' }),
     }),
+  )
+  app.route(
+    '/frontend',
+    createFrontendRouter({ domainsService, eventsService, projectsService }),
   )
 
   app.notFound((c) => {

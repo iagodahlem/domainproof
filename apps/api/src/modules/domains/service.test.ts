@@ -58,6 +58,8 @@ function fakeRepository(): DomainsRepository {
         lastCheckedAt: null,
         checkAttempts: 0,
         graceExpiresAt: null,
+        frontendToken: values.frontendToken,
+        lastCheckResult: null,
       }
       domainRows.set(domainRow.id, domainRow)
 
@@ -122,6 +124,10 @@ function fakeRepository(): DomainsRepository {
       return row
     },
 
+    async findByFrontendToken(token) {
+      return [...domainRows.values()].find((row) => row.frontendToken === token)
+    },
+
     async findLatestChallenge(domainId) {
       const rows = challengesByDomainId.get(domainId)
       return rows?.[rows.length - 1]
@@ -165,6 +171,10 @@ function fakeRepository(): DomainsRepository {
           values.graceExpiresAt === undefined
             ? row.graceExpiresAt
             : values.graceExpiresAt,
+        lastCheckResult:
+          values.lastCheckResult === undefined
+            ? row.lastCheckResult
+            : values.lastCheckResult,
       }
       domainRows.set(row.id, updated)
 
@@ -289,6 +299,9 @@ function fakeProjectsService(
     },
     async getProjectSlug(projectId) {
       return slugsByProjectId[projectId]
+    },
+    async getProjectName() {
+      throw new Error('not used by domains service')
     },
     async renameProject() {
       throw new Error('not used by domains service')
@@ -814,6 +827,52 @@ describe('getProjectDomain', () => {
       fakeProjectsService(),
     )
     expect(await service.getProjectDomain('project_1', randomUUID())).toBeNull()
+  })
+})
+
+describe('getDomainByFrontendToken', () => {
+  it('returns the claimed domain for its Frontend API token, regardless of mode or project', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    const claimed = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'example.com',
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+
+    const found = await service.getDomainByFrontendToken(
+      claimed.domain.frontendToken,
+    )
+    expect(found?.id).toBe(claimed.domain.id)
+  })
+
+  it('returns null for an unknown token', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    expect(await service.getDomainByFrontendToken('unknown-token')).toBeNull()
+  })
+
+  it('returns null once the domain has been released', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    const claimed = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+    await service.releaseDomain('project_1', 'live', claimed.domain.id)
+
+    expect(
+      await service.getDomainByFrontendToken(claimed.domain.frontendToken),
+    ).toBeNull()
   })
 })
 
@@ -1549,5 +1608,62 @@ describe('verifyDomain', () => {
     })
     expect(calls[0]?.challengeCreatedAt).toBeInstanceOf(Date)
     expect(typeof calls[0]?.now).toBe('function')
+  })
+})
+
+describe('verifyDomainByFrontendToken', () => {
+  it('resolves the domain by token and runs the same check/transition path as verifyDomain', async () => {
+    const repository = fakeRepository()
+    const eventBus = fakeEventBus()
+    const claimingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(createFixtureResolver()),
+      undefined,
+      eventBus,
+    )
+    const claimed = await claimingService.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+    eventBus.published.length = 0 // drop the domain.claimed from setup
+
+    const [challenge] = claimed.domain.challenges
+    if (!challenge) throw new Error('setup failed: no challenge')
+    const resolver = createFixtureResolver({
+      [challenge.recordHost]: [challenge.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      fakeProjectsService(),
+      fakeResolverForChallenge(resolver),
+      undefined,
+      eventBus,
+    )
+
+    const result = await verifyingService.verifyDomainByFrontendToken(
+      claimed.domain.frontendToken,
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('found')
+    expect(result.domain.status).toBe('verified')
+    expect(eventBus.published.map((event) => event.type)).toEqual([
+      'domain.check_passed',
+      'domain.verified',
+    ])
+  })
+
+  it('returns a typed not_found result for an unknown token', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const result = await service.verifyDomainByFrontendToken('unknown-token')
+    expect(result).toEqual({ ok: false, error: 'not_found' })
   })
 })

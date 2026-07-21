@@ -64,6 +64,15 @@ export interface ProjectsService {
   getProjectSlug(projectId: string): Promise<string | undefined>
 
   /**
+   * A project's display name — used by other modules (e.g. the Frontend
+   * API's hosted verification page) that need to render "who this
+   * verification belongs to" without exposing the account or project id
+   * itself. Returns `undefined` if `projectId` doesn't exist, same
+   * contract as `getProjectSlug`.
+   */
+  getProjectName(projectId: string): Promise<string | undefined>
+
+  /**
    * Renames a project. Callers must resolve `projectId` via
    * `resolveOwnedProject` first — this method performs no ownership check
    * of its own, matching the shape `keysService`'s per-key methods use once
@@ -155,6 +164,10 @@ export function createProjectsService(
 
     async getProjectSlug(projectId) {
       return repository.findSlugById(projectId)
+    },
+
+    async getProjectName(projectId) {
+      return repository.findNameById(projectId)
     },
 
     async renameProject(projectId, name) {

@@ -58,6 +58,7 @@ describe('host restriction (real app wiring)', () => {
   function buildApp(overrides: {
     publicApiHost?: string
     dashboardApiHost?: string
+    frontendApiHost?: string
   }) {
     return createApp({ db, sessionVerifier, ...overrides })
   }
@@ -101,10 +102,36 @@ describe('host restriction (real app wiring)', () => {
     )
   })
 
-  it('serves both planes on an unmatched host even when both are configured', async () => {
+  it('serves only /frontend on the configured frontend host', async () => {
+    const restrictedApp = buildApp({
+      frontendApiHost: 'verify.domainproof.dev',
+    })
+
+    // Reaches the frontend route itself (its own 404, not the host
+    // restriction's) — proof the host restriction let it through.
+    const frontend = await restrictedApp.request(
+      '/frontend/verifications/unknown-token',
+      { headers: { host: 'verify.domainproof.dev' } },
+    )
+    expect(frontend.status).toBe(404)
+    expect(
+      ((await frontend.json()) as { error: { message: string } }).error.message,
+    ).toBe('Verification not found')
+
+    const v1 = await restrictedApp.request('/v1/domains', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
+    expect(v1.status).toBe(404)
+    expect(
+      ((await v1.json()) as { error: { message: string } }).error.message,
+    ).toBe('Route not found')
+  })
+
+  it('serves every plane on an unmatched host even when all are configured', async () => {
     const restrictedApp = buildApp({
       publicApiHost: 'api.domainproof.dev',
       dashboardApiHost: 'dashboard.api.domainproof.dev',
+      frontendApiHost: 'verify.domainproof.dev',
     })
 
     const v1 = await restrictedApp.request('/v1/domains', {
@@ -113,8 +140,16 @@ describe('host restriction (real app wiring)', () => {
     const dashboard = await restrictedApp.request('/dashboard/keys', {
       headers: { host: 'my-service.up.railway.app' },
     })
+    const frontend = await restrictedApp.request(
+      '/frontend/verifications/unknown-token',
+      { headers: { host: 'my-service.up.railway.app' } },
+    )
 
     expect(v1.status).toBe(401)
     expect(dashboard.status).toBe(401)
+    expect(frontend.status).toBe(404)
+    expect(
+      ((await frontend.json()) as { error: { message: string } }).error.message,
+    ).toBe('Verification not found')
   })
 })

@@ -28,6 +28,7 @@ const envSchema = z.object({
   // `shared/middlewares/host-restriction.ts`.
   PUBLIC_API_HOST: bareHostname.optional(),
   DASHBOARD_API_HOST: bareHostname.optional(),
+  FRONTEND_API_HOST: bareHostname.optional(),
   // Optional: unset means the email notification subscribers aren't
   // registered at all (see `app.ts`) — a clean log-and-skip, not a crash,
   // since dev/test environments won't have this configured. See

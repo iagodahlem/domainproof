@@ -138,6 +138,24 @@ describe('findSlugById', () => {
   })
 })
 
+describe('findNameById', () => {
+  it('returns undefined for an unknown project id', async () => {
+    expect(await repository.findNameById(randomUUID())).toBeUndefined()
+  })
+
+  it("returns the project's display name", async () => {
+    const accountId = await createTestAccount()
+    const { project } = await repository.createProject(
+      accountId,
+      'Skylane HR',
+      'skylane-hr',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+
+    expect(await repository.findNameById(project.id)).toBe('Skylane HR')
+  })
+})
+
 describe('updateName', () => {
   it('returns undefined for an unknown project id', async () => {
     expect(
