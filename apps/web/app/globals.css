@@ -10,6 +10,7 @@
    /design-system showcase and every component built against it. */
 @import '@domainproof/ui/tokens.css';
 @import '@domainproof/ui/focus-ring.css';
+@import '@domainproof/ui/pulse.css';
 
 /* Tailwind utility mapping for the tokens above (bg-accent, text-muted,
    border-border-strong, rounded-md, shadow-card, ...). Lives in

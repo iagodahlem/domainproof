@@ -1,4 +1,17 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+import {
+  Badge,
+  Callout,
+  Card,
+  CardBody,
+  CardHead,
+  CardRow,
+  CopyButton,
+  ProviderBadge,
+  StatusPill,
+  Button,
+} from '@domainproof/ui'
 import { ThemeToggle } from './theme-toggle'
 
 export const metadata: Metadata = {
@@ -82,6 +95,52 @@ function ColorSwatch({ token }: { token: string }) {
         --{token}
       </span>
     </div>
+  )
+}
+
+function ComponentGroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <h3
+      className="mb-4 text-sm"
+      style={{
+        fontWeight: 'var(--font-weight-semibold)',
+        color: 'var(--text-muted)',
+      }}
+    >
+      {children}
+    </h3>
+  )
+}
+
+function Example({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span
+        className="font-mono text-xs"
+        style={{ color: 'var(--text-faint)' }}
+      >
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-3">{children}</div>
+    </div>
+  )
+}
+
+function GlobeIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </svg>
   )
 }
 
@@ -231,6 +290,194 @@ export default function DesignSystemPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="components">
+          <SectionHead eyebrow="Primitives" title="Components" />
+
+          <div className="flex flex-col gap-10">
+            <div>
+              <ComponentGroupLabel>Buttons</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="variant">
+                  <Button>Open Cloudflare DNS</Button>
+                  <Button variant="primary">Recheck now</Button>
+                  <Button variant="ghost">Load more</Button>
+                  <Button variant="danger-ghost">Remove domain</Button>
+                </Example>
+                <Example label="size=sm">
+                  <Button size="sm">Open Cloudflare DNS</Button>
+                  <Button variant="primary" size="sm">
+                    Recheck now
+                  </Button>
+                </Example>
+                <Example label="copy / copied">
+                  <CopyButton value="_acmeapp-challenge.acme.co">
+                    Copy
+                  </CopyButton>
+                  <CopyButton value="acmeapp-verify=8f2c9e1a4b7d3f60">
+                    Copy value
+                  </CopyButton>
+                </Example>
+                <Example label="disabled">
+                  <Button disabled>Open Cloudflare DNS</Button>
+                  <Button variant="primary" disabled>
+                    Recheck now
+                  </Button>
+                </Example>
+                <Example label="loading">
+                  <Button loading>Recheck now</Button>
+                  <Button variant="primary" loading>
+                    Recheck now
+                  </Button>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Badges &amp; pills</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="tone">
+                  <Badge tone="accent">TXT</Badge>
+                  <Badge tone="success">Verified</Badge>
+                  <Badge tone="warning">Propagating</Badge>
+                  <Badge tone="danger">Needs attention</Badge>
+                  <Badge tone="neutral">Not found</Badge>
+                </Example>
+                <Example label="provider badge">
+                  <ProviderBadge icon={<GlobeIcon />}>Cloudflare</ProviderBadge>
+                  <ProviderBadge>GoDaddy</ProviderBadge>
+                </Example>
+                <Example label="status pill">
+                  <StatusPill tone="success" pulse>
+                    Verified
+                  </StatusPill>
+                  <StatusPill tone="warning">Propagating</StatusPill>
+                  <StatusPill tone="neutral" size="small">
+                    Not started
+                  </StatusPill>
+                </Example>
+                <Example label="mode pill (badge variant)">
+                  <Badge tone="warning" mode>
+                    TEST MODE
+                  </Badge>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Callouts</ComponentGroupLabel>
+              <div className="flex flex-col gap-4">
+                <Example label="tone=warning">
+                  <Callout tone="warning" className="max-w-xl">
+                    Using Cloudflare, GoDaddy, or Route 53? Field names differ
+                    slightly — some call this &quot;Name,&quot; some
+                    &quot;Host.&quot;
+                  </Callout>
+                </Example>
+                <Example label="tone=accent">
+                  <Callout tone="accent" className="max-w-xl">
+                    Your nameservers look like{' '}
+                    <strong style={{ color: 'var(--accent)' }}>
+                      Cloudflare
+                    </strong>{' '}
+                    — we can open the record form pre-filled.
+                  </Callout>
+                </Example>
+                <Example label="tone=neutral">
+                  <Callout tone="neutral" className="max-w-xl">
+                    <strong style={{ color: 'var(--text)' }}>
+                      What likely happened:
+                    </strong>{' '}
+                    the value got truncated or edited when it was pasted.
+                  </Callout>
+                </Example>
+                <Example label="emphasis=dashed">
+                  <Callout emphasis="dashed" className="max-w-xl">
+                    <div
+                      className="mb-2 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
+                      style={{ color: 'var(--text-faint)' }}
+                    >
+                      What&apos;s happening under the hood
+                    </div>
+                    <p>
+                      Your DNS provider published the record. We queried three
+                      regions — two saw it immediately, one still has the old
+                      cached answer.
+                    </p>
+                  </Callout>
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Card</ComponentGroupLabel>
+              <div className="flex flex-col gap-4">
+                <Example label="head + body + row composition">
+                  <Card className="w-full max-w-xl">
+                    <CardHead>
+                      <span
+                        className="text-[length:var(--text-base)]"
+                        style={{
+                          fontWeight: 'var(--font-weight-heading)',
+                          color: 'var(--text)',
+                        }}
+                      >
+                        Ownership record
+                      </span>
+                      <Badge tone="accent">TXT</Badge>
+                    </CardHead>
+                    <CardBody>
+                      <div className="flex flex-col gap-0">
+                        <CardRow>
+                          <div className="flex flex-wrap items-center gap-4">
+                            <span
+                              className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
+                              style={{ color: 'var(--text-faint)' }}
+                            >
+                              Host
+                            </span>
+                            <span
+                              className="font-mono text-[length:var(--text-md)]"
+                              style={{ color: 'var(--text)' }}
+                            >
+                              _acmeapp-challenge.acme.co
+                            </span>
+                          </div>
+                        </CardRow>
+                        <CardRow>
+                          <div className="flex flex-wrap items-center gap-4">
+                            <span
+                              className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
+                              style={{ color: 'var(--text-faint)' }}
+                            >
+                              Value
+                            </span>
+                            <span
+                              className="font-mono text-[length:var(--text-md)]"
+                              style={{ color: 'var(--text)' }}
+                            >
+                              acmeapp-verify=8f2c9e1a4b7d3f60
+                            </span>
+                          </div>
+                        </CardRow>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </Example>
+                <Example label="body only, no head">
+                  <Card className="w-full max-w-xl">
+                    <CardBody>
+                      <p style={{ color: 'var(--text-muted)' }}>
+                        A panel that only needs the surface, border, and padding
+                        — no head or rows.
+                      </p>
+                    </CardBody>
+                  </Card>
+                </Example>
               </div>
             </div>
           </div>

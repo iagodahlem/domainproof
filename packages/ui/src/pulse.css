@@ -1,0 +1,16 @@
+/* Status-pill live indicator. Not a token — a single named keyframe the
+   board defines once for the current-status hero pill; kept alongside
+   tokens.css/focus-ring.css as its own side-effect import. */
+@keyframes dp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility animate-dp-pulse {
+  animation: dp-pulse 1.8s ease-in-out infinite;
+}
