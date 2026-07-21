@@ -12,14 +12,14 @@ and `.env.example` at the repo root for the full list of names.
 
 ## Where everything lives
 
-| Component            | Provider   | Notes                                                                        |
-| --------------------- | ---------- | ----------------------------------------------------------------------------- |
-| `apps/api`            | Railway    | Project-token auth. GraphQL API at `backboard.railway.com/graphql/v2`.       |
-| `apps/web`            | Vercel     | Next.js app — dashboard, docs, demo, hosted verification page.              |
-| Postgres              | Neon       | `DATABASE_URL` is a Neon connection string.                                  |
-| DNS + WAF             | Cloudflare | Zone `domainproof.dev`. REST API at `api.cloudflare.com/client/v4`.          |
-| Auth                  | Clerk      | Dev instance → local + staging. Prod instance → production. Separate key pairs. |
-| Email                 | Resend     | Sends from `notifications@domainproof.dev`; DKIM/SPF already live in the zone. |
+| Component  | Provider   | Notes                                                                           |
+| ---------- | ---------- | ------------------------------------------------------------------------------- |
+| `apps/api` | Railway    | Project-token auth. GraphQL API at `backboard.railway.com/graphql/v2`.          |
+| `apps/web` | Vercel     | Next.js app — dashboard, docs, demo, hosted verification page.                  |
+| Postgres   | Neon       | `DATABASE_URL` is a Neon connection string.                                     |
+| DNS + WAF  | Cloudflare | Zone `domainproof.dev`. REST API at `api.cloudflare.com/client/v4`.             |
+| Auth       | Clerk      | Dev instance → local + staging. Prod instance → production. Separate key pairs. |
+| Email      | Resend     | Sends from `notifications@domainproof.dev`; DKIM/SPF already live in the zone.  |
 
 ## Secrets handling
 
