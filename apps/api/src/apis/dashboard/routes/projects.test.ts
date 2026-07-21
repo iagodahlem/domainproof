@@ -165,6 +165,128 @@ describe('/dashboard/projects', () => {
   })
 })
 
+describe('PATCH /dashboard/projects/:projectId', () => {
+  afterEach(async () => {
+    while (createdClerkUserIds.length > 0) {
+      const clerkUserId = createdClerkUserIds.pop()
+      if (clerkUserId) {
+        await db.delete(accounts).where(eq(accounts.clerkUserId, clerkUserId))
+      }
+    }
+  })
+
+  async function createProject(
+    app: ReturnType<typeof buildApp>,
+    clerkUserId: string,
+    name: string,
+  ) {
+    const res = await asUser(app, clerkUserId, '/dashboard/projects', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    const body = (await res.json()) as {
+      project: { id: string; name: string; slug: string }
+    }
+    return body.project
+  }
+
+  it('renames a project without changing its slug, reflected in a follow-up read', async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+    const project = await createProject(app, clerkUserId, 'Skylane HR')
+
+    const patchRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${project.id}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Skylane People' }),
+      },
+    )
+    expect(patchRes.status).toBe(200)
+    const patched = (await patchRes.json()) as {
+      project: { id: string; name: string; slug: string }
+    }
+    expect(patched.project.id).toBe(project.id)
+    expect(patched.project.name).toBe('Skylane People')
+    expect(patched.project.slug).toBe(project.slug)
+
+    const listRes = await asUser(app, clerkUserId, '/dashboard/projects')
+    const listBody = (await listRes.json()) as {
+      projects: Array<{ id: string; name: string; slug: string }>
+    }
+    const reread = listBody.projects.find((p) => p.id === project.id)
+    expect(reread?.name).toBe('Skylane People')
+    expect(reread?.slug).toBe(project.slug)
+  })
+
+  it('rejects an empty name', async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+    const project = await createProject(app, clerkUserId, 'Skylane HR')
+
+    const res = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${project.id}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '' }),
+      },
+    )
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('invalid_request')
+  })
+
+  it('404s for an unknown project id', async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+
+    const res = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${randomUUID()}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'New Name' }),
+      },
+    )
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('not_found')
+  })
+
+  it("404s for a project belonging to a different account, and doesn't rename it", async () => {
+    const app = buildApp()
+    const owner = freshClerkUserId()
+    const other = freshClerkUserId()
+    const project = await createProject(app, owner, 'Skylane HR')
+
+    const res = await asUser(app, other, `/dashboard/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Hijacked' }),
+    })
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('not_found')
+
+    const listRes = await asUser(app, owner, '/dashboard/projects')
+    const listBody = (await listRes.json()) as {
+      projects: Array<{ id: string; name: string }>
+    }
+    expect(listBody.projects.find((p) => p.id === project.id)?.name).toBe(
+      'Skylane HR',
+    )
+  })
+})
+
 describe('account bootstrap notifications', () => {
   // A session claims email — the fake sessionVerifier above never sets one
   // (matching this repo's real Clerk wiring, see

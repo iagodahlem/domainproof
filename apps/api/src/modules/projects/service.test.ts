@@ -43,6 +43,9 @@ function fakeProjectsRepository(
     async findSlugById() {
       return undefined
     },
+    async updateName(projectId, name) {
+      return projectId === 'project_1' ? projectRow({ name }) : undefined
+    },
     async createProject(accountId, name, slug, keys) {
       const project = projectRow({ accountId, name, slug })
       return {
@@ -237,5 +240,42 @@ describe('getProjectSlug', () => {
     )
 
     expect(await service.getProjectSlug('unknown')).toBeUndefined()
+  })
+})
+
+describe('renameProject', () => {
+  it('updates the name and leaves the slug untouched', async () => {
+    const repository = fakeProjectsRepository({
+      async updateName(projectId, name) {
+        return projectId === 'project_1'
+          ? projectRow({ name, slug: 'skylane-hr' })
+          : undefined
+      },
+    })
+    const service = createProjectsService(
+      repository,
+      fakeAccountsService(),
+      fakeKeysService(),
+    )
+
+    const result = await service.renameProject('project_1', 'Skylane People')
+    expect(result.name).toBe('Skylane People')
+    expect(result.slug).toBe('skylane-hr')
+  })
+
+  it('throws if the repository finds no such project', async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository({
+        async updateName() {
+          return undefined
+        },
+      }),
+      fakeAccountsService(),
+      fakeKeysService(),
+    )
+
+    await expect(service.renameProject('unknown', 'New Name')).rejects.toThrow(
+      /no such project/,
+    )
   })
 })
