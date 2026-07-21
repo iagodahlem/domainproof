@@ -5,13 +5,13 @@ import { cn } from './cn'
 export type TimelineStepStatus = 'done' | 'current' | 'upcoming'
 
 const timelineNodeVariants = cva(
-  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface font-mono text-xs font-bold text-text-faint',
+  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 font-mono text-xs font-bold',
   {
     variants: {
       status: {
         done: 'border-success bg-success text-success-foreground',
-        current: 'border-accent text-accent shadow-current',
-        upcoming: '',
+        current: 'border-accent bg-surface text-accent shadow-current',
+        upcoming: 'border-border-strong bg-surface text-text-faint',
       },
     },
   },

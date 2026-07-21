@@ -452,9 +452,7 @@ export default function DesignSystemPage() {
                     Verified
                   </StatusPill>
                   <StatusPill tone="warning">Propagating</StatusPill>
-                  <StatusPill tone="neutral" size="small">
-                    Not started
-                  </StatusPill>
+                  <StatusPill tone="neutral">Not started</StatusPill>
                 </Example>
                 <Example label="mode pill (badge variant)">
                   <Badge tone="warning" mode>
@@ -861,7 +859,7 @@ export default function DesignSystemPage() {
                     </CardBody>
                   </Card>
                 </Example>
-                <Example label="stepper — in progress, stacks under 560px">
+                <Example label="stepper — in progress, scrolls horizontally when narrow">
                   <Card className="w-full max-w-xl">
                     <CardBody>
                       <Stepper

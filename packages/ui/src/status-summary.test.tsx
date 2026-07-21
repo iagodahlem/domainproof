@@ -42,12 +42,14 @@ describe('Stepper', () => {
     expect(connectors).toHaveLength(STEPS.length - 1)
   })
 
-  it('collapses to a two-column stack and hides connectors under 560px', () => {
+  it('stays a single scrollable row at every width, never stacking', () => {
     const { container } = render(<Stepper steps={STEPS} />)
+    expect(container.firstElementChild?.className).toContain('overflow-x-auto')
+    expect(container.firstElementChild?.className).not.toContain('flex-wrap')
     const connector = container.querySelector('span.min-w-\\[12px\\]')
-    expect(connector?.className).toContain('max-[560px]:hidden')
+    expect(connector?.className).not.toContain('hidden')
     expect(screen.getByText('Claimed').closest('div')?.className).toContain(
-      'max-[560px]:w-[calc(50%-0.5rem)]',
+      'shrink-0',
     )
   })
 })
