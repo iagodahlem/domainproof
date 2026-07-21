@@ -1,5 +1,6 @@
 // Barrel export for consumers. Components land here as they ship.
 export { Button, type ButtonProps } from './button'
+export { BrowserChrome, type BrowserChromeProps } from './browser-chrome'
 export { CopyButton, type CopyButtonProps } from './copy-button'
 export {
   Badge,
