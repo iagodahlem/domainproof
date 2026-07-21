@@ -10,6 +10,7 @@ import {
   CardHead,
   CardRow,
   CopyButton,
+  Logo,
   ProviderBadge,
   StatusPill,
   Button,
@@ -174,8 +175,7 @@ function ColorSwatch({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div
-        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off swatch corner radius, between rounded-sm (6px) and rounded-md (10px); single use
-        className={`h-14 rounded-[8px] border border-border ${COLOR_SWATCH_CLASS[token]}`}
+        className={`h-14 rounded-md border border-border ${COLOR_SWATCH_CLASS[token]}`}
       />
       <span className="font-mono text-xs text-text-faint">--{token}</span>
     </div>
@@ -291,14 +291,8 @@ export default function DesignSystemPage() {
       >
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
           <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
-            <span
-              aria-hidden="true"
-              // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off logo-mark radius, between rounded-sm (6px) and rounded-md (10px); single use
-              className="flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent"
-            >
-              <Check size={13} strokeWidth={2.2} />
-            </span>
-            DomainProof design system
+            <Logo />
+            design system
           </span>
           <ThemeToggle />
         </div>
@@ -392,6 +386,15 @@ export default function DesignSystemPage() {
           <SectionHead eyebrow="Primitives" title="Components" />
 
           <div className="flex flex-col gap-10">
+            <div>
+              <ComponentGroupLabel>Logo</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="default">
+                  <Logo />
+                </Example>
+              </div>
+            </div>
+
             <div>
               <ComponentGroupLabel>Buttons</ComponentGroupLabel>
               <div className="flex flex-col gap-6">
