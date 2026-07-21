@@ -17,6 +17,7 @@ export {
   type CalloutEmphasis,
 } from './callout'
 export { Card, CardHead, CardBody, CardRow } from './card'
+export { Table, TableHeader, TableBody, TableRow, TableCell } from './table'
 export { RecordField, type RecordFieldProps } from './record-field'
 export {
   RecordCard,

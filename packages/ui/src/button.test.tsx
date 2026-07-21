@@ -59,4 +59,16 @@ describe('Button', () => {
     render(<Button className="my-custom-class">Click</Button>)
     expect(screen.getByRole('button').className).toContain('my-custom-class')
   })
+
+  it('renders the child element instead of a button when asChild is set', () => {
+    render(
+      <Button asChild variant="primary">
+        <a href="/docs">Docs</a>
+      </Button>,
+    )
+    const link = screen.getByRole('link', { name: 'Docs' })
+    expect(link.tagName).toBe('A')
+    expect(link.className).toContain('bg-accent')
+    expect(screen.queryByRole('button')).toBeNull()
+  })
 })

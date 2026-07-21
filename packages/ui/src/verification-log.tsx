@@ -1,5 +1,15 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { cva } from 'class-variance-authority'
 import { cn } from './cn'
+
+const verificationLogStatusVariants = cva('font-semibold', {
+  variants: {
+    tone: {
+      ok: 'text-success',
+      warn: 'text-warning-strong',
+    },
+  },
+})
 
 export interface VerificationLogEntry {
   id: string
@@ -85,13 +95,6 @@ export function VerificationLogStatus({
   children: ReactNode
 }) {
   return (
-    <span
-      className={cn(
-        'font-semibold',
-        tone === 'ok' ? 'text-success' : 'text-warning-strong',
-      )}
-    >
-      {children}
-    </span>
+    <span className={verificationLogStatusVariants({ tone })}>{children}</span>
   )
 }

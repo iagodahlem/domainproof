@@ -14,6 +14,11 @@ import {
   Button,
   RecordCard,
   RecordField,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
   DomainTable,
   DomainTableHead,
   DomainTableRow,
@@ -637,6 +642,40 @@ export default function DesignSystemPage() {
                   </RecordCard>
                 </Example>
               </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Table</ComponentGroupLabel>
+              <p className="mb-4 text-xs text-text-faint">
+                The generic primitive DomainTable is built on — bring your own
+                grid template via className and lay out cells however the data
+                calls for.
+              </p>
+              <Example label="generic 3-column layout">
+                <Table className="w-full">
+                  <TableHeader className="grid-cols-[1fr_120px_80px]">
+                    <span>Name</span>
+                    <span>Role</span>
+                    <span>Seats</span>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="grid-cols-[1fr_120px_80px]">
+                      <TableCell className="font-heading text-text">
+                        Acme Inc.
+                      </TableCell>
+                      <TableCell className="text-text-muted">Owner</TableCell>
+                      <TableCell className="text-text-muted">12</TableCell>
+                    </TableRow>
+                    <TableRow className="grid-cols-[1fr_120px_80px]">
+                      <TableCell className="font-heading text-text">
+                        Globex Corp.
+                      </TableCell>
+                      <TableCell className="text-text-muted">Member</TableCell>
+                      <TableCell className="text-text-muted">4</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Example>
             </div>
 
             <div>
