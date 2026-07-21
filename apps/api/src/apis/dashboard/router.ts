@@ -4,6 +4,7 @@ import type { ProjectsService } from '@modules/projects/service'
 import type { DomainsService } from '@modules/domains/service'
 import type { EventsService } from '@modules/events/service'
 import type { SessionVerifier } from '@modules/accounts/ports'
+import type { WebhooksService } from '@modules/webhooks/service'
 import {
   createSessionAuthMiddleware,
   type SessionAuthVariables,
@@ -11,12 +12,14 @@ import {
 import { createDomainsRoutes } from './routes/domains'
 import { createKeysRoutes } from './routes/keys'
 import { createProjectsRoutes } from './routes/projects'
+import { createWebhooksRoutes } from './routes/webhooks'
 
 export interface DashboardRouterDeps {
   keysService: KeysService
   projectsService: ProjectsService
   domainsService: DomainsService
   eventsService: EventsService
+  webhooksService: WebhooksService
   /** `undefined` means session auth isn't configured — every plane request 500s until it is. */
   sessionVerifier: SessionVerifier | undefined
 }
@@ -44,6 +47,10 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
       deps.eventsService,
       deps.projectsService,
     ),
+  )
+  router.route(
+    '/projects/:projectId/webhooks',
+    createWebhooksRoutes(deps.webhooksService, deps.projectsService),
   )
 
   return router

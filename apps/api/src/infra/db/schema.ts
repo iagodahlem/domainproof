@@ -201,6 +201,14 @@ export const webhookEndpoints = pgTable('webhook_endpoints', {
   url: text('url').notNull(),
   signingSecret: text('signing_secret').notNull(),
   mode: modeEnum('mode').notNull(),
+  /**
+   * The subset of `DomainEventMap`'s domain-scoped event types (see
+   * `shared/events.ts`; `account.created` is excluded — it isn't
+   * project-scoped, so no webhook endpoint could ever match it) this
+   * endpoint receives deliveries for. Always non-empty — enforced at the
+   * service layer, not by a db constraint.
+   */
+  eventTypes: text('event_types').array().notNull(),
   disabledAt: timestamp('disabled_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()

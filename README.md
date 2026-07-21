@@ -58,6 +58,7 @@ nothing breaks if the file doesn't exist):
 | `PORT`                           | No        | Defaults to `3001`.                                                                                                                                         |
 | `RESEND_API_KEY`                 | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
 | `EMAIL_FROM`                     | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
+| `WEBHOOK_MAX_ATTEMPTS`           | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
 
 ```bash
 docker compose up -d db
@@ -99,28 +100,35 @@ on one origin, so the split below is what matters for local development:
   exposes the same domain lifecycle under its own session-authenticated
   routes below.
 
-| Method | Path                                                          | Plane     | Description                                                                                                             |
-| ------ | ------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/health`                                                     | none      | Liveness check; returns `{ status, version }`.                                                                          |
-| GET    | `/dashboard/projects`                                         | Dashboard | Lists the caller's projects (empty for a fresh account).                                                                |
-| POST   | `/dashboard/projects`                                         | Dashboard | Creates a named project, minting its test and live API keys in one transaction and returning both one-time key strings. |
-| POST   | `/dashboard/projects/:projectId/keys`                         | Dashboard | Creates another API key for the given project.                                                                          |
-| GET    | `/dashboard/projects/:projectId/keys`                         | Dashboard | Lists the given project's API keys.                                                                                     |
-| POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke`           | Dashboard | Revokes an API key.                                                                                                     |
-| POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate`           | Dashboard | Revokes an API key and issues its replacement.                                                                          |
-| POST   | `/dashboard/projects/:projectId/domains`                      | Dashboard | Claims a domain for the given project and an explicit `mode`, issuing a challenge.                                      |
-| GET    | `/dashboard/projects/:projectId/domains`                      | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first.                                         |
-| GET    | `/dashboard/projects/:projectId/domains/:domainId`            | Dashboard | Gets a domain and its current verification record instructions.                                                         |
-| POST   | `/dashboard/projects/:projectId/domains/:domainId/verify`     | Dashboard | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
-| POST   | `/dashboard/projects/:projectId/domains/:domainId/regenerate` | Dashboard | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
-| DELETE | `/dashboard/projects/:projectId/domains/:domainId`            | Dashboard | Releases a domain claim.                                                                                                |
-| GET    | `/dashboard/projects/:projectId/domains/:domainId/events`     | Dashboard | Cursor-paginated timeline of events published for a domain.                                                             |
-| POST   | `/v1/domains`                                                 | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
-| GET    | `/v1/domains`                                                 | Public    | Lists domains claimed by the key's project/mode.                                                                        |
-| GET    | `/v1/domains/:id`                                             | Public    | Gets a claimed domain and its current verification record(s).                                                           |
-| DELETE | `/v1/domains/:id`                                             | Public    | Releases a domain claim.                                                                                                |
-| POST   | `/v1/domains/:id/verify`                                      | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
-| GET    | `/v1/domains/:id/events`                                      | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
+| Method | Path                                                                                   | Plane     | Description                                                                                                             |
+| ------ | -------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`                                                                              | none      | Liveness check; returns `{ status, version }`.                                                                          |
+| GET    | `/dashboard/projects`                                                                  | Dashboard | Lists the caller's projects (empty for a fresh account).                                                                |
+| POST   | `/dashboard/projects`                                                                  | Dashboard | Creates a named project, minting its test and live API keys in one transaction and returning both one-time key strings. |
+| POST   | `/dashboard/projects/:projectId/keys`                                                  | Dashboard | Creates another API key for the given project.                                                                          |
+| GET    | `/dashboard/projects/:projectId/keys`                                                  | Dashboard | Lists the given project's API keys.                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke`                                    | Dashboard | Revokes an API key.                                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate`                                    | Dashboard | Revokes an API key and issues its replacement.                                                                          |
+| POST   | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Claims a domain for the given project and an explicit `mode`, issuing a challenge.                                      |
+| GET    | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first.                                         |
+| GET    | `/dashboard/projects/:projectId/domains/:domainId`                                     | Dashboard | Gets a domain and its current verification record instructions.                                                         |
+| POST   | `/dashboard/projects/:projectId/domains/:domainId/verify`                              | Dashboard | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
+| POST   | `/dashboard/projects/:projectId/domains/:domainId/regenerate`                          | Dashboard | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
+| DELETE | `/dashboard/projects/:projectId/domains/:domainId`                                     | Dashboard | Releases a domain claim.                                                                                                |
+| GET    | `/dashboard/projects/:projectId/domains/:domainId/events`                              | Dashboard | Cursor-paginated timeline of events published for a domain.                                                             |
+| POST   | `/dashboard/projects/:projectId/webhooks`                                              | Dashboard | Creates a webhook endpoint for the given project; returns the signing secret once.                                      |
+| GET    | `/dashboard/projects/:projectId/webhooks`                                              | Dashboard | Lists the given project's webhook endpoints.                                                                            |
+| DELETE | `/dashboard/projects/:projectId/webhooks/:endpointId`                                  | Dashboard | Deletes a webhook endpoint.                                                                                             |
+| POST   | `/dashboard/projects/:projectId/webhooks/:endpointId/disable`                          | Dashboard | Stops deliveries to an endpoint without deleting it.                                                                    |
+| POST   | `/dashboard/projects/:projectId/webhooks/:endpointId/enable`                           | Dashboard | Resumes deliveries to a disabled endpoint.                                                                              |
+| GET    | `/dashboard/projects/:projectId/webhooks/:endpointId/deliveries`                       | Dashboard | Cursor-paginated delivery log for an endpoint, newest first.                                                            |
+| POST   | `/dashboard/projects/:projectId/webhooks/:endpointId/deliveries/:deliveryId/redeliver` | Dashboard | Fires a fresh delivery of a past delivery's event.                                                                      |
+| POST   | `/v1/domains`                                                                          | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
+| GET    | `/v1/domains`                                                                          | Public    | Lists domains claimed by the key's project/mode.                                                                        |
+| GET    | `/v1/domains/:id`                                                                      | Public    | Gets a claimed domain and its current verification record(s).                                                           |
+| DELETE | `/v1/domains/:id`                                                                      | Public    | Releases a domain claim.                                                                                                |
+| POST   | `/v1/domains/:id/verify`                                                               | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
+| GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -188,3 +196,82 @@ first, cursor-paginated the same way as `/v1/domains/:id/events` above
 (`?limit=`/`?cursor=`, default 20, max 100). `:domainId` follows the same
 anti-enumeration 404 as `:projectId` and `:keyId` elsewhere on this plane —
 a domain belonging to another project reads as not found, not forbidden.
+
+### Webhooks
+
+A project's webhook endpoints (`POST /dashboard/projects/:projectId/webhooks`)
+subscribe to a non-empty subset of the project-scoped event types:
+`domain.claimed`, `domain.check_passed`, `domain.check_failed`,
+`domain.verified`, `domain.temporarily_failed`, `domain.failed` (every
+`DomainEventMap` entry except `account.created`, which isn't scoped to a
+project). Creating an endpoint returns its signing secret (`whsec_...`)
+exactly once — every later response only shows a masked form
+(`whsec_...ab12`). `:projectId` follows the same anti-enumeration 404 as
+elsewhere on this plane — a project belonging to another account reads as
+not found, not forbidden, and once resolved, so does an `:endpointId`/
+`:deliveryId` belonging to a different project.
+
+Each subscribed event is delivered as an HTTP `POST` with this JSON body:
+
+```json
+{
+  "id": "5c3b8f2e-...",
+  "type": "domain.verified",
+  "created_at": "2026-07-19T12:00:00.000Z",
+  "data": {
+    "domainId": "...",
+    "projectId": "...",
+    "mode": "live",
+    "domain": "example.com"
+  }
+}
+```
+
+`data` is the event's own payload (see `shared/events.ts`'s
+`DomainEventMap`) — it always carries `mode`, so a single endpoint
+subscribed across both test and live keys can tell which is which.
+
+Every delivery carries three headers alongside `content-type:
+application/json`:
+
+| Header                          | Value                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `domainproof-webhook-id`        | The delivery's id — stable across retries of the same delivery, so a receiver can dedupe. |
+| `domainproof-webhook-timestamp` | Unix seconds at send time.                                                                |
+| `domainproof-webhook-signature` | `sha256=<hex hmac>`, computed as below.                                                   |
+
+To verify a delivery, recompute the signature over
+`"<timestamp>.<raw body>"` with the endpoint's signing secret and compare
+it to the header, in constant time:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+function verify(secret, timestamp, rawBody, signatureHeader) {
+  const digest = createHmac('sha256', secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex')
+  const expected = `sha256=${digest}`
+  const a = Buffer.from(expected)
+  const b = Buffer.from(signatureHeader)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+```
+
+A failed delivery (a non-2xx response, a timeout, or a connection error)
+retries with backoff — 1 min, 5 min, 30 min, then 2 hours — up to
+`WEBHOOK_MAX_ATTEMPTS` total attempts (default 5), after which it's marked
+`failed` for good. `GET
+/dashboard/projects/:projectId/webhooks/:endpointId/deliveries` returns the
+delivery log (newest first, cursor-paginated); `POST
+.../deliveries/:deliveryId/redeliver` fires the same event again as a
+fresh delivery (a new log entry, attempt 1) without touching the original.
+
+Delivery is fire-and-forget from the api's perspective — publishing an
+event (a domain claim, a verify call, ...) never waits on a webhook
+endpoint's response, so a slow or unreachable integrator endpoint can't
+slow down the request that triggered it. Retries are an in-process
+`setTimeout` schedule, not a durable queue — a scheduled retry is lost if
+the api process restarts before it fires. That's an acceptable tradeoff
+for a demoable product; a real queue (SQS, pg-boss, ...) is the
+production-grade answer, same tradeoff the event bus itself makes.
