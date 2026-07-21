@@ -281,7 +281,13 @@ export function createApp(deps: AppDependencies = {}) {
   // API-key-authenticated plane. See ARCHITECTURE.md's Route planes.
   app.route(
     '/dashboard',
-    createDashboardRouter({ keysService, projectsService, sessionVerifier }),
+    createDashboardRouter({
+      keysService,
+      projectsService,
+      domainsService,
+      eventsService,
+      sessionVerifier,
+    }),
   )
   app.route(
     '/v1',

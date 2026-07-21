@@ -1,7 +1,8 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { challenges, domains } from '@infra/db/schema'
 import type { DomainStatus } from '@domainproof/core'
+import type { DomainsCursor } from './domain/cursor'
 
 export type DomainRow = typeof domains.$inferSelect
 export type ChallengeRow = typeof challenges.$inferSelect
@@ -28,6 +29,17 @@ export interface ClaimInsert {
 export interface DomainWithChallenge {
   domain: DomainRow
   challenge: ChallengeRow
+}
+
+export interface ListByProjectPaginatedOptions {
+  limit: number
+  cursor?: DomainsCursor
+}
+
+export interface ListByProjectPaginatedResult {
+  rows: DomainRow[]
+  /** `true` when more rows exist past the returned page. */
+  hasMore: boolean
 }
 
 export interface VerificationAttemptInsert {
@@ -68,12 +80,31 @@ export interface DomainsRepository {
   /** All domains claimed by a project in the given mode. */
   listByProject(projectId: string, mode: DomainMode): Promise<DomainRow[]>
 
+  /**
+   * A project's domains across both modes, newest first, cursor-paginated
+   * on `(created_at, id)` — the dashboard's domains table, whose caller has
+   * no api-key mode to scope by (see `listByProject`, which does). Fetches
+   * `limit + 1` rows to decide `hasMore` without a second round-trip, then
+   * trims back to `limit`.
+   */
+  listByProjectPaginated(
+    projectId: string,
+    options: ListByProjectPaginatedOptions,
+  ): Promise<ListByProjectPaginatedResult>
+
   /** Scoped to `(projectId, mode)` so a live key can never see a test-mode claim (or another project's) by id, and vice versa. */
   findById(
     projectId: string,
     mode: DomainMode,
     id: string,
   ): Promise<DomainRow | undefined>
+
+  /**
+   * Like `findById`, but scoped only to `projectId` (no `mode`) — the
+   * dashboard's domain detail/events routes, whose caller has no api-key
+   * mode to further scope by.
+   */
+  findByProjectId(projectId: string, id: string): Promise<DomainRow | undefined>
 
   /** The most recently issued (non-superseded-by-date) challenge for a domain. */
   findLatestChallenge(domainId: string): Promise<ChallengeRow | undefined>
@@ -153,6 +184,35 @@ export function createDomainsRepository(db: Database): DomainsRepository {
         .where(and(eq(domains.projectId, projectId), eq(domains.mode, mode)))
     },
 
+    async listByProjectPaginated(projectId, { limit, cursor }) {
+      // Anchored on the cursor row's own stored `(created_at, id)`, looked
+      // up server-side in the same query — see `domain/cursor.ts`'s doc
+      // comment for why a JS-truncated timestamp can't do this precisely.
+      // Scoped to `projectId` too, so a cursor id from a different
+      // project's list (or one that no longer exists) can't anchor against
+      // another project's data — it just yields an empty page.
+      const cursorCondition = cursor
+        ? sql`(${domains.createdAt}, ${domains.id}) < (
+            select created_at, id from domains
+            where id = ${cursor.id} and project_id = ${projectId}
+          )`
+        : undefined
+
+      const rows = await db
+        .select()
+        .from(domains)
+        .where(
+          cursorCondition
+            ? and(eq(domains.projectId, projectId), cursorCondition)
+            : eq(domains.projectId, projectId),
+        )
+        .orderBy(desc(domains.createdAt), desc(domains.id))
+        .limit(limit + 1)
+
+      const hasMore = rows.length > limit
+      return { rows: hasMore ? rows.slice(0, limit) : rows, hasMore }
+    },
+
     async findById(projectId, mode, id) {
       const [row] = await db
         .select()
@@ -164,6 +224,15 @@ export function createDomainsRepository(db: Database): DomainsRepository {
             eq(domains.id, id),
           ),
         )
+        .limit(1)
+      return row
+    },
+
+    async findByProjectId(projectId, id) {
+      const [row] = await db
+        .select()
+        .from(domains)
+        .where(and(eq(domains.projectId, projectId), eq(domains.id, id)))
         .limit(1)
       return row
     },

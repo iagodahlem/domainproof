@@ -78,9 +78,40 @@ function fakeRepository(): DomainsRepository {
       )
     },
 
+    async listByProjectPaginated(projectId, { limit, cursor }) {
+      // Insertion order into `domainRows` (a `Map`) is already
+      // chronological, reversed for newest-first — no lossy db round-trip
+      // to worry about here, unlike the real repository (see
+      // `domain/cursor.ts`). Same approach as the events module's
+      // `fakeRepository` in `service.test.ts`.
+      const rows = [...domainRows.values()]
+        .filter((row) => row.projectId === projectId)
+        .reverse()
+
+      const anchorIndex = cursor
+        ? rows.findIndex((row) => row.id === cursor.id)
+        : -1
+      const startIndex = cursor ? anchorIndex + 1 : 0
+      if (cursor && anchorIndex === -1) {
+        return { rows: [], hasMore: false }
+      }
+
+      const remaining = rows.slice(startIndex)
+      const hasMore = remaining.length > limit
+      return { rows: hasMore ? remaining.slice(0, limit) : remaining, hasMore }
+    },
+
     async findById(projectId, mode, id) {
       const row = domainRows.get(id)
       if (!row || row.projectId !== projectId || row.mode !== mode) {
+        return undefined
+      }
+      return row
+    },
+
+    async findByProjectId(projectId, id) {
+      const row = domainRows.get(id)
+      if (!row || row.projectId !== projectId) {
         return undefined
       }
       return row
@@ -556,6 +587,150 @@ describe('getDomain', () => {
     expect(
       await service.getDomain('project_1', 'live', randomUUID()),
     ).toBeNull()
+  })
+})
+
+describe('listProjectDomains', () => {
+  it('returns domains across both modes for the project, newest first', async () => {
+    const repository = fakeRepository()
+    const projects = fakeProjectsService({
+      project_a: 'skylane',
+      project_b: 'atlas',
+    })
+    const service = createDomainsService(repository, projects)
+
+    await service.claimDomain({
+      projectId: 'project_a',
+      mode: 'live',
+      domain: 'a.com',
+    })
+    await service.claimDomain({
+      projectId: 'project_a',
+      mode: 'test',
+      domain: 'a-test.com',
+    })
+    await service.claimDomain({
+      projectId: 'project_b',
+      mode: 'live',
+      domain: 'b.com',
+    })
+
+    const { domains, nextCursor } = await service.listProjectDomains(
+      'project_a',
+      { limit: 10 },
+    )
+    expect(domains.map((d) => d.domain)).toEqual(['a-test.com', 'a.com'])
+    expect(domains.map((d) => d.mode)).toEqual(['test', 'live'])
+    expect(nextCursor).toBeNull()
+  })
+
+  it('paginates with a cursor and reports nextCursor until the last page', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(repository, fakeProjectsService())
+
+    for (let i = 0; i < 3; i += 1) {
+      await service.claimDomain({
+        projectId: 'project_1',
+        mode: 'live',
+        domain: `example-${i}.com`,
+      })
+    }
+
+    const firstPage = await service.listProjectDomains('project_1', {
+      limit: 2,
+    })
+    expect(firstPage.domains).toHaveLength(2)
+    expect(firstPage.nextCursor).not.toBeNull()
+
+    const secondPage = await service.listProjectDomains('project_1', {
+      limit: 2,
+      cursor: firstPage.nextCursor ?? undefined,
+    })
+    expect(secondPage.domains).toHaveLength(1)
+    expect(secondPage.nextCursor).toBeNull()
+
+    const allDomains = [...firstPage.domains, ...secondPage.domains].map(
+      (d) => d.domain,
+    )
+    expect(new Set(allDomains)).toEqual(
+      new Set(['example-0.com', 'example-1.com', 'example-2.com']),
+    )
+  })
+
+  it('returns an empty page for a project with no domains', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+
+    const { domains, nextCursor } = await service.listProjectDomains(
+      'project_1',
+      { limit: 10 },
+    )
+    expect(domains).toEqual([])
+    expect(nextCursor).toBeNull()
+  })
+
+  it('includes each domain’s current record', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'example.com',
+    })
+
+    const { domains } = await service.listProjectDomains('project_1', {
+      limit: 10,
+    })
+    expect(domains[0]?.challenges).toHaveLength(1)
+  })
+})
+
+describe('getProjectDomain', () => {
+  it('returns the claimed domain regardless of mode', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    const claimed = await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'example.com',
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+
+    const found = await service.getProjectDomain('project_1', claimed.domain.id)
+    expect(found?.id).toBe(claimed.domain.id)
+  })
+
+  it("returns null for another project's domain", async () => {
+    const repository = fakeRepository()
+    const projects = fakeProjectsService({
+      project_a: 'skylane',
+      project_b: 'atlas',
+    })
+    const service = createDomainsService(repository, projects)
+    const claimed = await service.claimDomain({
+      projectId: 'project_a',
+      mode: 'live',
+      domain: 'example.com',
+    })
+    if (!claimed.ok) throw new Error('setup failed')
+
+    expect(
+      await service.getProjectDomain('project_b', claimed.domain.id),
+    ).toBeNull()
+  })
+
+  it('returns null for an unknown id', async () => {
+    const service = createDomainsService(
+      fakeRepository(),
+      fakeProjectsService(),
+    )
+    expect(await service.getProjectDomain('project_1', randomUUID())).toBeNull()
   })
 })
 

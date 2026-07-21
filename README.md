@@ -97,21 +97,24 @@ on one origin, so the split below is what matters for local development:
   the SDK, CLI, MCP server, and direct integrations use. Domain claiming,
   and running the DNS check that verifies a claim, live here.
 
-| Method | Path                                                | Plane     | Description                                                                                                             |
-| ------ | --------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/health`                                           | none      | Liveness check; returns `{ status, version }`.                                                                          |
-| GET    | `/dashboard/projects`                               | Dashboard | Lists the caller's projects (empty for a fresh account).                                                                |
-| POST   | `/dashboard/projects`                               | Dashboard | Creates a named project, minting its test and live API keys in one transaction and returning both one-time key strings. |
-| POST   | `/dashboard/projects/:projectId/keys`               | Dashboard | Creates another API key for the given project.                                                                          |
-| GET    | `/dashboard/projects/:projectId/keys`               | Dashboard | Lists the given project's API keys.                                                                                     |
-| POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke` | Dashboard | Revokes an API key.                                                                                                     |
-| POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate` | Dashboard | Revokes an API key and issues its replacement.                                                                          |
-| POST   | `/v1/domains`                                       | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
-| GET    | `/v1/domains`                                       | Public    | Lists domains claimed by the key's project/mode.                                                                        |
-| GET    | `/v1/domains/:id`                                   | Public    | Gets a claimed domain and its current verification record(s).                                                           |
-| DELETE | `/v1/domains/:id`                                   | Public    | Releases a domain claim.                                                                                                |
-| POST   | `/v1/domains/:id/verify`                            | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
-| GET    | `/v1/domains/:id/events`                            | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
+| Method | Path                                                      | Plane     | Description                                                                                                             |
+| ------ | --------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`                                                 | none      | Liveness check; returns `{ status, version }`.                                                                          |
+| GET    | `/dashboard/projects`                                     | Dashboard | Lists the caller's projects (empty for a fresh account).                                                                |
+| POST   | `/dashboard/projects`                                     | Dashboard | Creates a named project, minting its test and live API keys in one transaction and returning both one-time key strings. |
+| POST   | `/dashboard/projects/:projectId/keys`                     | Dashboard | Creates another API key for the given project.                                                                          |
+| GET    | `/dashboard/projects/:projectId/keys`                     | Dashboard | Lists the given project's API keys.                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke`       | Dashboard | Revokes an API key.                                                                                                     |
+| POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate`       | Dashboard | Revokes an API key and issues its replacement.                                                                          |
+| GET    | `/dashboard/projects/:projectId/domains`                  | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first.                                         |
+| GET    | `/dashboard/projects/:projectId/domains/:domainId`        | Dashboard | Gets a domain and its current verification record instructions.                                                         |
+| GET    | `/dashboard/projects/:projectId/domains/:domainId/events` | Dashboard | Cursor-paginated timeline of events published for a domain.                                                             |
+| POST   | `/v1/domains`                                             | Public    | Claims a domain for the key's project/mode and issues a challenge.                                                      |
+| GET    | `/v1/domains`                                             | Public    | Lists domains claimed by the key's project/mode.                                                                        |
+| GET    | `/v1/domains/:id`                                         | Public    | Gets a claimed domain and its current verification record(s).                                                           |
+| DELETE | `/v1/domains/:id`                                         | Public    | Releases a domain claim.                                                                                                |
+| POST   | `/v1/domains/:id/verify`                                  | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
+| GET    | `/v1/domains/:id/events`                                  | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -169,3 +172,13 @@ published for it:
 Paginated with `?limit=` (default 20, max 100) and `?cursor=`, the opaque
 `nextCursor` from the previous page; `nextCursor` is `null` once there's
 nothing left to fetch.
+
+The dashboard's domain routes (`GET /dashboard/projects/:projectId/domains`,
+`/:domainId`, `/:domainId/events`) are read-only mirrors of the same domains
+module for the dashboard's own pages — no claim/release/verify there, that
+stays on `/v1/domains`. The list spans both `test` and `live` claims for the
+project (`mode` is a field on each row, not something to filter by), newest
+first, cursor-paginated the same way as `/v1/domains/:id/events` above
+(`?limit=`/`?cursor=`, default 20, max 100). `:domainId` follows the same
+anti-enumeration 404 as `:projectId` and `:keyId` elsewhere on this plane —
+a domain belonging to another project reads as not found, not forbidden.

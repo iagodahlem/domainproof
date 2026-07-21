@@ -1,17 +1,22 @@
 import { Hono } from 'hono'
 import type { KeysService } from '@modules/keys/service'
 import type { ProjectsService } from '@modules/projects/service'
+import type { DomainsService } from '@modules/domains/service'
+import type { EventsService } from '@modules/events/service'
 import type { SessionVerifier } from '@modules/accounts/ports'
 import {
   createSessionAuthMiddleware,
   type SessionAuthVariables,
 } from './middlewares/session-auth'
+import { createDomainsRoutes } from './routes/domains'
 import { createKeysRoutes } from './routes/keys'
 import { createProjectsRoutes } from './routes/projects'
 
 export interface DashboardRouterDeps {
   keysService: KeysService
   projectsService: ProjectsService
+  domainsService: DomainsService
+  eventsService: EventsService
   /** `undefined` means session auth isn't configured — every plane request 500s until it is. */
   sessionVerifier: SessionVerifier | undefined
 }
@@ -31,6 +36,14 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
   router.route(
     '/projects/:projectId/keys',
     createKeysRoutes(deps.keysService, deps.projectsService),
+  )
+  router.route(
+    '/projects/:projectId/domains',
+    createDomainsRoutes(
+      deps.domainsService,
+      deps.eventsService,
+      deps.projectsService,
+    ),
   )
 
   return router
