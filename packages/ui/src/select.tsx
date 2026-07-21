@@ -1,5 +1,6 @@
 import { forwardRef, useId } from 'react'
 import type { SelectHTMLAttributes } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from './cn'
 import { FieldError, FieldLabel } from './field'
 
@@ -42,27 +43,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronIcon className="pointer-events-none absolute top-1/2 right-[var(--space-3)] h-3 w-3 -translate-y-1/2 text-[color:var(--text-faint)]" />
+          <ChevronDown
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 right-[var(--space-3)] h-3 w-3 -translate-y-1/2 text-[color:var(--text-faint)]"
+          />
         </div>
         {error ? <FieldError id={errorId}>{error}</FieldError> : null}
       </div>
     )
   },
 )
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  )
-}

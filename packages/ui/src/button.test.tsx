@@ -31,6 +31,12 @@ describe('Button', () => {
     expect(el.className).toContain('text-[length:var(--text-xs)]')
   })
 
+  it('applies the pill shape classes', () => {
+    render(<Button shape="pill">Recheck now</Button>)
+    const el = screen.getByRole('button')
+    expect(el.className).toContain('rounded-[var(--radius-full)]')
+  })
+
   it('disables the button and blocks clicks when disabled', () => {
     const onClick = vi.fn()
     render(

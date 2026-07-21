@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { Check, ChevronDown, ChevronRight, Copy, Moon, Sun } from 'lucide-react'
 import {
   Badge,
   Callout,
@@ -70,7 +71,49 @@ const COLOR_GROUPS: { label: string; tokens: string[] }[] = [
   },
 ]
 
+/* Tailwind can only pick up class names that appear literally in this file
+   — `bg-${token}` built at render time would be invisible to it — so each
+   swatch's background is looked up from this table of literal utility
+   classes instead of interpolated. */
+const COLOR_SWATCH_CLASS: Record<string, string> = {
+  bg: 'bg-bg',
+  surface: 'bg-surface',
+  'surface-2': 'bg-surface-2',
+  'surface-3': 'bg-surface-3',
+  border: 'bg-border',
+  'border-strong': 'bg-border-strong',
+  text: 'bg-text',
+  'text-muted': 'bg-text-muted',
+  'text-faint': 'bg-text-faint',
+  accent: 'bg-accent',
+  'accent-strong': 'bg-accent-strong',
+  'accent-soft': 'bg-accent-soft',
+  'accent-foreground': 'bg-accent-foreground',
+  success: 'bg-success',
+  'success-soft': 'bg-success-soft',
+  warning: 'bg-warning',
+  'warning-strong': 'bg-warning-strong',
+  'warning-soft': 'bg-warning-soft',
+  danger: 'bg-danger',
+  'danger-soft': 'bg-danger-soft',
+}
+
 const SPACE_TOKENS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24]
+
+const SPACE_WIDTH_CLASS: Record<number, string> = {
+  1: 'w-1',
+  2: 'w-2',
+  3: 'w-3',
+  4: 'w-4',
+  5: 'w-5',
+  6: 'w-6',
+  8: 'w-8',
+  10: 'w-10',
+  12: 'w-12',
+  16: 'w-16',
+  20: 'w-20',
+  24: 'w-24',
+}
 
 const TYPE_TOKENS = [
   '3xs',
@@ -85,7 +128,28 @@ const TYPE_TOKENS = [
   '4xl',
 ]
 
+const TYPE_TOKEN_CLASS: Record<string, string> = {
+  '3xs': 'text-[length:var(--text-3xs)]',
+  '2xs': 'text-[length:var(--text-2xs)]',
+  xs: 'text-[length:var(--text-xs)]',
+  sm: 'text-[length:var(--text-sm)]',
+  md: 'text-[length:var(--text-md)]',
+  base: 'text-[length:var(--text-base)]',
+  xl: 'text-[length:var(--text-xl)]',
+  '2xl': 'text-[length:var(--text-2xl)]',
+  '3xl': 'text-[length:var(--text-3xl)]',
+  '4xl': 'text-[length:var(--text-4xl)]',
+}
+
 const RADIUS_TOKENS = ['sm', 'md', 'lg', 'xl', 'full']
+
+const RADIUS_CLASS: Record<string, string> = {
+  sm: 'rounded-sm',
+  md: 'rounded-md',
+  lg: 'rounded-lg',
+  xl: 'rounded-xl',
+  full: 'rounded-full',
+}
 
 function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
@@ -102,42 +166,23 @@ function ColorSwatch({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div
-        className="h-14 rounded-[8px] border border-border"
-        style={{ background: `var(--${token})` }}
+        className={`h-14 rounded-[8px] border border-border ${COLOR_SWATCH_CLASS[token]}`}
       />
-      <span
-        className="font-mono text-xs"
-        style={{ color: 'var(--text-faint)' }}
-      >
-        --{token}
-      </span>
+      <span className="font-mono text-xs text-text-faint">--{token}</span>
     </div>
   )
 }
 
 function ComponentGroupLabel({ children }: { children: ReactNode }) {
   return (
-    <h3
-      className="mb-4 text-sm"
-      style={{
-        fontWeight: 'var(--font-weight-semibold)',
-        color: 'var(--text-muted)',
-      }}
-    >
-      {children}
-    </h3>
+    <h3 className="mb-4 text-sm font-semibold text-text-muted">{children}</h3>
   )
 }
 
 function Example({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <span
-        className="font-mono text-xs"
-        style={{ color: 'var(--text-faint)' }}
-      >
-        {label}
-      </span>
+      <span className="font-mono text-xs text-text-faint">{label}</span>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   )
@@ -229,15 +274,17 @@ export default function DesignSystemPage() {
   return (
     <div
       data-design-system-root
-      className="min-h-screen bg-bg text-text"
-      style={{ fontFamily: 'var(--font-sans)' }}
+      className="min-h-screen bg-bg font-sans text-text"
     >
-      <header className="sticky top-0 z-10 border-b border-border bg-bg px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <span
-            className="text-base"
-            style={{ fontWeight: 'var(--font-weight-bold)' }}
-          >
+      <header className="sticky top-0 z-10 border-b border-border bg-[color-mix(in_oklab,var(--bg)_82%,transparent)] backdrop-blur-[10px] backdrop-saturate-[140%]">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
+          <span className="flex items-center gap-2 text-base font-bold whitespace-nowrap">
+            <span
+              aria-hidden="true"
+              className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[7px] border border-[color-mix(in_oklab,var(--accent)_var(--alpha-border),transparent)] bg-accent-soft text-accent"
+            >
+              <Check size={13} strokeWidth={2.2} />
+            </span>
             DomainProof design system
           </span>
           <ThemeToggle />
@@ -250,19 +297,13 @@ export default function DesignSystemPage() {
 
           <div className="flex flex-col gap-10">
             <div>
-              <h3
-                className="mb-4 text-sm text-text-muted"
-                style={{ fontWeight: 'var(--font-weight-semibold)' }}
-              >
+              <h3 className="mb-4 text-sm font-semibold text-text-muted">
                 Color
               </h3>
               <div className="flex flex-col gap-8">
                 {COLOR_GROUPS.map((group) => (
                   <div key={group.label}>
-                    <span
-                      className="mb-3 block font-mono text-xs tracking-wide uppercase"
-                      style={{ color: 'var(--text-faint)' }}
-                    >
+                    <span className="mb-3 block font-mono text-xs tracking-wide text-text-faint uppercase">
                       {group.label}
                     </span>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
@@ -276,30 +317,17 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3
-                className="mb-4 text-sm"
-                style={{
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--text-muted)',
-                }}
-              >
+              <h3 className="mb-4 text-sm font-semibold text-text-muted">
                 Spacing
               </h3>
               <div className="flex flex-col gap-3">
                 {SPACE_TOKENS.map((step) => (
                   <div key={step} className="flex items-center gap-4">
-                    <span
-                      className="w-20 font-mono text-xs"
-                      style={{ color: 'var(--text-faint)' }}
-                    >
+                    <span className="w-20 font-mono text-xs text-text-faint">
                       --space-{step}
                     </span>
                     <div
-                      className="h-2.5 rounded-sm"
-                      style={{
-                        width: `var(--space-${step})`,
-                        background: 'var(--accent)',
-                      }}
+                      className={`h-2.5 rounded-sm bg-accent ${SPACE_WIDTH_CLASS[step]}`}
                     />
                   </div>
                 ))}
@@ -307,34 +335,19 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3
-                className="mb-4 text-sm"
-                style={{
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--text-muted)',
-                }}
-              >
+              <h3 className="mb-4 text-sm font-semibold text-text-muted">
                 Type
               </h3>
               <div className="flex flex-col">
                 {TYPE_TOKENS.map((step) => (
                   <div
                     key={step}
-                    className="flex items-baseline gap-4 border-b py-3 last:border-b-0"
-                    style={{ borderColor: 'var(--border)' }}
+                    className="flex items-baseline gap-4 border-b border-border py-3 last:border-b-0"
                   >
-                    <span
-                      className="w-20 flex-shrink-0 font-mono text-xs"
-                      style={{ color: 'var(--text-faint)' }}
-                    >
+                    <span className="w-20 flex-shrink-0 font-mono text-xs text-text-faint">
                       --text-{step}
                     </span>
-                    <span
-                      style={{
-                        fontSize: `var(--text-${step})`,
-                        lineHeight: 'var(--leading-body)',
-                      }}
-                    >
+                    <span className={`${TYPE_TOKEN_CLASS[step]} leading-body`}>
                       The quick brown fox
                     </span>
                   </div>
@@ -343,30 +356,16 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3
-                className="mb-4 text-sm"
-                style={{
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--text-muted)',
-                }}
-              >
+              <h3 className="mb-4 text-sm font-semibold text-text-muted">
                 Radius
               </h3>
               <div className="flex flex-wrap items-end gap-6">
                 {RADIUS_TOKENS.map((step) => (
                   <div key={step} className="flex flex-col items-center gap-2">
                     <div
-                      className="h-14 w-14 border"
-                      style={{
-                        borderRadius: `var(--radius-${step})`,
-                        background: 'var(--surface-2)',
-                        borderColor: 'var(--border-strong)',
-                      }}
+                      className={`h-14 w-14 border border-border-strong bg-surface-2 ${RADIUS_CLASS[step]}`}
                     />
-                    <span
-                      className="font-mono text-xs"
-                      style={{ color: 'var(--text-faint)' }}
-                    >
+                    <span className="font-mono text-xs text-text-faint">
                       --radius-{step}
                     </span>
                   </div>
@@ -393,6 +392,15 @@ export default function DesignSystemPage() {
                   <Button size="sm">Open Cloudflare DNS</Button>
                   <Button variant="primary" size="sm">
                     Recheck now
+                  </Button>
+                </Example>
+                <Example label="shape=pill">
+                  <Button shape="pill">Open Cloudflare DNS</Button>
+                  <Button variant="primary" shape="pill">
+                    Recheck now
+                  </Button>
+                  <Button variant="ghost" shape="pill">
+                    Load more
                   </Button>
                 </Example>
                 <Example label="copy / copied">
@@ -461,27 +469,19 @@ export default function DesignSystemPage() {
                 </Example>
                 <Example label="tone=accent">
                   <Callout tone="accent" className="max-w-xl">
-                    Your nameservers look like{' '}
-                    <strong style={{ color: 'var(--accent)' }}>
-                      Cloudflare
-                    </strong>{' '}
-                    — we can open the record form pre-filled.
+                    Your nameservers look like <strong>Cloudflare</strong> — we
+                    can open the record form pre-filled.
                   </Callout>
                 </Example>
                 <Example label="tone=neutral">
                   <Callout tone="neutral" className="max-w-xl">
-                    <strong style={{ color: 'var(--text)' }}>
-                      What likely happened:
-                    </strong>{' '}
-                    the value got truncated or edited when it was pasted.
+                    <strong>What likely happened:</strong> the value got
+                    truncated or edited when it was pasted.
                   </Callout>
                 </Example>
                 <Example label="emphasis=dashed">
                   <Callout emphasis="dashed" className="max-w-xl">
-                    <div
-                      className="mb-2 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
-                      style={{ color: 'var(--text-faint)' }}
-                    >
+                    <div className="mb-2 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
                       What&apos;s happening under the hood
                     </div>
                     <p>
@@ -500,65 +500,70 @@ export default function DesignSystemPage() {
                 <Example label="head + body + row composition">
                   <Card className="w-full max-w-xl">
                     <CardHead>
-                      <span
-                        className="text-[length:var(--text-base)]"
-                        style={{
-                          fontWeight: 'var(--font-weight-heading)',
-                          color: 'var(--text)',
-                        }}
-                      >
+                      <span className="text-[length:var(--text-base)] font-heading text-text">
                         Ownership record
                       </span>
                       <Badge tone="accent">TXT</Badge>
                     </CardHead>
-                    <CardBody>
-                      <div className="flex flex-col gap-0">
-                        <CardRow>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span
-                              className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
-                              style={{ color: 'var(--text-faint)' }}
-                            >
-                              Host
-                            </span>
-                            <span
-                              className="font-mono text-[length:var(--text-md)]"
-                              style={{ color: 'var(--text)' }}
-                            >
-                              _acmeapp-challenge.acme.co
-                            </span>
-                          </div>
-                        </CardRow>
-                        <CardRow>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span
-                              className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] uppercase"
-                              style={{ color: 'var(--text-faint)' }}
-                            >
-                              Value
-                            </span>
-                            <span
-                              className="font-mono text-[length:var(--text-md)]"
-                              style={{ color: 'var(--text)' }}
-                            >
-                              acmeapp-verify=8f2c9e1a4b7d3f60
-                            </span>
-                          </div>
-                        </CardRow>
+                    <CardRow>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
+                          Host
+                        </span>
+                        <span className="font-mono text-[length:var(--text-md)] text-text">
+                          _acmeapp-challenge.acme.co
+                        </span>
                       </div>
-                    </CardBody>
+                    </CardRow>
+                    <CardRow>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
+                          Value
+                        </span>
+                        <span className="font-mono text-[length:var(--text-md)] text-text">
+                          acmeapp-verify=8f2c9e1a4b7d3f60
+                        </span>
+                      </div>
+                    </CardRow>
                   </Card>
                 </Example>
                 <Example label="body only, no head">
                   <Card className="w-full max-w-xl">
                     <CardBody>
-                      <p style={{ color: 'var(--text-muted)' }}>
+                      <p className="text-text-muted">
                         A panel that only needs the surface, border, and padding
                         — no head or rows.
                       </p>
                     </CardBody>
                   </Card>
                 </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Icons</ComponentGroupLabel>
+              <p className="mb-4 text-xs text-text-faint">
+                lucide-react — used for the copy button, theme toggle, and
+                chevrons throughout the system.
+              </p>
+              <div className="flex flex-wrap gap-6">
+                {[
+                  { icon: Copy, label: 'Copy' },
+                  { icon: Check, label: 'Check' },
+                  { icon: ChevronDown, label: 'ChevronDown' },
+                  { icon: ChevronRight, label: 'ChevronRight' },
+                  { icon: Sun, label: 'Sun' },
+                  { icon: Moon, label: 'Moon' },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex flex-col items-center gap-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-text-muted">
+                      <Icon size={16} />
+                    </div>
+                    <span className="font-mono text-xs text-text-faint">
+                      {label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -634,10 +639,7 @@ export default function DesignSystemPage() {
 
             <div>
               <ComponentGroupLabel>Domain table</ComponentGroupLabel>
-              <p
-                className="mb-4 text-xs"
-                style={{ color: 'var(--text-faint)' }}
-              >
+              <p className="mb-4 text-xs text-text-faint">
                 Header hides and rows stack into cards below 760px wide — see
                 the mobile screenshot capture for the collapsed layout.
               </p>
@@ -662,7 +664,7 @@ export default function DesignSystemPage() {
                       statusLabel="Propagating"
                       name="pending-then-verified.test"
                       provider={
-                        <ProviderBadge style={{ color: 'var(--text-faint)' }}>
+                        <ProviderBadge className="text-text-faint">
                           Sandbox
                         </ProviderBadge>
                       }

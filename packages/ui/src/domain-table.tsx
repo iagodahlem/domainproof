@@ -1,6 +1,7 @@
 'use client'
 
 import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { Badge, type Tone } from './badge'
 import { cn } from './cn'
 
@@ -129,20 +130,11 @@ export function DomainTableRow({
       <span className="text-[length:var(--text-xs)] text-[color:var(--text-faint)] max-[760px]:hidden">
         {lastChecked}
       </span>
-      <svg
-        className="justify-self-end text-[color:var(--text-faint)] max-[760px]:hidden"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <ChevronRight
         aria-hidden="true"
-      >
-        <path d="M9 6l6 6-6 6" />
-      </svg>
+        size={16}
+        className="justify-self-end text-[color:var(--text-faint)] max-[760px]:hidden"
+      />
     </div>
   )
 }

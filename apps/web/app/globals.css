@@ -30,29 +30,28 @@
 
 /* ---------------------------------------------------------------------
  * DomainProof design tokens — PLACEHOLDER
- * Brand primary, radius scale, and type ramp below are stand-ins so the
- * shell has something coherent to render during the challenge build-out.
- * Swap these for the real values when the design pass lands later this
+ * Brand primary and radius scale below are stand-ins so the shell has
+ * something coherent to render during the challenge build-out. Swap
+ * these for the real values when the design pass lands later this
  * week — nothing in this block is final.
  * --------------------------------------------------------------------- */
 @theme {
   --color-dp-primary: oklch(0.205 0 0);
   --radius-dp: 0.625rem;
-  --font-dp-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* --font-sans, --color-border, --color-accent and --color-accent-foreground
-     are deduped out of this block — @domainproof/ui/theme.css already maps
-     them (identically, same var() indirection) from the token file. The old
-     --font-heading (font-family, just var(--font-sans) again — unused) is
-     dropped too; @domainproof/ui/theme.css now owns the `font-heading`
-     utility name for the token's font-weight instead. --font-mono stays
-     here on purpose: it binds to the Geist Mono variable this app loads,
-     not to the token's system-stack fallback. */
-  --font-mono: var(--font-geist-mono);
+  /* --font-sans, --font-mono, --color-border, --color-accent and
+     --color-accent-foreground are deduped out of this block —
+     @domainproof/ui/theme.css already maps them (identically, same var()
+     indirection) from the token file. --font-mono used to stay here,
+     bound to a loaded Geist Mono variable; the app now uses the token's
+     system-stack fallback directly, so it dedupes the same way --font-sans
+     already did. The old --font-heading (font-family, just var(--font-sans)
+     again — unused) is dropped too; @domainproof/ui/theme.css now owns the
+     `font-heading` utility name for the token's font-weight instead. */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

@@ -21,10 +21,15 @@ const buttonVariants = cva(
         default: 'px-[var(--space-4)] py-[var(--space-2)]',
         sm: 'px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)]',
       },
+      shape: {
+        default: '',
+        pill: 'rounded-[var(--radius-full)]',
+      },
     },
     defaultVariants: {
       variant: 'default',
       size: 'default',
+      shape: 'default',
     },
   },
 )
@@ -42,6 +47,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       className,
       variant,
       size,
+      shape,
       loading = false,
       disabled,
       type = 'button',
@@ -56,7 +62,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(buttonVariants({ variant, size, shape }), className)}
         {...props}
       >
         {loading ? <ButtonSpinner /> : null}

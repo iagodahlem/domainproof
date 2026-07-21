@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 
 type Theme = 'dark' | 'light'
 
@@ -29,8 +30,13 @@ export function ThemeToggle() {
       onClick={() =>
         setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
       }
-      className="focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors"
+      className="focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-2"
     >
+      {theme === 'dark' ? (
+        <Moon aria-hidden="true" size={14} />
+      ) : (
+        <Sun aria-hidden="true" size={14} />
+      )}
       {theme === 'dark' ? 'Dark theme' : 'Light theme'}
     </button>
   )
