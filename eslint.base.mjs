@@ -41,6 +41,22 @@ export default function baseConfig(
     ...tseslint.configs.recommended,
     eslintConfigPrettier,
     {
+      // Every TS/TSX file in the package, not just src/** — without this,
+      // typescript-eslint falls back to inferring tsconfigRootDir from the
+      // config files it has evaluated so far in the current process, which
+      // is ambiguous the moment more than one package's config has loaded
+      // (every package here touches tseslint.configs.recommended) and
+      // throws "multiple candidate TSConfigRootDirs". Root-level files like
+      // vitest.config.ts fall outside the src/** block below, so they need
+      // this too.
+      files: ['**/*.ts', '**/*.tsx'],
+      languageOptions: {
+        parserOptions: {
+          tsconfigRootDir: dirname,
+        },
+      },
+    },
+    {
       files: ['src/**/*.ts', 'src/**/*.tsx'],
       languageOptions: {
         parserOptions: {
