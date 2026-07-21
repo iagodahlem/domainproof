@@ -133,6 +133,7 @@ export interface AppDependencies {
    * `shared/middlewares/host-restriction.ts`.
    */
   frontendApiHost?: string
+  /**
    * Injected for tests; defaults to `env.WEB_ORIGIN`. See
    * `apis/dashboard/router.ts`'s CORS policy.
    */
