@@ -13,18 +13,3 @@ export interface Logger {
   error(obj: Record<string, unknown>, msg?: string): void
   isLevelEnabled(level: string): boolean
 }
-
-/**
- * Default for callers that don't have a real logger wired in (mirrors this
- * codebase's existing no-op-default convention for optional collaborators
- * — see `modules/accounts/service.ts`'s default `EventBus`). The
- * composition root (`app.ts`) always wires the real
- * `infra/logging/logger.ts` instance instead.
- */
-export const noopLogger: Logger = {
-  debug() {},
-  info() {},
-  warn() {},
-  error() {},
-  isLevelEnabled: () => false,
-}

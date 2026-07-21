@@ -2,7 +2,6 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { apiError } from '@shared/http-errors'
 import type { Logger } from '@shared/logger'
-import { noopLogger } from '@shared/logger'
 import { parseApiKey, type ApiKeyMode } from '@modules/keys/domain/parse'
 import type { KeysRepository } from '@modules/keys/repository'
 
@@ -46,7 +45,7 @@ function invalidApiKey() {
  */
 export function createApiKeyAuthMiddleware(
   repository: KeysRepository,
-  logger: Logger = noopLogger,
+  logger: Logger,
 ): MiddlewareHandler<{ Variables: ApiKeyAuthVariables }> {
   return async (c, next) => {
     const header = c.req.header('Authorization')

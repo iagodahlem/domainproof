@@ -1,18 +1,15 @@
 import type { MiddlewareHandler } from 'hono'
 import type { Logger } from '@shared/logger'
-import { noopLogger } from '@shared/logger'
 
 export interface RequestLoggerConfig {
   /** Clock source, injected for deterministic tests. Default `Date.now`. */
   now?: () => number
   /**
-   * The logger this middleware writes to. Defaults to a no-op — same
-   * convention as this codebase's other optional collaborators (e.g.
-   * `modules/accounts/service.ts`'s default `EventBus`) — since a real
-   * logger is always wired explicitly from `app.ts` (see
-   * `infra/logging/logger.ts`).
+   * The logger this middleware writes to — always wired explicitly from
+   * `app.ts` (see `infra/logging/logger.ts`); tests use `createFakeLogger`
+   * from `@shared/testing/fake-logger`.
    */
-  logger?: Logger
+  logger: Logger
 }
 
 const MAX_BODY_BYTES = 2048
@@ -122,10 +119,10 @@ export function headersToPlainObject(headers: Headers): Record<string, string> {
  * every body.
  */
 export function createRequestLoggerMiddleware(
-  config: RequestLoggerConfig = {},
+  config: RequestLoggerConfig,
 ): MiddlewareHandler {
   const now = config.now ?? Date.now
-  const log = config.logger ?? noopLogger
+  const log = config.logger
 
   return async (c, next) => {
     const start = now()

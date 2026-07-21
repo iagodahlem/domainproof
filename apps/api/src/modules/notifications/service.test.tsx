@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Logger } from '@shared/logger'
+import { createFakeLogger } from '@shared/testing/fake-logger'
 import type { EmailMessage, EmailSender } from './ports'
 import { createNotificationsService } from './service'
 
@@ -14,27 +14,13 @@ function fakeEmailSender(): EmailSender & { sent: EmailMessage[] } {
   }
 }
 
-/** A fake `Logger` implementing the port in memory, recording every info call for assertions. */
-function fakeLogger(): Logger & { infos: Record<string, unknown>[] } {
-  const infos: Record<string, unknown>[] = []
-  return {
-    infos,
-    debug() {},
-    info(obj) {
-      infos.push(obj)
-    },
-    warn() {},
-    error() {},
-    isLevelEnabled: () => true,
-  }
-}
-
 describe('onAccountCreated', () => {
   it('sends a welcome email to the account email', async () => {
     const emailSender = fakeEmailSender()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger: createFakeLogger(),
     })
 
     await service.onAccountCreated({
@@ -54,7 +40,7 @@ describe('onAccountCreated', () => {
 
   it('logs and skips when the account has no email', async () => {
     const emailSender = fakeEmailSender()
-    const logger = fakeLogger()
+    const logger = createFakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
@@ -68,8 +54,9 @@ describe('onAccountCreated', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(logger.infos).toHaveLength(1)
-    expect(logger.infos[0]).toMatchObject({ accountId: 'account_1' })
+    const infoCalls = logger.calls.filter((call) => call.level === 'info')
+    expect(infoCalls).toHaveLength(1)
+    expect(infoCalls[0]?.fields).toMatchObject({ accountId: 'account_1' })
   })
 })
 
@@ -80,6 +67,7 @@ describe('onDomainVerified', () => {
       emailSender,
       getAccountEmailByProjectId: async (projectId) =>
         projectId === 'project_1' ? 'builder@example.com' : undefined,
+      logger: createFakeLogger(),
     })
 
     await service.onDomainVerified({
@@ -101,6 +89,7 @@ describe('onDomainVerified', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainVerified({
@@ -115,7 +104,7 @@ describe('onDomainVerified', () => {
 
   it('logs and skips when the project has no account email on file', async () => {
     const emailSender = fakeEmailSender()
-    const logger = fakeLogger()
+    const logger = createFakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
@@ -130,8 +119,9 @@ describe('onDomainVerified', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(logger.infos).toHaveLength(1)
-    expect(logger.infos[0]).toMatchObject({ projectId: 'project_1' })
+    const infoCalls = logger.calls.filter((call) => call.level === 'info')
+    expect(infoCalls).toHaveLength(1)
+    expect(infoCalls[0]?.fields).toMatchObject({ projectId: 'project_1' })
   })
 })
 
@@ -141,6 +131,7 @@ describe('onDomainTemporarilyFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainTemporarilyFailed({
@@ -164,6 +155,7 @@ describe('onDomainFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainFailed({
@@ -184,6 +176,7 @@ describe('onDomainFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainFailed({

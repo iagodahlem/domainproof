@@ -1,37 +1,18 @@
 import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
 import type { Logger } from '@shared/logger'
+import { createFakeLogger, type FakeLogger } from '@shared/testing/fake-logger'
 import {
   createRequestLoggerMiddleware,
   headersToPlainObject,
   sanitizeBodyForLogging,
 } from './request-logger'
 
-interface LoggedCall {
-  level: 'debug' | 'info' | 'warn' | 'error'
-  obj: Record<string, unknown>
-  msg?: string
-}
-
-/** A fake `Logger` implementing the port in memory, recording every call for assertions — no real pino instance needed to test this middleware's own logic. */
-function fakeLogger(debugEnabled: boolean): Logger & { calls: LoggedCall[] } {
-  const calls: LoggedCall[] = []
-  return {
-    calls,
-    debug(obj, msg) {
-      calls.push({ level: 'debug', obj, msg })
-    },
-    info(obj, msg) {
-      calls.push({ level: 'info', obj, msg })
-    },
-    warn(obj, msg) {
-      calls.push({ level: 'warn', obj, msg })
-    },
-    error(obj, msg) {
-      calls.push({ level: 'error', obj, msg })
-    },
+/** A fake `Logger` whose `isLevelEnabled('debug')` reflects `debugEnabled` — this middleware's own debug-gating is exactly what several tests below exercise. */
+function fakeLogger(debugEnabled: boolean): FakeLogger {
+  return createFakeLogger({
     isLevelEnabled: (level) => (level === 'debug' ? debugEnabled : true),
-  }
+  })
 }
 
 function buildApp(logger: Logger) {
@@ -63,8 +44,8 @@ describe('createRequestLoggerMiddleware', () => {
     expect(logger.calls).toEqual([
       {
         level: 'info',
-        obj: { method: 'GET', path: '/ping', status: 200, duration_ms: 0 },
-        msg: 'request completed',
+        fields: { method: 'GET', path: '/ping', status: 200, duration_ms: 0 },
+        message: 'request completed',
       },
     ])
   })
@@ -79,8 +60,8 @@ describe('createRequestLoggerMiddleware', () => {
     expect(logger.calls).toEqual([
       {
         level: 'info',
-        obj: { method: 'GET', path: '/boom', status: 500, duration_ms: 0 },
-        msg: 'request completed',
+        fields: { method: 'GET', path: '/boom', status: 500, duration_ms: 0 },
+        message: 'request completed',
       },
     ])
   })
@@ -113,7 +94,7 @@ describe('createRequestLoggerMiddleware', () => {
 
     const debugCall = logger.calls.find((c) => c.level === 'debug')
     expect(debugCall).toBeDefined()
-    const { req, res } = debugCall!.obj as {
+    const { req, res } = debugCall!.fields as {
       req: { headers: Record<string, string>; body: unknown }
       res: { status: number; body: unknown }
     }

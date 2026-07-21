@@ -228,7 +228,12 @@ explicitly rather than papered over:
   `api-key.test.ts`, `session-auth.test.ts` — uses a fake implementing the
   relevant repository/port interface instead, and modules' tests are
   restricted from `@infra/db` the same as production code (see
-  Enforcement).
+  Enforcement). `Logger` is required everywhere it's injected (no
+  `noopLogger` default survives past the composition root) — tests use
+  `createFakeLogger` from `apps/api/src/shared/testing/fake-logger.ts`,
+  the one shared fake this repo keeps outside a module's own test file,
+  since `Logger` is a `shared/`-owned port every module and plane
+  constructs against, not a module-specific one.
 
 ## Where does X go?
 
@@ -246,7 +251,8 @@ explicitly rather than papered over:
 | New tenant/account/project policy (quotas, plan limits, slug rules)                                         | `apps/api/src/modules/projects/` (or a new module, if it doesn't fit an existing one)                                                                                                                                                                                                             |
 | New cross-module, cross-plane helper (error shape, pagination, result types)                                | `apps/api/src/shared/`                                                                                                                                                                                                                                                                            |
 | A test double for a core port                                                                               | `packages/core/src/testing/` — export it from `testing/index.ts` so it's available via `@domainproof/core/testing`                                                                                                                                                                                |
-| A test double for a module's repository or port                                                             | A fake object implementing the interface, defined right in the test file that needs it (see `keys/service.test.ts`, `accounts/service.test.ts`) — no shared testing/ convention for `apps/api` yet, unlike core.                                                                                  |
+| A test double for a module's repository or port                                                             | A fake object implementing the interface, defined right in the test file that needs it (see `keys/service.test.ts`, `accounts/service.test.ts`) — module-specific fakes have no shared testing/ home.                                                                                             |
+| A test double for a shared/ port used across modules and planes (e.g. `Logger`)                             | `apps/api/src/shared/testing/` — export it from `testing/index.ts`, same shape as core's convention (see `createFakeLogger` in `shared/testing/fake-logger.ts`)                                                                                                                                   |
 
 ## Tooling
 

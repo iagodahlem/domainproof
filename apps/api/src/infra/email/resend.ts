@@ -1,7 +1,6 @@
 import { Resend } from 'resend'
 import type { EmailSender } from '@modules/notifications/ports'
 import type { Logger } from '@shared/logger'
-import { noopLogger } from '@shared/logger'
 
 export interface ResendEmailSenderConfig {
   apiKey: string
@@ -23,7 +22,7 @@ export interface ResendEmailSenderConfig {
  */
 export function createResendEmailSender(
   config: ResendEmailSenderConfig,
-  logger: Logger = noopLogger,
+  logger: Logger,
 ): EmailSender {
   const client = new Resend(config.apiKey)
 

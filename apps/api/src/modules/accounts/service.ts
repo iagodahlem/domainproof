@@ -1,6 +1,5 @@
 import type { EventBus } from '@shared/events'
 import type { Logger } from '@shared/logger'
-import { noopLogger } from '@shared/logger'
 import type { AccountEmailResolver } from './ports'
 import type { AccountsRepository } from './repository'
 
@@ -56,7 +55,7 @@ export function createAccountsService(
   emailResolver: AccountEmailResolver = {
     resolveEmail: async () => undefined,
   },
-  logger: Logger = noopLogger,
+  logger: Logger,
 ): AccountsService {
   return {
     async ensureAccount(clerkUserId, emailHint) {
