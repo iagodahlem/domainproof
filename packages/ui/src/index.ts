@@ -18,6 +18,7 @@ export {
   type CalloutTone,
   type CalloutEmphasis,
 } from './callout'
+export { ConfirmBar, type ConfirmBarProps } from './confirm-bar'
 export { Card, CardHead, CardBody, CardRow } from './card'
 export { Table, TableHeader, TableBody, TableRow, TableCell } from './table'
 export { RecordField, type RecordFieldProps } from './record-field'

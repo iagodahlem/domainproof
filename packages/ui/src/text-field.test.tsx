@@ -41,4 +41,14 @@ describe('TextField', () => {
       'my-custom-class',
     )
   })
+
+  it('renders a trailing action beside the input', () => {
+    render(
+      <TextField
+        label="Project name"
+        trailing={<button type="button">Save</button>}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+  })
 })
