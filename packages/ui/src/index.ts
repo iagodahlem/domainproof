@@ -63,4 +63,7 @@ export {
   type VerificationLogEntry,
   VerificationLogStatus,
 } from './verification-log'
+export { TextField, type TextFieldProps } from './text-field'
+export { Select, type SelectProps, type SelectOption } from './select'
+export { Checkbox, type CheckboxProps } from './checkbox'
 export { cn } from './cn'
