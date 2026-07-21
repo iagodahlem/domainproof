@@ -45,13 +45,18 @@ describe('createHostRestrictionMiddleware', () => {
     expect(frontend.status).toBe(200)
   })
 
-  it('serves only the public plane on the configured public host', async () => {
+  it('serves both public planes on the configured public host', async () => {
     const app = buildApp({ publicApiHost: 'api.domainproof.dev' })
 
     const v1 = await app.request('/v1/domains', {
       headers: { host: 'api.domainproof.dev' },
     })
     expect(v1.status).toBe(200)
+
+    const frontend = await app.request('/frontend/verifications/token', {
+      headers: { host: 'api.domainproof.dev' },
+    })
+    expect(frontend.status).toBe(200)
 
     const dashboard = await app.request('/dashboard/keys', {
       headers: { host: 'api.domainproof.dev' },
@@ -73,8 +78,15 @@ describe('createHostRestrictionMiddleware', () => {
       headers: { host: 'dashboard.api.domainproof.dev' },
     })
     expect(v1.status).toBe(404)
-    const body = (await v1.json()) as { error: { code: string } }
-    expect(body.error.code).toBe('not_found')
+    const v1Body = (await v1.json()) as { error: { code: string } }
+    expect(v1Body.error.code).toBe('not_found')
+
+    const frontend = await app.request('/frontend/verifications/token', {
+      headers: { host: 'dashboard.api.domainproof.dev' },
+    })
+    expect(frontend.status).toBe(404)
+    const frontendBody = (await frontend.json()) as { error: { code: string } }
+    expect(frontendBody.error.code).toBe('not_found')
   })
 
   it('serves only the frontend plane on the configured frontend host', async () => {
@@ -91,6 +103,28 @@ describe('createHostRestrictionMiddleware', () => {
     expect(v1.status).toBe(404)
     const body = (await v1.json()) as { error: { code: string } }
     expect(body.error.code).toBe('not_found')
+  })
+
+  it('serves /frontend on the public host in addition to the frontend host, when both are configured', async () => {
+    const app = buildApp({
+      publicApiHost: 'api.domainproof.dev',
+      frontendApiHost: 'verify.domainproof.dev',
+    })
+
+    const onPublicHost = await app.request('/frontend/verifications/token', {
+      headers: { host: 'api.domainproof.dev' },
+    })
+    expect(onPublicHost.status).toBe(200)
+
+    const onFrontendHost = await app.request('/frontend/verifications/token', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
+    expect(onFrontendHost.status).toBe(200)
+
+    const v1OnFrontendHost = await app.request('/v1/domains', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
+    expect(v1OnFrontendHost.status).toBe(404)
   })
 
   it('serves every plane on an unmatched host even when all are configured', async () => {

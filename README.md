@@ -22,14 +22,13 @@ rules.
 
 ## Environments
 
-|                            | URL                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| Web (production)           | <https://domainproof.dev>                                                                     |
-| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
-| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
-| Frontend API (production)  | `verify.domainproof.dev` — serves `/frontend/*` only; pending DNS — being provisioned         |
-| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
-| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
+|                            | URL                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Web (production)           | <https://domainproof.dev>                                                                                                      |
+| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` and `/frontend/*`; a dedicated frontend host is deferred, see [API](#api) below |
+| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned                                  |
+| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                                                    |
+| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                                                    |
 
 |          | Local (`pnpm dev`)      | Local (`docker compose up`)   |
 | -------- | ----------------------- | ----------------------------- |
@@ -52,18 +51,18 @@ cp apps/api/.env.example apps/api/.env
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
 nothing breaks if the file doesn't exist):
 
-| Var                                                          | Required? | For                                                                                                                                                         |
-| ------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER`                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
-| `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST` | No        | Production-only host restriction, one per plane (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.  |
-| `PORT`                                                       | No        | Defaults to `3001`.                                                                                                                                         |
-| `RESEND_API_KEY`                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
-| `EMAIL_FROM`                                                 | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
-| `WEBHOOK_MAX_ATTEMPTS`                                       | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
-| `RECHECK_ENABLED`                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
-| `RECHECK_INTERVAL_MS`                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
-| `RECHECK_BATCH_SIZE`                                         | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
+| Var                                                          | Required? | For                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                                                                                                                                                        |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER`                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot.                                                                                                                          |
+| `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST` | No        | Production-only host restriction (see [API](#api) below). `PUBLIC_API_HOST` serves both `/v1/*` and `/frontend/*`; `FRONTEND_API_HOST`, if set, additionally serves `/frontend/*` on its own host. Unset means no restriction — local dev and tests reach every plane on one origin. |
+| `PORT`                                                       | No        | Defaults to `3001`.                                                                                                                                                                                                                                                                  |
+| `RESEND_API_KEY`                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.                                                                                                                            |
+| `EMAIL_FROM`                                                 | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                                                                                                                                           |
+| `WEBHOOK_MAX_ATTEMPTS`                                       | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                                                                                                                                                |
+| `RECHECK_ENABLED`                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                                                                                                                                              |
+| `RECHECK_INTERVAL_MS`                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                                                                                                                                               |
+| `RECHECK_BATCH_SIZE`                                         | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                                                                                                                                                   |
 
 ```bash
 docker compose up -d db
@@ -90,10 +89,12 @@ Base URL: `api.domainproof.dev`. Every non-2xx response is
 The API has three authentication planes, split by path prefix (see
 [ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
 plane is also confined to its own host — `api.domainproof.dev` serves
-`/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
-only, `verify.domainproof.dev` serves `/frontend/*` only — but locally
-and in the Railway service domain all three stay reachable on one origin,
-so the split below is what matters for local development:
+both `/v1/*` and `/frontend/*` (the api.stripe.com model: the infra plan
+caps custom domains per service, so a dedicated frontend host is
+deferred), and `dashboard.api.domainproof.dev` serves `/dashboard/*`
+only — but locally and in the Railway service domain all three stay
+reachable on one origin, so the split below is what matters for local
+development:
 
 - **Dashboard API** (`/dashboard/*`) — authenticated by the builder's login
   session (`Authorization: Bearer <session token>`). This is what the

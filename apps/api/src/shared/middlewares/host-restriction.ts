@@ -7,11 +7,20 @@ import { apiError } from '@shared/http-errors'
  * See "Route planes" in ARCHITECTURE.md.
  */
 export interface HostRestrictionConfig {
-  /** e.g. `api.domainproof.dev`. Restricts that host to `/v1/*`. */
+  /**
+   * e.g. `api.domainproof.dev`. Restricts that host to `/v1/*` and
+   * `/frontend/*` — the public host serves both public planes (the
+   * api.stripe.com model), since the infra plan caps custom domains per
+   * service and a dedicated frontend host is deferred.
+   */
   publicApiHost?: string
   /** e.g. `dashboard.api.domainproof.dev`. Restricts that host to `/dashboard/*`. */
   dashboardApiHost?: string
-  /** e.g. `verify.domainproof.dev`. Restricts that host to `/frontend/*`. */
+  /**
+   * e.g. `verify.domainproof.dev`. Restricts that host to `/frontend/*`.
+   * Additive to `publicApiHost`, not a replacement for it — the public
+   * host keeps serving `/frontend/*` regardless of whether this is set.
+   */
   frontendApiHost?: string
 }
 
@@ -37,7 +46,8 @@ const HEALTH_CHECK_PATH = '/health'
  *
  * - `/health` (exact path) always passes through, on every host — see
  *   the carve-out note below.
- * - Host matches `publicApiHost` and the path isn't under `/v1` -> 404.
+ * - Host matches `publicApiHost` and the path isn't under `/v1` or
+ *   `/frontend` -> 404.
  * - Host matches `dashboardApiHost` and the path isn't under `/dashboard` -> 404.
  * - Host matches `frontendApiHost` and the path isn't under `/frontend` -> 404.
  * - Everything else — an unconfigured plane, an unmatched host
@@ -80,7 +90,9 @@ export function createHostRestrictionMiddleware(
     const host = stripPort(c.req.header('host'))
 
     const wrongPlane =
-      (host === publicApiHost && !path.startsWith(PUBLIC_PLANE_PREFIX)) ||
+      (host === publicApiHost &&
+        !path.startsWith(PUBLIC_PLANE_PREFIX) &&
+        !path.startsWith(FRONTEND_PLANE_PREFIX)) ||
       (host === dashboardApiHost && !path.startsWith(DASHBOARD_PLANE_PREFIX)) ||
       (host === frontendApiHost && !path.startsWith(FRONTEND_PLANE_PREFIX))
 

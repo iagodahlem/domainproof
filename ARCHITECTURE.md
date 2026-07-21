@@ -75,12 +75,18 @@ and every new route picks one:
 All three planes are path-based on one origin, and that origin is also
 host-restricted in production:
 
-| Host                                                                          | Serves              |
-| ----------------------------------------------------------------------------- | ------------------- |
-| `api.domainproof.dev`                                                         | `/v1/*` only        |
-| `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only |
-| `verify.domainproof.dev`                                                      | `/frontend/*` only  |
-| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | every plane         |
+| Host                                                                          | Serves                                          |
+| ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| `api.domainproof.dev`                                                         | `/v1/*` and `/frontend/*` (both public planes)  |
+| `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only                             |
+| `verify.domainproof.dev`, if ever provisioned (`FRONTEND_API_HOST`)           | `/frontend/*` only, additive to the public host |
+| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | every plane                                     |
+
+The public host serving both `/v1/*` and `/frontend/*` (the api.stripe.com
+model) is a deliberate consequence of the infra plan capping custom domains
+per service — a dedicated frontend host is deferred, not planned as a
+fallback. If `FRONTEND_API_HOST` is ever set, that host serves `/frontend/*`
+too, but the public host keeps serving it regardless.
 
 This is enforced by `shared/middlewares/host-restriction.ts`, applied once
 at the root of `app.ts` — ahead of every plane router, since it decides
@@ -98,12 +104,13 @@ rather than through Railway's internal healthcheck.
 
 **A new plane hostname is created only when a real auth/CORS boundary
 appears, never speculatively.** `dashboard.api.domainproof.dev` earned one
-because the dashboard plane needed to be unreachable from hosts serving
-the public API — a real boundary — and `verify.domainproof.dev` earned one
-for the same reason: the Frontend API is reachable with no session and no
-api key at all, so it needs to be unreachable from the hosts that serve
-the other two authenticated planes, not because splitting hosts looked
-tidy. The path-based split (`/v1/*` vs `/dashboard/*` vs `/frontend/*`)
+because the dashboard plane — authenticated by the builder's own login
+session — needed to be unreachable from hosts serving the two planes that
+carry no session, a real boundary. The Frontend API doesn't get that
+treatment: it's unauthenticated by session or api key either way, same as
+the public API from the outside, so it shares the public host rather than
+earning a dedicated one — splitting it off would be tidiness, not a
+boundary. The path-based split (`/v1/*` vs `/dashboard/*` vs `/frontend/*`)
 remains the source of truth for which plane a route belongs to; host
 restriction is an additional production-only constraint layered on top,
 not a replacement for it.
