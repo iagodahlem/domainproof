@@ -106,6 +106,9 @@ function fakeDomainsService(
     async regenerateChallenge() {
       return { ok: false, error: 'not_found' }
     },
+    async regenerateProjectChallenge() {
+      return { ok: false, error: 'not_found' }
+    },
     async recheckDueDomains() {
       return { processed: 0, errors: [] }
     },
