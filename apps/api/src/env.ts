@@ -50,6 +50,20 @@ const envSchema = z.object({
   // marked `failed` for good — see `modules/webhooks/service.ts`'s
   // `DEFAULT_MAX_ATTEMPTS` for the default this overrides.
   WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
+  // Optional, defaults to enabled. Set to "false" to disable the
+  // background recheck scheduler (workers/) — e.g. for a
+  // short-lived test/dev db that shouldn't have a timer ticking against
+  // it after the process it was created for exits.
+  RECHECK_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .default('true')
+    .transform((value) => value === 'true'),
+  // Optional. How often the recheck scheduler ticks, and how many domains
+  // each of a tick's two batches (recheck, grace-window expiry) processes
+  // at most — see `workers/recheck-scheduler.ts`.
+  RECHECK_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  RECHECK_BATCH_SIZE: z.coerce.number().int().positive().default(10),
 })
 
 export type Env = z.infer<typeof envSchema>

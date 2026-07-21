@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { createDb } from '@infra/db/client'
 import { runMigrations } from '@infra/db/migrate'
-import { logger } from '@infra/logging/logger'
-import { createApp } from './app'
+import { createChildLogger, logger } from '@infra/logging/logger'
+import { createRecheckScheduler } from '@workers/recheck-scheduler'
+import { createApp, createServices } from './app'
 import { env } from './env'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -25,14 +26,47 @@ try {
   process.exit(1)
 }
 
-const app = createApp({ db })
+// Built once (see `app.ts`'s `createServices` doc comment) so the HTTP app
+// and the background recheck scheduler below hand off the exact same
+// `domainsService` instance, rather than each wiring an independent copy.
+const services = createServices({ db })
+const app = createApp({ db }, services)
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info({ port: info.port }, 'API listening')
 })
 
+// Disableable via RECHECK_ENABLED — off for most test/dev runs so a
+// background timer doesn't tick against a throwaway or short-lived db.
+const scheduler = env.RECHECK_ENABLED
+  ? createRecheckScheduler({
+      domainsService: services.domainsService,
+      intervalMs: env.RECHECK_INTERVAL_MS,
+      batchSize: env.RECHECK_BATCH_SIZE,
+      logger: createChildLogger({ module: 'recheck-scheduler' }),
+    })
+  : undefined
+
+if (scheduler) {
+  scheduler.start()
+  logger.info(
+    {
+      intervalMs: env.RECHECK_INTERVAL_MS,
+      batchSize: env.RECHECK_BATCH_SIZE,
+    },
+    'Recheck scheduler started',
+  )
+} else {
+  logger.info(
+    {},
+    'RECHECK_ENABLED=false — background recheck scheduler disabled',
+  )
+}
+
 function shutdown(signal: string) {
   logger.info({ signal }, 'Received shutdown signal')
+
+  scheduler?.stop()
 
   server.close((err) => {
     if (err) {

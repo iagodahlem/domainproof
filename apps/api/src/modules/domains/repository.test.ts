@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
-import { accounts, challenges, projects } from '@infra/db/schema'
+import { accounts, challenges, domains, projects } from '@infra/db/schema'
 import { createDomainsRepository } from './repository'
 
 const DATABASE_URL =
@@ -44,6 +44,7 @@ function claimValues(
     mode: overrides.mode ?? ('live' as const),
     domain: overrides.domain ?? `example-${randomUUID()}.test`,
     status: 'pending' as const,
+    nextCheckAt: new Date(Date.now() + 60_000),
     challenge: {
       method: 'dns_txt' as const,
       token: `token-${randomUUID()}`,
@@ -51,6 +52,32 @@ function claimValues(
       recordValue: 'test-verify=abc123',
       expiresAt: new Date(Date.now() + 60_000),
     },
+  }
+}
+
+function attemptValues(
+  domainId: string,
+  overrides: Partial<{
+    nextStatus: 'pending' | 'verified' | 'temporarily_failed' | 'failed'
+    verifiedAt: Date
+    nextCheckAt: Date | null
+    checkAttempts: number
+    graceExpiresAt: Date | null
+  }> = {},
+) {
+  return {
+    domainId,
+    nextStatus: overrides.nextStatus ?? ('pending' as const),
+    checkedAt: new Date(),
+    nextCheckAt:
+      overrides.nextCheckAt === undefined
+        ? new Date(Date.now() + 60_000)
+        : overrides.nextCheckAt,
+    checkAttempts: overrides.checkAttempts ?? 0,
+    ...(overrides.verifiedAt ? { verifiedAt: overrides.verifiedAt } : {}),
+    ...(overrides.graceExpiresAt !== undefined
+      ? { graceExpiresAt: overrides.graceExpiresAt }
+      : {}),
   }
 }
 
@@ -344,11 +371,9 @@ describe('recordVerificationAttempt', () => {
     if (!created) throw new Error('setup failed')
 
     const verifiedAt = new Date()
-    const updated = await repository.recordVerificationAttempt({
-      domainId: created.domain.id,
-      nextStatus: 'verified',
-      verifiedAt,
-    })
+    const updated = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, { nextStatus: 'verified', verifiedAt }),
+    )
 
     expect(updated.status).toBe('verified')
     expect(updated.verifiedAt?.getTime()).toBe(verifiedAt.getTime())
@@ -360,10 +385,9 @@ describe('recordVerificationAttempt', () => {
     if (!created) throw new Error('setup failed')
     expect(created.domain.verifiedAt).toBeNull()
 
-    const updated = await repository.recordVerificationAttempt({
-      domainId: created.domain.id,
-      nextStatus: 'pending',
-    })
+    const updated = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, { nextStatus: 'pending' }),
+    )
 
     expect(updated.status).toBe('pending')
     expect(updated.verifiedAt).toBeNull()
@@ -376,10 +400,9 @@ describe('recordVerificationAttempt', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10))
 
-    const updated = await repository.recordVerificationAttempt({
-      domainId: created.domain.id,
-      nextStatus: 'pending',
-    })
+    const updated = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, { nextStatus: 'pending' }),
+    )
 
     expect(updated.updatedAt.getTime()).toBeGreaterThan(
       created.domain.updatedAt.getTime(),
@@ -388,10 +411,182 @@ describe('recordVerificationAttempt', () => {
 
   it('throws when the domain id does not exist', async () => {
     await expect(
-      repository.recordVerificationAttempt({
-        domainId: randomUUID(),
-        nextStatus: 'pending',
-      }),
+      repository.recordVerificationAttempt(
+        attemptValues(randomUUID(), { nextStatus: 'pending' }),
+      ),
     ).rejects.toThrow(/No domain found/)
+  })
+
+  it('persists lastCheckedAt, nextCheckAt, and checkAttempts', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+    expect(created.domain.lastCheckedAt).toBeNull()
+
+    const checkedAt = new Date()
+    const nextCheckAt = new Date(checkedAt.getTime() + 5 * 60_000)
+    const updated = await repository.recordVerificationAttempt({
+      domainId: created.domain.id,
+      nextStatus: 'pending',
+      checkedAt,
+      nextCheckAt,
+      checkAttempts: 1,
+    })
+
+    expect(updated.lastCheckedAt?.getTime()).toBe(checkedAt.getTime())
+    expect(updated.nextCheckAt?.getTime()).toBe(nextCheckAt.getTime())
+    expect(updated.checkAttempts).toBe(1)
+  })
+
+  it('clears nextCheckAt when set to null (a failed domain has no more automatic checks)', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const updated = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, {
+        nextStatus: 'failed',
+        nextCheckAt: null,
+      }),
+    )
+
+    expect(updated.status).toBe('failed')
+    expect(updated.nextCheckAt).toBeNull()
+  })
+
+  it('sets graceExpiresAt when provided, and leaves it untouched when omitted', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const graceExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000)
+    const opened = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, {
+        nextStatus: 'temporarily_failed',
+        graceExpiresAt,
+      }),
+    )
+    expect(opened.graceExpiresAt?.getTime()).toBe(graceExpiresAt.getTime())
+
+    const untouched = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, { nextStatus: 'temporarily_failed' }),
+    )
+    expect(untouched.graceExpiresAt?.getTime()).toBe(graceExpiresAt.getTime())
+  })
+
+  it('clears graceExpiresAt when explicitly set to null', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, {
+        nextStatus: 'temporarily_failed',
+        graceExpiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
+      }),
+    )
+
+    const recovered = await repository.recordVerificationAttempt(
+      attemptValues(created.domain.id, {
+        nextStatus: 'verified',
+        graceExpiresAt: null,
+      }),
+    )
+    expect(recovered.graceExpiresAt).toBeNull()
+  })
+})
+
+describe('findDueForRecheck', () => {
+  it('returns domains whose nextCheckAt has elapsed, oldest first', async () => {
+    const projectId = await createTestProject()
+    const now = new Date()
+
+    const due = await repository.claim(claimValues(projectId))
+    if (!due) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({ nextCheckAt: new Date(now.getTime() - 60_000) })
+      .where(eq(domains.id, due.domain.id))
+
+    const notYetDue = await repository.claim(claimValues(projectId))
+    if (!notYetDue) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({ nextCheckAt: new Date(now.getTime() + 60_000) })
+      .where(eq(domains.id, notYetDue.domain.id))
+
+    const noSchedule = await repository.claim(claimValues(projectId))
+    if (!noSchedule) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({ nextCheckAt: null })
+      .where(eq(domains.id, noSchedule.domain.id))
+
+    const result = await repository.findDueForRecheck(now, 10)
+    const ids = result.map((row) => row.id)
+
+    expect(ids).toContain(due.domain.id)
+    expect(ids).not.toContain(notYetDue.domain.id)
+    expect(ids).not.toContain(noSchedule.domain.id)
+  })
+
+  it('caps results at limit', async () => {
+    const projectId = await createTestProject()
+    const now = new Date()
+
+    for (let i = 0; i < 3; i++) {
+      const created = await repository.claim(claimValues(projectId))
+      if (!created) throw new Error('setup failed')
+      await db
+        .update(domains)
+        .set({ nextCheckAt: new Date(now.getTime() - 60_000) })
+        .where(eq(domains.id, created.domain.id))
+    }
+
+    const result = await repository.findDueForRecheck(now, 2)
+    expect(result).toHaveLength(2)
+  })
+})
+
+describe('findOverdueGraceWindows', () => {
+  it('returns only temporarily_failed domains past their grace_expires_at', async () => {
+    const projectId = await createTestProject()
+    const now = new Date()
+
+    const expired = await repository.claim(claimValues(projectId))
+    if (!expired) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({
+        status: 'temporarily_failed',
+        graceExpiresAt: new Date(now.getTime() - 60_000),
+      })
+      .where(eq(domains.id, expired.domain.id))
+
+    const stillInGrace = await repository.claim(claimValues(projectId))
+    if (!stillInGrace) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({
+        status: 'temporarily_failed',
+        graceExpiresAt: new Date(now.getTime() + 60_000),
+      })
+      .where(eq(domains.id, stillInGrace.domain.id))
+
+    const pendingPastSameTimestamp = await repository.claim(
+      claimValues(projectId),
+    )
+    if (!pendingPastSameTimestamp) throw new Error('setup failed')
+    await db
+      .update(domains)
+      .set({ graceExpiresAt: new Date(now.getTime() - 60_000) })
+      .where(eq(domains.id, pendingPastSameTimestamp.domain.id))
+
+    const result = await repository.findOverdueGraceWindows(now, 10)
+    const ids = result.map((row) => row.id)
+
+    expect(ids).toContain(expired.domain.id)
+    expect(ids).not.toContain(stillInGrace.domain.id)
+    expect(ids).not.toContain(pendingPastSameTimestamp.domain.id)
   })
 })

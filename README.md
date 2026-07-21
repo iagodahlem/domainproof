@@ -59,6 +59,9 @@ nothing breaks if the file doesn't exist):
 | `RESEND_API_KEY`                 | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
 | `EMAIL_FROM`                     | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
 | `WEBHOOK_MAX_ATTEMPTS`           | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
+| `RECHECK_ENABLED`                | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
+| `RECHECK_INTERVAL_MS`            | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
+| `RECHECK_BATCH_SIZE`             | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
 
 ```bash
 docker compose up -d db
@@ -158,6 +161,16 @@ doesn't match — the response also carries `expected`/`detected`),
 A domain's `verifiedAt` is "last confirmed good", not "first verified" — it
 updates on every passing check (including a no-op recheck of an
 already-verified domain), not just the first one.
+
+Calling `POST /v1/domains/:id/verify` is optional — a background scheduler
+(`apps/api/src/workers/`) re-checks every domain on its own, so
+polling isn't required to eventually reflect a fixed record. It runs the
+exact same check/transition/publish path as the endpoint above, on a
+per-status cadence: a `pending` domain backs off 1m, 5m, 15m, 1h, then
+every 6h; a `verified` domain gets a slow 24h continuous re-check; a
+`temporarily_failed` domain (the 72h grace window after a `verified`
+domain loses its record) is re-checked every 15m and expires to `failed`
+if the window closes without recovering.
 
 Claiming a `.test` sandbox domain (see the domains module's DNS testing
 fixtures) requires a test-mode key; a live-mode key gets

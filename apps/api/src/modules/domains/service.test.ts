@@ -54,6 +54,10 @@ function fakeRepository(): DomainsRepository {
         createdAt: new Date(),
         updatedAt: new Date(),
         verifiedAt: null,
+        nextCheckAt: values.nextCheckAt,
+        lastCheckedAt: null,
+        checkAttempts: 0,
+        graceExpiresAt: null,
       }
       domainRows.set(domainRow.id, domainRow)
 
@@ -154,6 +158,13 @@ function fakeRepository(): DomainsRepository {
         status: values.nextStatus,
         updatedAt: new Date(),
         verifiedAt: values.verifiedAt ?? row.verifiedAt,
+        lastCheckedAt: values.checkedAt,
+        nextCheckAt: values.nextCheckAt,
+        checkAttempts: values.checkAttempts,
+        graceExpiresAt:
+          values.graceExpiresAt === undefined
+            ? row.graceExpiresAt
+            : values.graceExpiresAt,
       }
       domainRows.set(row.id, updated)
 
@@ -189,10 +200,33 @@ function fakeRepository(): DomainsRepository {
         ...row,
         status: values.nextStatus,
         updatedAt: new Date(),
+        nextCheckAt: values.nextCheckAt,
+        checkAttempts: values.checkAttempts,
       }
       domainRows.set(row.id, updated)
 
       return { domain: updated, challenge: challengeRow }
+    },
+
+    async findDueForRecheck(now, limit) {
+      return [...domainRows.values()]
+        .filter((row) => row.nextCheckAt !== null && row.nextCheckAt <= now)
+        .sort((a, b) => a.nextCheckAt!.getTime() - b.nextCheckAt!.getTime())
+        .slice(0, limit)
+    },
+
+    async findOverdueGraceWindows(now, limit) {
+      return [...domainRows.values()]
+        .filter(
+          (row) =>
+            row.status === 'temporarily_failed' &&
+            row.graceExpiresAt !== null &&
+            row.graceExpiresAt <= now,
+        )
+        .sort(
+          (a, b) => a.graceExpiresAt!.getTime() - b.graceExpiresAt!.getTime(),
+        )
+        .slice(0, limit)
     },
   }
 }

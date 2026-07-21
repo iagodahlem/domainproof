@@ -15,6 +15,10 @@ import {
 import type { ProjectsService } from '@modules/projects/service'
 import type { DomainEventMap, EventBus, Mode } from '@shared/events'
 import { decodeDomainsCursor, encodeDomainsCursor } from './domain/cursor'
+import {
+  computeRecheckSchedule,
+  firstPendingCheckAt,
+} from './domain/recheck-schedule'
 import { eventForCheckOutcome } from './domain/verification-event'
 import type { ResolverForChallenge } from './ports'
 import type {
@@ -105,6 +109,18 @@ export interface ListProjectDomainsResult {
   domains: DomainSummary[]
   /** `null` once the last page has been reached. */
   nextCursor: string | null
+}
+
+/**
+ * The outcome of one background-worker batch (see `recheckDueDomains`/
+ * `expireOverdueGraceWindows`): how many domains the batch selected, and
+ * which of those failed — every failure is caught and recorded per-domain
+ * rather than aborting the rest of the batch (see `workers/`'s
+ * "skip, don't crash" tick guarantee).
+ */
+export interface RecheckBatchResult {
+  processed: number
+  errors: Array<{ domainId: string; message: string }>
 }
 
 export interface DomainsService {
@@ -202,6 +218,13 @@ export interface DomainsService {
    * challenge already did its job, and their ongoing rechecks are governed
    * by `recheck_passed`/`recheck_record_lost`/`grace_expired`, not this
    * challenge's expiry.
+   *
+   * Every persisted status change also stamps the background worker's
+   * due-ness bookkeeping (`next_check_at`/`check_attempts`/
+   * `grace_expires_at`, via `domain/recheck-schedule.ts`'s
+   * `computeRecheckSchedule`) — the same stamp a scheduled recheck leaves,
+   * so a manually-triggered verify never leaves the worker's schedule
+   * stale.
    */
   verifyDomain(
     projectId: string,
@@ -212,8 +235,8 @@ export interface DomainsService {
   /**
    * Like `verifyDomain`, but scoped only to `projectId` (no `mode`) — the
    * dashboard's domain verify route, whose caller has no api-key mode to
-   * further scope by. Same check/transition/event-publish behavior as
-   * `verifyDomain`; only how the domain is resolved differs.
+   * further scope by. Same check/transition/event-publish/scheduling-stamp
+   * behavior as `verifyDomain`; only how the domain is resolved differs.
    */
   verifyProjectDomain(
     projectId: string,
@@ -234,11 +257,41 @@ export interface DomainsService {
    * — publishes `domain.challenge_regenerated` to the `EventBus`. `null`-
    * shaped as a typed `not_found` result if `id` doesn't belong to
    * `projectId`, same as `getProjectDomain`.
+   *
+   * Restarts the background worker's due-ness bookkeeping too: the fresh
+   * challenge gets the same `next_check_at` a newly claimed domain does
+   * (`domain/recheck-schedule.ts`'s `firstPendingCheckAt`), and
+   * `check_attempts` resets to 0 — the pending backoff ladder starts over,
+   * same as it would for a brand-new claim.
    */
   regenerateChallenge(
     projectId: string,
     id: string,
   ): Promise<RegenerateChallengeResult>
+
+  /**
+   * The background worker's per-tick unit of work (see
+   * `workers/`): finds every domain (across all projects/modes)
+   * whose `next_check_at` has elapsed, capped at `limit`, and runs the
+   * exact same check/transition/publish/scheduling-stamp path per domain —
+   * there is no parallel re-check logic. A single domain's failure is
+   * caught and reported in the result rather than stopping the batch.
+   */
+  recheckDueDomains(now: Date, limit: number): Promise<RecheckBatchResult>
+
+  /**
+   * The background worker's grace-window expiry sweep: finds every
+   * `temporarily_failed` domain whose 72h grace window has elapsed without
+   * recovering, capped at `limit`, and transitions each straight to
+   * `failed` via core's `grace_expired` event — timed here by the
+   * scheduled worker, never by a single `verifyDomain` attempt (see its
+   * doc comment). No DNS check runs for this transition: whatever it would
+   * find is moot once the window that would have counted it has closed.
+   */
+  expireOverdueGraceWindows(
+    now: Date,
+    limit: number,
+  ): Promise<RecheckBatchResult>
 }
 
 function toSummary(
@@ -354,10 +407,12 @@ export function createDomainsService(
 ): DomainsService {
   /**
    * The body of one `verifyDomain` attempt, shared by `verifyDomain`
-   * (mode-scoped, v1) and `verifyProjectDomain` (project-scoped, dashboard)
-   * — the two only differ in how `row` gets resolved and authorized; once
-   * resolved, checking/transitioning/publishing/persisting is identical, so
-   * it lives here exactly once rather than being copied per plane.
+   * (mode-scoped, v1), `verifyProjectDomain` (project-scoped, dashboard),
+   * and `recheckDueDomains` (the background worker) — they only differ in
+   * how `row` gets resolved and authorized; once resolved,
+   * checking/transitioning/publishing/persisting (including the due-ness
+   * scheduling stamp) is identical, so it lives here exactly once rather
+   * than being copied per caller.
    */
   async function verifyRow(row: DomainRow): Promise<VerifyDomainResult> {
     const challenge = await repository.findLatestChallenge(row.id)
@@ -404,9 +459,20 @@ export function createDomainsService(
       })
       const nextStatus = transitioned.ok ? transitioned.next : currentStatus
 
+      const schedule = computeRecheckSchedule({
+        previousStatus: currentStatus,
+        nextStatus,
+        checkedAt,
+        previousCheckAttempts: row.checkAttempts,
+      })
+
       const updatedRow = await repository.recordVerificationAttempt({
         domainId: row.id,
         nextStatus,
+        checkedAt,
+        nextCheckAt: schedule.nextCheckAt,
+        checkAttempts: schedule.checkAttempts,
+        graceExpiresAt: schedule.graceExpiresAt,
       })
 
       await publishVerifyDomainEvents(eventBus, {
@@ -466,10 +532,21 @@ export function createDomainsService(
     const detectedValues =
       result.outcome === 'wrong_value' ? result.detected : []
 
+    const schedule = computeRecheckSchedule({
+      previousStatus: currentStatus,
+      nextStatus,
+      checkedAt,
+      previousCheckAttempts: row.checkAttempts,
+    })
+
     const updatedRow = await repository.recordVerificationAttempt({
       domainId: row.id,
       nextStatus,
       verifiedAt,
+      checkedAt,
+      nextCheckAt: schedule.nextCheckAt,
+      checkAttempts: schedule.checkAttempts,
+      graceExpiresAt: schedule.graceExpiresAt,
     })
 
     await publishVerifyDomainEvents(eventBus, {
@@ -544,6 +621,7 @@ export function createDomainsService(
         mode,
         domain: normalized.domain,
         status: started.next,
+        nextCheckAt: firstPendingCheckAt(now()),
         challenge: {
           method,
           token,
@@ -685,6 +763,8 @@ export function createDomainsService(
       const result = await repository.regenerateChallenge({
         domainId: row.id,
         nextStatus: transitioned.next,
+        nextCheckAt: firstPendingCheckAt(now()),
+        checkAttempts: 0,
         challenge: {
           method,
           token,
@@ -705,6 +785,96 @@ export function createDomainsService(
         ok: true,
         domain: toSummary(result.domain, [result.challenge]),
       }
+    },
+
+    async recheckDueDomains(checkNow, limit) {
+      const due = await repository.findDueForRecheck(checkNow, limit)
+      const errors: RecheckBatchResult['errors'] = []
+
+      await Promise.all(
+        due.map(async (row) => {
+          try {
+            const result = await verifyRow(row)
+            if (!result.ok) {
+              // Cannot happen: `row` was just resolved by
+              // `findDueForRecheck`, so `verifyRow` always has a domain to
+              // operate on — guarded rather than asserted so a race with a
+              // concurrent release doesn't silently drop the error.
+              errors.push({
+                domainId: row.id,
+                message: 'domain not found during scheduled recheck',
+              })
+            }
+          } catch (err) {
+            errors.push({
+              domainId: row.id,
+              message: err instanceof Error ? err.message : String(err),
+            })
+          }
+        }),
+      )
+
+      return { processed: due.length, errors }
+    },
+
+    async expireOverdueGraceWindows(checkNow, limit) {
+      const overdue = await repository.findOverdueGraceWindows(checkNow, limit)
+      const errors: RecheckBatchResult['errors'] = []
+
+      await Promise.all(
+        overdue.map(async (row) => {
+          try {
+            const currentStatus = row.status as DomainStatus
+            const transitioned = transition(currentStatus, {
+              type: 'grace_expired',
+            })
+            if (!transitioned.ok) {
+              // Cannot happen: findOverdueGraceWindows only ever returns
+              // temporarily_failed rows, and grace_expired is always a
+              // legal transition from temporarily_failed (see states.ts)
+              // — guarded rather than asserted so a query/schema drift
+              // fails loudly.
+              throw new Error(
+                `Unexpected invalid grace_expired transition for domain ${row.id} in status ${currentStatus}`,
+              )
+            }
+
+            const schedule = computeRecheckSchedule({
+              previousStatus: currentStatus,
+              nextStatus: transitioned.next,
+              checkedAt: checkNow,
+              previousCheckAttempts: row.checkAttempts,
+            })
+
+            await repository.recordVerificationAttempt({
+              domainId: row.id,
+              nextStatus: transitioned.next,
+              checkedAt: checkNow,
+              nextCheckAt: schedule.nextCheckAt,
+              checkAttempts: schedule.checkAttempts,
+              graceExpiresAt: schedule.graceExpiresAt,
+            })
+
+            // No check_passed/check_failed event here: unlike verifyRow's
+            // expiry short-circuit, no DNS check ran for this transition —
+            // it's purely time-based, so only the status change itself is
+            // published.
+            await eventBus.publish('domain.failed', {
+              domainId: row.id,
+              projectId: row.projectId,
+              mode: row.mode,
+              domain: row.domain,
+            })
+          } catch (err) {
+            errors.push({
+              domainId: row.id,
+              message: err instanceof Error ? err.message : String(err),
+            })
+          }
+        }),
+      )
+
+      return { processed: overdue.length, errors }
     },
   }
 }
