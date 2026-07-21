@@ -161,6 +161,22 @@ export interface ListDeliveriesResult {
   nextCursor: string | null
 }
 
+/** A project-wide events row — every event across all of a project's domains and both modes, newest first. */
+export interface ProjectEventSummary {
+  id: string
+  type: string
+  mode: Mode
+  domain: string
+  payload: unknown
+  createdAt: string
+}
+
+export interface ListProjectEventsResult {
+  events: ProjectEventSummary[]
+  /** `null` once the last page has been reached. */
+  nextCursor: string | null
+}
+
 function toQueryString(params: Record<string, string | undefined>): string {
   const entries = Object.entries(params).filter(
     (entry): entry is [string, string] => entry[1] !== undefined,
@@ -407,6 +423,21 @@ export const dashboardApi = {
       `/dashboard/projects/${projectId}/webhooks/${endpointId}/deliveries/${deliveryId}/redeliver`,
       token,
       { method: 'POST' },
+    )
+  },
+
+  listProjectEvents(
+    token: string | null,
+    projectId: string,
+    options: { limit?: number; cursor?: string } = {},
+  ) {
+    const query = toQueryString({
+      limit: options.limit?.toString(),
+      cursor: options.cursor,
+    })
+    return request<ListProjectEventsResult>(
+      `/dashboard/projects/${projectId}/events${query}`,
+      token,
     )
   },
 }
