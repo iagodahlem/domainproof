@@ -36,6 +36,20 @@ export interface ChallengeSummary {
 }
 
 /**
+ * The last `verifyDomain` attempt's outcome, as persisted on the domain row
+ * (`infra/db/schema.ts`'s `lastCheckResult`/`lastCheckedAt`) — `null` until
+ * the first check ever runs. Same shape as `VerifyDomainCheck` below, minus
+ * the transient-only `outcome === 'expired'` never actually needing to
+ * distinguish itself here (it's just another string value).
+ */
+export interface LastCheckSummary {
+  outcome: string
+  checkedAt: Date
+  expectedValue: string
+  detectedValues: string[]
+}
+
+/**
  * Plane-agnostic view of a domain claim: the facts, not the presentation.
  * Turning this into the public API's `records`-as-data response shape
  * (record `type`/`purpose`/`description` copy, `verificationUrl`) is a
@@ -52,6 +66,10 @@ export interface DomainSummary {
   updatedAt: Date
   verifiedAt: Date | null
   challenges: ChallengeSummary[]
+  /** The Frontend API plane's per-claim bearer credential — see `infra/db/schema.ts`'s doc comment. Embedded in `verificationUrl` by every plane that builds one. */
+  frontendToken: string
+  /** `null` until the first check ever runs. See {@link LastCheckSummary}. */
+  lastCheck: LastCheckSummary | null
 }
 
 export interface ClaimDomainInput {
@@ -175,6 +193,14 @@ export interface DomainsService {
   getProjectDomain(projectId: string, id: string): Promise<DomainSummary | null>
 
   /**
+   * Looks up a domain by its Frontend API `frontendToken` — the plane's own
+   * anti-enumeration entry point (see `apis/frontend/`). `null` for an
+   * unknown token, indistinguishable from any other lookup miss (including a
+   * released domain, whose row — and so whose token — no longer exists).
+   */
+  getDomainByFrontendToken(token: string): Promise<DomainSummary | null>
+
+  /**
    * Releases a claim: deletes the domain (and, via cascade, its challenges
    * and timeline). Returns the released domain's summary, or `null` if
    * `id` doesn't belong to `(projectId, mode)`.
@@ -242,6 +268,16 @@ export interface DomainsService {
     projectId: string,
     id: string,
   ): Promise<VerifyDomainResult>
+
+  /**
+   * Like `verifyDomain`, but resolved by Frontend API token instead of
+   * `(projectId, mode, id)` — the Frontend API plane's "run the check now"
+   * action, driven by the domain owner from the hosted verification page
+   * rather than an authenticated api-key or dashboard-session caller. Same
+   * check/transition/publish/scheduling-stamp behavior as `verifyDomain`;
+   * only how the domain is resolved differs.
+   */
+  verifyDomainByFrontendToken(token: string): Promise<VerifyDomainResult>
 
   /**
    * Issues a fresh challenge token for a domain, restarting verification —
@@ -331,6 +367,16 @@ function toSummary(
       recordHost: challenge.recordHost,
       recordValue: challenge.recordValue,
     })),
+    frontendToken: domain.frontendToken,
+    lastCheck:
+      domain.lastCheckedAt && domain.lastCheckResult
+        ? {
+            outcome: domain.lastCheckResult.outcome,
+            checkedAt: domain.lastCheckedAt,
+            expectedValue: domain.lastCheckResult.expectedValue,
+            detectedValues: domain.lastCheckResult.detectedValues,
+          }
+        : null,
   }
 }
 
@@ -486,6 +532,11 @@ export function createDomainsService(
         nextCheckAt: schedule.nextCheckAt,
         checkAttempts: schedule.checkAttempts,
         graceExpiresAt: schedule.graceExpiresAt,
+        lastCheckResult: {
+          outcome: 'expired',
+          expectedValue: challenge.recordValue,
+          detectedValues: [],
+        },
       })
 
       await publishVerifyDomainEvents(eventBus, {
@@ -560,6 +611,11 @@ export function createDomainsService(
       nextCheckAt: schedule.nextCheckAt,
       checkAttempts: schedule.checkAttempts,
       graceExpiresAt: schedule.graceExpiresAt,
+      lastCheckResult: {
+        outcome: result.outcome,
+        expectedValue: challenge.recordValue,
+        detectedValues,
+      },
     })
 
     await publishVerifyDomainEvents(eventBus, {
@@ -696,6 +752,12 @@ export function createDomainsService(
         domain: normalized.domain,
         status: started.next,
         nextCheckAt: firstPendingCheckAt(now()),
+        // A fresh, unrelated 128-bit token — not derived from the
+        // verification `token` above, which proves DNS control and is
+        // published in a public TXT record; this one is a bearer credential
+        // for the Frontend API plane and must never be guessable from
+        // (or leak into) anything DNS-visible.
+        frontendToken: generateToken(),
         challenge: {
           method,
           token,
@@ -771,6 +833,15 @@ export function createDomainsService(
       return toSummary(row, challenge ? [challenge] : [])
     },
 
+    async getDomainByFrontendToken(token) {
+      const row = await repository.findByFrontendToken(token)
+      if (!row) {
+        return null
+      }
+      const challenge = await repository.findLatestChallenge(row.id)
+      return toSummary(row, challenge ? [challenge] : [])
+    },
+
     async releaseDomain(projectId, mode, id) {
       const row = await repository.release(projectId, mode, id)
       if (!row) {
@@ -801,6 +872,14 @@ export function createDomainsService(
 
     async verifyProjectDomain(projectId, id) {
       const row = await repository.findByProjectId(projectId, id)
+      if (!row) {
+        return { ok: false, error: 'not_found' }
+      }
+      return verifyRow(row)
+    },
+
+    async verifyDomainByFrontendToken(token) {
+      const row = await repository.findByFrontendToken(token)
       if (!row) {
         return { ok: false, error: 'not_found' }
       }

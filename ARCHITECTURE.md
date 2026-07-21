@@ -50,63 +50,84 @@ apps/api/src/
 
 ### API planes
 
-`apps/api` mounts two path prefixes as separate folders under `apis/`, and
-every new route picks one:
+`apps/api` mounts three path prefixes as separate folders under `apis/`,
+and every new route picks one:
 
 - **`apis/v1/`** (`/v1/*`) — the public, API-key-authenticated plane
   (`dp_test_.../dp_live_...`). Reserved for the endpoints an integration
-  calls — domain verification lands here next. Versioned because it's a
-  contract external callers depend on.
+  calls — domain claiming/verification lives here. Versioned because it's
+  a contract external callers depend on.
 - **`apis/dashboard/`** (`/dashboard/*`) — the session-authenticated
   backend of the dashboard app (e.g. `/dashboard/keys`). Unversioned — we
   control its only consumer, so there's no external contract to version.
+- **`apis/frontend/`** (`/frontend/*`) — named after Clerk's FAPI: it
+  serves the builder's _customers_ and DomainProof's own frontends (the
+  hosted verification page, drop-in components later), not the builder
+  themselves. Authenticated by neither a session nor an api key — each
+  route resolves an unguessable per-claim `frontendToken` embedded in its
+  own `:token` path param instead (see `infra/db/schema.ts`'s doc
+  comment), so there's no plane-wide auth middleware to apply (contrast
+  with the other two planes' `router.ts`, below). Unversioned, same
+  reasoning as the dashboard plane: we control who calls it (our own
+  hosted page and future first-party components), not an external
+  integrator's contract.
 
-Both planes are path-based on one origin, and that origin is also
+All three planes are path-based on one origin, and that origin is also
 host-restricted in production:
 
 | Host                                                                          | Serves              |
 | ----------------------------------------------------------------------------- | ------------------- |
 | `api.domainproof.dev`                                                         | `/v1/*` only        |
 | `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only |
-| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | both planes         |
+| `verify.domainproof.dev`                                                      | `/frontend/*` only  |
+| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | every plane         |
 
 This is enforced by `shared/middlewares/host-restriction.ts`, applied once
-at the root of `app.ts` — ahead of both plane routers, since it decides
-which plane (if any) a request may reach before either plane's own auth
-middleware runs. It's driven by two optional env vars, `PUBLIC_API_HOST`
-and `DASHBOARD_API_HOST` (see `env.ts`); unset (the default everywhere
-except production) means no restriction at all, so local dev and tests
-never need `/etc/hosts` tricks to exercise either plane. The wrong plane
-on a restricted host gets a 404 through the shared error taxonomy, not a
-403 — a 403 would confirm the other plane's routes exist on that host,
-which is exactly the information a 404 withholds. `/health` is the one
-exception: it answers on every host, restricted or not, since external
-uptime monitors hit it directly on the production hostnames rather than
-through Railway's internal healthcheck.
+at the root of `app.ts` — ahead of every plane router, since it decides
+which plane (if any) a request may reach before any plane's own auth
+middleware runs. It's driven by three optional env vars, `PUBLIC_API_HOST`,
+`DASHBOARD_API_HOST`, and `FRONTEND_API_HOST` (see `env.ts`); unset (the
+default everywhere except production) means no restriction at all, so
+local dev and tests never need `/etc/hosts` tricks to exercise any plane.
+The wrong plane on a restricted host gets a 404 through the shared error
+taxonomy, not a 403 — a 403 would confirm the other plane's routes exist
+on that host, which is exactly the information a 404 withholds. `/health`
+is the one exception: it answers on every host, restricted or not, since
+external uptime monitors hit it directly on the production hostnames
+rather than through Railway's internal healthcheck.
 
 **A new plane hostname is created only when a real auth/CORS boundary
 appears, never speculatively.** `dashboard.api.domainproof.dev` earned one
 because the dashboard plane needed to be unreachable from hosts serving
-the public API — a real boundary — not because splitting hosts looked
-tidy. The path-based split (`/v1/*` vs `/dashboard/*`) remains the source
-of truth for which plane a route belongs to; host restriction is an
-additional production-only constraint layered on top, not a replacement
-for it.
+the public API — a real boundary — and `verify.domainproof.dev` earned one
+for the same reason: the Frontend API is reachable with no session and no
+api key at all, so it needs to be unreachable from the hosts that serve
+the other two authenticated planes, not because splitting hosts looked
+tidy. The path-based split (`/v1/*` vs `/dashboard/*` vs `/frontend/*`)
+remains the source of truth for which plane a route belongs to; host
+restriction is an additional production-only constraint layered on top,
+not a replacement for it.
 
 **A plane's `router.ts` is the only place its global middleware gets
 applied.** `apis/dashboard/router.ts` mounts session auth once for the
 whole plane; `apis/v1/router.ts` mounts api-key auth + rate limiting once.
+`apis/frontend/router.ts` has no plane-wide middleware to mount — its
+"auth" is a per-route `:token` path param, and its one rate-limited route
+mounts that limiter itself (see "Middleware placement" below), so there's
+nothing broader to apply once, for the whole plane, ahead of every route.
 Route files never take auth middleware as a parameter or wire it
-themselves — by the time a route handler runs, the plane's middleware has
-already run and set whatever context it sets.
+themselves — by the time a route handler runs, whatever plane-wide
+middleware applies has already run and set whatever context it sets.
 
 **Why HTTP lives outside modules/:** a module can serve more than one
 plane. `keys` already does — the dashboard plane's `routes/keys.ts` lists
 and manages keys for a signed-in builder, while `v1`'s `middlewares/api-key.ts`
-authenticates public API calls against that same data. When domains land,
-the same shape repeats: `v1` gets the domain-verification endpoints,
-`dashboard` gets a read/list view — one `modules/domains/` (service +
-repository), two thin route files, each in its own plane.
+authenticates public API calls against that same data. `domains` does too,
+now three ways: `v1` gets the domain-claiming/verification endpoints,
+`dashboard` gets a read/write view scoped to a signed-in builder's own
+projects, `frontend` gets a read + bounded-recheck view scoped to
+whichever one claim a `frontendToken` resolves to — one `modules/domains/`
+(service + repository), three thin route files, each in its own plane.
 
 **Middleware placement**, in order of preference:
 
@@ -231,10 +252,11 @@ This isn't mechanically enforced (see Enforcement) — the
 4. **`infra/` implements core/module ports; it is imported only by the
    composition root (`app.ts` / `index.ts`) and by other infra.** Adapters
    never import from `modules/` or `apis/`.
-5. **`apis/dashboard` and `apis/v1` never import from each other.** Two
-   planes sharing logic means the logic belongs in `modules/`, not in a
-   cross-plane import. A plane may freely import from `modules/`,
-   `shared/`, and its own subtree.
+5. **No `apis/<plane>` imports from another `apis/<plane>`.** Two planes
+   sharing logic means the logic belongs in `modules/`, not in a
+   cross-plane import — this holds for every pair (`dashboard`/`v1`,
+   `dashboard`/`frontend`, `v1`/`frontend`). A plane may freely import from
+   `modules/`, `shared/`, and its own subtree.
 
 ### Where the rules bend, on purpose
 
@@ -276,6 +298,7 @@ explicitly rather than papered over:
 | New verification state or transition                                                                        | `packages/core/src/states.ts`                                                                                                                                                                                                                                                                     |
 | New public (API-key) endpoint                                                                               | `apps/api/src/apis/v1/routes/<name>.ts` (parsing/HTTP only, mounted in `apis/v1/router.ts`) + a use case in the relevant module's `service.ts` + any new data access in its `repository.ts`                                                                                                       |
 | New dashboard (session) endpoint                                                                            | Same shape, under `apps/api/src/apis/dashboard/routes/` and `apis/dashboard/router.ts` instead                                                                                                                                                                                                    |
+| New Frontend API (per-claim token) endpoint                                                                 | Same shape, under `apps/api/src/apis/frontend/routes/` and `apis/frontend/router.ts` instead — resolve the caller's claim via the module's `*ByFrontendToken` use case, never a `projectId`/`mode`/session                                                                                        |
 | New db table/column a module needs                                                                          | A new method on that module's `repository.ts`. Never a schema import in `service.ts` or a route file.                                                                                                                                                                                             |
 | New vendor/external service integration (email, webhooks delivery, a new DNS provider, a new auth provider) | Define the port where the concept belongs (core's port files if domain-wide, the owning module's `ports.ts` if module-specific — see rule 2), implement the adapter in `apps/api/src/infra/<area>/`, wire it in `app.ts` and inject it into whichever module's service (or plane router) needs it |
 | New pure logic with no db/IO (parsing, formatting, validation)                                              | The module's `domain/<concept>.ts` — one file per concept                                                                                                                                                                                                                                         |
@@ -414,9 +437,9 @@ files extend (not replace) the module anatomy rules above:
     `infra/dns/http/auth` or `apis/`.
   - `modules/**/*.test.ts` (except `repository.test.ts`) cannot import
     `@infra/db` or `apis/` either — they use a fake instead.
-  - `apis/dashboard/**` cannot import `apis/v1/**`, and `apis/v1/**`
-    cannot import `apis/dashboard/**` — either direction, relative or via
-    `@apis/dashboard`/`@apis/v1`.
+  - Every pair of `apis/dashboard/**`, `apis/v1/**`, and `apis/frontend/**`
+    is barred from importing the other two — relative or via the
+    `@apis/dashboard`/`@apis/v1`/`@apis/frontend` path aliases.
 - **`typescript@beta` verification.** `apps/api`'s `tsc --noEmit` is also
   run against `typescript@beta` (via `pnpm --package=typescript@beta dlx tsc`)
   as part of pre-merge verification, to catch editor-visible errors the

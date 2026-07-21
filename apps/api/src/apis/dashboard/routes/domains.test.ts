@@ -87,6 +87,7 @@ async function createTestDomain(
       domain: domainName,
       mode: overrides.mode ?? 'live',
       status: 'pending',
+      frontendToken: `frontend-token-${randomUUID()}`,
     })
     .returning({ id: domains.id })
   if (!domain) throw new Error('failed to create test domain')
@@ -482,7 +483,13 @@ describe('/dashboard/projects/:projectId/domains', () => {
       expect(body.domain.domain).toBe('example.test')
       expect(body.domain.mode).toBe('test')
       expect(body.domain.status).toBe('pending')
-      expect(body.domain.verificationUrl).toContain(body.domain.id)
+      // Embeds the domain's Frontend API token, not its internal id — see
+      // `infra/db/schema.ts`'s `frontendToken` doc comment for why the two
+      // are deliberately different values.
+      expect(body.domain.verificationUrl).toMatch(
+        /^https:\/\/domainproof\.dev\/verify\/[a-z2-7]{26}$/,
+      )
+      expect(body.domain.verificationUrl).not.toContain(body.domain.id)
       expect(body.domain.records).toHaveLength(1)
       expect(body.domain.records[0]?.type).toBe('TXT')
       expect(body.domain.records[0]?.status).toBe('pending')

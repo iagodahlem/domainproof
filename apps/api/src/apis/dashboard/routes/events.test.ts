@@ -77,6 +77,7 @@ async function createTestDomain(
       domain: overrides.domain ?? `example-${randomUUID()}.test`,
       mode: overrides.mode ?? 'live',
       status: 'pending',
+      frontendToken: `frontend-token-${randomUUID()}`,
     })
     .returning({ id: domains.id })
   if (!domain) throw new Error('failed to create test domain')

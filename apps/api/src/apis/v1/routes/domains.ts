@@ -132,7 +132,7 @@ function serializeDomain(summary: DomainSummary) {
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
     verifiedAt: summary.verifiedAt,
-    verificationUrl: `${VERIFICATION_BASE_URL}/${summary.id}`,
+    verificationUrl: `${VERIFICATION_BASE_URL}/${summary.frontendToken}`,
     records: summary.challenges.map((challenge) => ({
       type: RECORD_TYPE_BY_METHOD[challenge.method] ?? challenge.method,
       name: challenge.recordHost,

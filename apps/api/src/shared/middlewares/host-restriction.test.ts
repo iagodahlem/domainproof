@@ -8,10 +8,10 @@ import { apiError } from '@shared/http-errors'
 
 /**
  * Stands in for `app.ts`'s wiring: the middleware under test mounted at
- * the root, ahead of stub `/v1` and `/dashboard` routers, plus the same
- * `not_found` 404 an unmatched route gets — so "wrong plane" and "no such
- * route at all" are indistinguishable from the response alone, same as
- * the real app.
+ * the root, ahead of stub `/v1`, `/dashboard`, and `/frontend` routers, plus
+ * the same `not_found` 404 an unmatched route gets — so "wrong plane" and
+ * "no such route at all" are indistinguishable from the response alone,
+ * same as the real app.
  */
 function buildApp(config: HostRestrictionConfig) {
   const app = new Hono()
@@ -19,6 +19,7 @@ function buildApp(config: HostRestrictionConfig) {
   app.use('*', createHostRestrictionMiddleware(config))
   app.get('/v1/domains', (c) => c.json({ plane: 'v1' }))
   app.get('/dashboard/keys', (c) => c.json({ plane: 'dashboard' }))
+  app.get('/frontend/verifications/token', (c) => c.json({ plane: 'frontend' }))
   app.get('/health', (c) => c.json({ status: 'ok' }))
   app.notFound((c) => c.json(apiError('not_found', 'Route not found'), 404))
 
@@ -26,7 +27,7 @@ function buildApp(config: HostRestrictionConfig) {
 }
 
 describe('createHostRestrictionMiddleware', () => {
-  it('serves both planes when neither host is configured', async () => {
+  it('serves every plane when no host is configured', async () => {
     const app = buildApp({})
 
     const v1 = await app.request('/v1/domains', {
@@ -35,9 +36,13 @@ describe('createHostRestrictionMiddleware', () => {
     const dashboard = await app.request('/dashboard/keys', {
       headers: { host: 'dashboard.api.domainproof.dev' },
     })
+    const frontend = await app.request('/frontend/verifications/token', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
 
     expect(v1.status).toBe(200)
     expect(dashboard.status).toBe(200)
+    expect(frontend.status).toBe(200)
   })
 
   it('serves only the public plane on the configured public host', async () => {
@@ -72,10 +77,27 @@ describe('createHostRestrictionMiddleware', () => {
     expect(body.error.code).toBe('not_found')
   })
 
-  it('serves both planes on an unmatched host even when both are configured', async () => {
+  it('serves only the frontend plane on the configured frontend host', async () => {
+    const app = buildApp({ frontendApiHost: 'verify.domainproof.dev' })
+
+    const frontend = await app.request('/frontend/verifications/token', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
+    expect(frontend.status).toBe(200)
+
+    const v1 = await app.request('/v1/domains', {
+      headers: { host: 'verify.domainproof.dev' },
+    })
+    expect(v1.status).toBe(404)
+    const body = (await v1.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('not_found')
+  })
+
+  it('serves every plane on an unmatched host even when all are configured', async () => {
     const app = buildApp({
       publicApiHost: 'api.domainproof.dev',
       dashboardApiHost: 'dashboard.api.domainproof.dev',
+      frontendApiHost: 'verify.domainproof.dev',
     })
 
     for (const host of ['localhost', 'my-service.up.railway.app']) {
@@ -83,8 +105,12 @@ describe('createHostRestrictionMiddleware', () => {
       const dashboard = await app.request('/dashboard/keys', {
         headers: { host },
       })
+      const frontend = await app.request('/frontend/verifications/token', {
+        headers: { host },
+      })
       expect(v1.status).toBe(200)
       expect(dashboard.status).toBe(200)
+      expect(frontend.status).toBe(200)
     }
   })
 
@@ -92,11 +118,13 @@ describe('createHostRestrictionMiddleware', () => {
     const app = buildApp({
       publicApiHost: 'api.domainproof.dev',
       dashboardApiHost: 'dashboard.api.domainproof.dev',
+      frontendApiHost: 'verify.domainproof.dev',
     })
 
     for (const host of [
       'api.domainproof.dev',
       'dashboard.api.domainproof.dev',
+      'verify.domainproof.dev',
       'localhost',
     ]) {
       const health = await app.request('/health', { headers: { host } })

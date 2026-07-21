@@ -45,6 +45,9 @@ export interface ProjectsRepository {
   /** A project's brand slug, e.g. for building its domain verification records. */
   findSlugById(projectId: string): Promise<string | undefined>
 
+  /** A project's display name, e.g. for the Frontend API's hosted verification page. */
+  findNameById(projectId: string): Promise<string | undefined>
+
   /**
    * Updates a project's `name` only — never `slug` (see
    * `ProjectsService.renameProject` for why the slug is frozen at
@@ -93,6 +96,15 @@ export function createProjectsRepository(db: Database): ProjectsRepository {
         .where(eq(projects.id, projectId))
         .limit(1)
       return project?.slug
+    },
+
+    async findNameById(projectId) {
+      const [project] = await db
+        .select({ name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1)
+      return project?.name
     },
 
     async updateName(projectId, name) {

@@ -34,10 +34,12 @@ function fakeDomainsService(
     listProjectDomains: notUsed('listProjectDomains'),
     getDomain: notUsed('getDomain'),
     getProjectDomain: notUsed('getProjectDomain'),
+    getDomainByFrontendToken: notUsed('getDomainByFrontendToken'),
     releaseDomain: notUsed('releaseDomain'),
     releaseProjectDomain: notUsed('releaseProjectDomain'),
     verifyDomain: notUsed('verifyDomain'),
     verifyProjectDomain: notUsed('verifyProjectDomain'),
+    verifyDomainByFrontendToken: notUsed('verifyDomainByFrontendToken'),
     regenerateChallenge: notUsed('regenerateChallenge'),
     regenerateProjectChallenge: notUsed('regenerateProjectChallenge'),
     async recheckDueDomains(now, limit): Promise<RecheckBatchResult> {

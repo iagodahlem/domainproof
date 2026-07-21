@@ -163,9 +163,13 @@ describe('/v1/domains', () => {
     expect(body.domain.domain).toBe('example.com')
     expect(body.domain.mode).toBe('live')
     expect(body.domain.status).toBe('pending')
-    expect(body.domain.verificationUrl).toBe(
-      `https://domainproof.dev/verify/${body.domain.id}`,
+    // Embeds the domain's Frontend API token, not its internal id — see
+    // `infra/db/schema.ts`'s `frontendToken` doc comment for why the two
+    // are deliberately different values.
+    expect(body.domain.verificationUrl).toMatch(
+      /^https:\/\/domainproof\.dev\/verify\/[a-z2-7]{26}$/,
     )
+    expect(body.domain.verificationUrl).not.toContain(body.domain.id)
 
     expect(body.domain.records).toHaveLength(1)
     const [record] = body.domain.records

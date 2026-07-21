@@ -156,6 +156,42 @@ export const domains = pgTable(
      * comment.
      */
     graceExpiresAt: timestamp('grace_expires_at', { withTimezone: true }),
+    /**
+     * The unguessable bearer credential for the Frontend API plane
+     * (`apis/frontend/`) — read + rate-limited re-check access to exactly
+     * this one domain claim, nothing else. Generated once at claim time via
+     * core's `generateToken()` (the same 128-bit CSPRNG entropy standard as
+     * an API key secret) and embedded directly in `hosted_verification_url`.
+     * Deliberately a column of its own rather than reusing `id`: `id` is an
+     * internal identifier that already appears in event payloads, webhook
+     * deliveries, and dashboard URLs, none of which are secret — conflating
+     * it with a bearer credential would make every one of those surfaces a
+     * capability leak. Stored in plaintext (like `challenges.token` and
+     * `webhook_endpoints.signing_secret`): it must be read back verbatim to
+     * serve the hosted verification page, so hashing it isn't an option.
+     */
+    frontendToken: text('frontend_token').notNull().unique(),
+    /**
+     * The outcome of the most recent `verifyDomain` attempt (`found`,
+     * `wrong_value`, `not_found`, `unreachable`, or `expired`), plus the
+     * expected/detected material behind it — mirrors
+     * `modules/domains/service.ts`'s `VerifyDomainCheck` shape (minus
+     * `checkedAt`, which is `last_checked_at` above). `null` until the first
+     * check ever runs, same as `last_checked_at`. Exists so a caller that
+     * only reads a claim's current state (the Frontend API's hosted
+     * verification page) can render "what the last check found" without
+     * re-running a DNS check just to answer that — the timeline in `events`
+     * only carries a bare `outcome` string for `domain.check_failed`, not
+     * this expected-vs-detected detail. Left untouched by
+     * `expireOverdueGraceWindows`, which transitions a domain to `failed` on
+     * a timer without ever running a check (see its doc comment) — the
+     * grace-window expiry doesn't invalidate what the last real check found.
+     */
+    lastCheckResult: jsonb('last_check_result').$type<{
+      outcome: string
+      expectedValue: string
+      detectedValues: string[]
+    } | null>(),
   },
   (table) => [
     unique('domains_project_domain_mode_unique').on(

@@ -43,6 +43,9 @@ function fakeProjectsRepository(
     async findSlugById() {
       return undefined
     },
+    async findNameById() {
+      return undefined
+    },
     async updateName(projectId, name) {
       return projectId === 'project_1' ? projectRow({ name }) : undefined
     },
@@ -240,6 +243,33 @@ describe('getProjectSlug', () => {
     )
 
     expect(await service.getProjectSlug('unknown')).toBeUndefined()
+  })
+})
+
+describe('getProjectName', () => {
+  it("returns the project's display name", async () => {
+    const repository = fakeProjectsRepository({
+      async findNameById(projectId) {
+        return projectId === 'project_1' ? 'Skylane HR' : undefined
+      },
+    })
+    const service = createProjectsService(
+      repository,
+      fakeAccountsService(),
+      fakeKeysService(),
+    )
+
+    expect(await service.getProjectName('project_1')).toBe('Skylane HR')
+  })
+
+  it('returns undefined for an unknown project id', async () => {
+    const service = createProjectsService(
+      fakeProjectsRepository(),
+      fakeAccountsService(),
+      fakeKeysService(),
+    )
+
+    expect(await service.getProjectName('unknown')).toBeUndefined()
   })
 })
 
