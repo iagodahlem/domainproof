@@ -2,20 +2,48 @@ import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { SessionAuthVariables } from '../middlewares/session-auth'
 import type { ProjectsService } from '@modules/projects/service'
-import type { DomainsService, DomainSummary } from '@modules/domains/service'
+import type {
+  DomainsService,
+  DomainSummary,
+  VerifyDomainCheck,
+} from '@modules/domains/service'
 import type { EventSummary, EventsService } from '@modules/events/service'
 import { apiError } from '@shared/http-errors'
 
 const DEFAULT_PAGE_LIMIT = 20
 const MAX_PAGE_LIMIT = 100
 
+// 253 is the maximum length of a fully-qualified DNS domain name — see
+// `apis/v1/routes/domains.ts`'s identical constant for the full rationale.
+// Duplicated rather than imported: presentation/validation constants are a
+// plane concern, same as `RECORD_TYPE_BY_METHOD` below — `apis/dashboard`
+// and `apis/v1` never import from each other (ARCHITECTURE.md).
+const MAX_DOMAIN_LENGTH = 253
+
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(MAX_PAGE_LIMIT).optional(),
   cursor: z.string().min(1).optional(),
 })
 
+const createDomainBodySchema = z.object({
+  domain: z.string().min(1).max(MAX_DOMAIN_LENGTH),
+  // Unlike the public API (where `mode` comes from which key — test or
+  // live — authenticated the request), the dashboard has no api key in
+  // play, so the caller states the mode explicitly.
+  mode: z.enum(['test', 'live']),
+})
+
 const RECORD_TYPE_BY_METHOD: Record<string, string> = {
   dns_txt: 'TXT',
+}
+
+const VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
+
+const INVALID_DOMAIN_MESSAGES: Record<string, string> = {
+  empty: 'Domain is required.',
+  invalid_format: 'Domain is not a valid hostname.',
+  is_ip: 'Domain must be a hostname, not an IP address.',
+  no_public_suffix: 'Domain has no recognized public suffix.',
 }
 
 function projectNotFound() {
@@ -36,6 +64,36 @@ function invalidRequest(message: string) {
   return {
     body: apiError('invalid_request', message),
     status: 400 as const,
+  }
+}
+
+function conflict() {
+  return {
+    body: apiError(
+      'domain_already_claimed',
+      'This domain is already claimed for this project in this mode. List existing domains, or release the existing claim before reclaiming it.',
+    ),
+    status: 409 as const,
+  }
+}
+
+function sandboxRequiresTestMode() {
+  return {
+    body: apiError(
+      'sandbox_requires_test_mode',
+      'Sandbox domains are only available in test mode.',
+    ),
+    status: 400 as const,
+  }
+}
+
+function invalidStatus() {
+  return {
+    body: apiError(
+      'invalid_status',
+      'Only pending or failed domains can have their challenge regenerated.',
+    ),
+    status: 409 as const,
   }
 }
 
@@ -60,20 +118,41 @@ function serializeDomainSummary(summary: DomainSummary) {
 
 /**
  * The dashboard's domain detail view: the summary fields plus the current
- * challenge's record instructions (what to publish to prove ownership),
- * mirroring the public API's `records`-as-data shape (`apis/v1/routes/domains.ts`'s
- * `serializeDomain`) but without that route's API-consumer-facing copy —
- * the dashboard UI writes its own.
+ * challenge's record instructions (what to publish to prove ownership) and
+ * the hosted verification portal's URL, mirroring the public API's
+ * `records`-as-data shape (`apis/v1/routes/domains.ts`'s `serializeDomain`)
+ * but without that route's API-consumer-facing copy — the dashboard UI
+ * writes its own. Also the create/verify/regenerate/delete write routes'
+ * response shape, not just this file's read routes — one serializer for
+ * every route that returns a full domain.
  */
 function serializeDomainDetail(summary: DomainSummary) {
   return {
     ...serializeDomainSummary(summary),
+    verificationUrl: `${VERIFICATION_BASE_URL}/${summary.id}`,
     records: summary.challenges.map((challenge) => ({
       type: RECORD_TYPE_BY_METHOD[challenge.method] ?? challenge.method,
       name: challenge.recordHost,
       value: challenge.recordValue,
       status: summary.status === 'not_started' ? 'pending' : summary.status,
     })),
+  }
+}
+
+/**
+ * The dashboard's view of one `verifyDomain` attempt: the outcome and when,
+ * plus the expected/detected value diff for `wrong_value` — no baked-in
+ * prose `explanation` like the public API's `serializeCheck` (see
+ * `apis/v1/routes/domains.ts`), since that copy is written by the
+ * dashboard UI itself.
+ */
+function serializeCheck(check: VerifyDomainCheck) {
+  return {
+    outcome: check.outcome,
+    checkedAt: check.checkedAt,
+    ...(check.outcome === 'wrong_value'
+      ? { expected: check.expectedValue, detected: check.detectedValues }
+      : {}),
   }
 }
 
@@ -88,19 +167,24 @@ function serializeEvent(event: EventSummary) {
 }
 
 /**
- * Dashboard-facing domain read routes, mounted at
- * `/projects/:projectId/domains` under the dashboard plane's router (giving
- * `/dashboard/projects/:projectId/domains`) — the read side of the domains
- * module for the dashboard's own pages (list, detail, event timeline).
- * Every route resolves `:projectId` against the caller's account via
+ * Dashboard-facing domain routes, mounted at `/projects/:projectId/domains`
+ * under the dashboard plane's router (giving
+ * `/dashboard/projects/:projectId/domains`) — the full domain lifecycle
+ * (claim, verify, regenerate a challenge, release) for the dashboard's own
+ * pages, alongside the list/detail/event-timeline reads. Every route
+ * resolves `:projectId` against the caller's account via
  * `projectsService.resolveOwnedProject`, same anti-enumeration stance as
  * `routes/keys.ts`: a `projectId` (or, once resolved, a `domainId`)
  * belonging to another account always 404s.
  *
- * Read-only: claiming, releasing, and verifying a domain stay the public
- * API's job (`apis/v1/routes/domains.ts`) — this plane only ever calls
- * `listProjectDomains`/`getProjectDomain`/`listDomainEvents`, never a write
- * use case.
+ * The write routes call the exact same `modules/domains` use cases the
+ * public API's `apis/v1/routes/domains.ts` calls — `claimDomain`,
+ * `verifyProjectDomain`/`releaseProjectDomain` (the project-scoped
+ * counterparts of `verifyDomain`/`releaseDomain`, since this plane has no
+ * api-key `mode` to further scope by), and `regenerateChallenge` — never a
+ * parallel implementation of verification or persistence logic. Only the
+ * HTTP-facing presentation (response copy, error wording) differs per
+ * plane, same as the read routes' `serializeDomainDetail` already does.
  *
  * Session auth is applied once for the whole plane in
  * `apis/dashboard/router.ts` — by the time a handler here runs,
@@ -130,6 +214,47 @@ export function createDomainsRoutes(
       c.get('userEmail'),
     )
   }
+
+  router.post('/', async (c) => {
+    const json = await c.req.json().catch(() => undefined)
+    const parsed = createDomainBodySchema.safeParse(json)
+
+    if (!parsed.success) {
+      const { body, status } = invalidRequest('Invalid request body')
+      return c.json(body, status)
+    }
+
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
+    const result = await domainsService.claimDomain({
+      projectId,
+      mode: parsed.data.mode,
+      domain: parsed.data.domain,
+    })
+
+    if (!result.ok) {
+      if (result.error === 'invalid_domain') {
+        const { body, status } = invalidRequest(
+          INVALID_DOMAIN_MESSAGES[result.reason] ?? 'Domain is invalid.',
+        )
+        return c.json(body, status)
+      }
+
+      if (result.error === 'sandbox_requires_test_mode') {
+        const { body, status } = sandboxRequiresTestMode()
+        return c.json(body, status)
+      }
+
+      const { body, status } = conflict()
+      return c.json(body, status)
+    }
+
+    return c.json({ domain: serializeDomainDetail(result.domain) }, 201)
+  })
 
   router.get('/', async (c) => {
     const projectId = await resolveProjectId(c)
@@ -208,6 +333,71 @@ export function createDomainsRoutes(
     )
 
     return c.json({ events: events.map(serializeEvent), nextCursor })
+  })
+
+  router.post('/:domainId/verify', async (c) => {
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
+    const result = await domainsService.verifyProjectDomain(
+      projectId,
+      c.req.param('domainId'),
+    )
+    if (!result.ok) {
+      const { body, status } = domainNotFound()
+      return c.json(body, status)
+    }
+
+    return c.json({
+      domain: serializeDomainDetail(result.domain),
+      check: serializeCheck(result.check),
+    })
+  })
+
+  router.post('/:domainId/regenerate', async (c) => {
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
+    const result = await domainsService.regenerateChallenge(
+      projectId,
+      c.req.param('domainId'),
+    )
+    if (!result.ok) {
+      if (result.error === 'not_found') {
+        const { body, status } = domainNotFound()
+        return c.json(body, status)
+      }
+
+      const { body, status } = invalidStatus()
+      return c.json(body, status)
+    }
+
+    return c.json({ domain: serializeDomainDetail(result.domain) })
+  })
+
+  router.delete('/:domainId', async (c) => {
+    const projectId = await resolveProjectId(c)
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
+    const domain = await domainsService.releaseProjectDomain(
+      projectId,
+      c.req.param('domainId'),
+    )
+    if (!domain) {
+      const { body, status } = domainNotFound()
+      return c.json(body, status)
+    }
+
+    return c.json({ domain: serializeDomainDetail(domain) })
   })
 
   return router

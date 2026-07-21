@@ -91,6 +91,11 @@ export type VerifyDomainResult =
   | { ok: true; domain: DomainSummary; check: VerifyDomainCheck }
   | { ok: false; error: 'not_found' }
 
+export type RegenerateChallengeResult =
+  | { ok: true; domain: DomainSummary }
+  | { ok: false; error: 'not_found' }
+  | { ok: false; error: 'invalid_status' }
+
 export interface ListProjectDomainsOptions {
   limit: number
   cursor?: string
@@ -165,6 +170,16 @@ export interface DomainsService {
   ): Promise<DomainSummary | null>
 
   /**
+   * Like `releaseDomain`, but scoped only to `projectId` (no `mode`) — the
+   * dashboard's domain delete route. `null` if `id` doesn't belong to
+   * `projectId`.
+   */
+  releaseProjectDomain(
+    projectId: string,
+    id: string,
+  ): Promise<DomainSummary | null>
+
+  /**
    * Runs the DNS check for a claimed domain's current challenge, transitions
    * its status through core's state machine (see
    * `domain/verification-event.ts` for the outcome -> event mapping), and
@@ -193,6 +208,37 @@ export interface DomainsService {
     mode: DomainMode,
     id: string,
   ): Promise<VerifyDomainResult>
+
+  /**
+   * Like `verifyDomain`, but scoped only to `projectId` (no `mode`) — the
+   * dashboard's domain verify route, whose caller has no api-key mode to
+   * further scope by. Same check/transition/event-publish behavior as
+   * `verifyDomain`; only how the domain is resolved differs.
+   */
+  verifyProjectDomain(
+    projectId: string,
+    id: string,
+  ): Promise<VerifyDomainResult>
+
+  /**
+   * Issues a fresh challenge token for a domain, restarting verification —
+   * the dashboard's "regenerate" action for a `pending` domain whose window
+   * is about to (or already did) expire, or a `failed` domain the caller
+   * wants to retry, without releasing and reclaiming it (which would also
+   * reset its event timeline's claim). Routes through core's state machine
+   * (`challenge_regenerated`), so it's only legal from `pending` or
+   * `failed` — a `verified`/`temporarily_failed` domain's current challenge
+   * already did its job, and this returns a typed `invalid_status` result
+   * rather than silently no-op'ing. The previous challenge is marked
+   * superseded, not deleted (see `repository.ts`'s `regenerateChallenge`)
+   * — publishes `domain.challenge_regenerated` to the `EventBus`. `null`-
+   * shaped as a typed `not_found` result if `id` doesn't belong to
+   * `projectId`, same as `getProjectDomain`.
+   */
+  regenerateChallenge(
+    projectId: string,
+    id: string,
+  ): Promise<RegenerateChallengeResult>
 }
 
 function toSummary(
@@ -306,6 +352,148 @@ export function createDomainsService(
    */
   eventBus: EventBus = { publish: async () => {}, subscribe: () => {} },
 ): DomainsService {
+  /**
+   * The body of one `verifyDomain` attempt, shared by `verifyDomain`
+   * (mode-scoped, v1) and `verifyProjectDomain` (project-scoped, dashboard)
+   * — the two only differ in how `row` gets resolved and authorized; once
+   * resolved, checking/transitioning/publishing/persisting is identical, so
+   * it lives here exactly once rather than being copied per plane.
+   */
+  async function verifyRow(row: DomainRow): Promise<VerifyDomainResult> {
+    const challenge = await repository.findLatestChallenge(row.id)
+    if (!challenge) {
+      // Cannot happen: claimDomain always creates a challenge alongside
+      // the domain, in the same transaction — guarded rather than
+      // asserted so a corrupted/partially-migrated row fails loudly.
+      throw new Error(`No challenge found for domain ${row.id}`)
+    }
+
+    const slug = await projectsService.getProjectSlug(row.projectId)
+    if (!slug) {
+      // Cannot happen for a projectId resolved from an authenticated api
+      // key context, or from `resolveOwnedProject` — see the identical
+      // guard in claimDomain.
+      throw new Error(`No project found for id ${row.projectId}`)
+    }
+
+    const currentStatus = row.status as DomainStatus
+    const checkedAt = now()
+
+    // The verification window (states.ts: pending -> failed once it
+    // "elapses with no correct record") is scoped to a domain's *first*
+    // verification, tracked by the challenge's own `expiresAt` — not to
+    // every recheck for the rest of the domain's life. Only a `pending`
+    // domain can still be inside (or have outlived) that window; a
+    // `verified` domain's original challenge already did its job, and
+    // its ongoing rechecks are governed by the separate
+    // recheck_passed/recheck_record_lost/grace_expired vocabulary, which
+    // has nothing to do with this challenge's expiry. So this guard is
+    // scoped to `pending` only, deliberately.
+    //
+    // A stale challenge is hard-failed here without ever running the DNS
+    // check: whatever is (or isn't) published is moot once the window
+    // that would have counted it has already closed — spending a DNS
+    // query on it would be pure latency with no possible different
+    // outcome.
+    if (
+      currentStatus === 'pending' &&
+      isExpired(challenge.createdAt, checkedAt)
+    ) {
+      const transitioned = transition(currentStatus, {
+        type: 'check_hard_failed',
+      })
+      const nextStatus = transitioned.ok ? transitioned.next : currentStatus
+
+      const updatedRow = await repository.recordVerificationAttempt({
+        domainId: row.id,
+        nextStatus,
+      })
+
+      await publishVerifyDomainEvents(eventBus, {
+        domainId: row.id,
+        projectId: row.projectId,
+        mode: row.mode,
+        domain: row.domain,
+        outcome: 'expired',
+        previousStatus: currentStatus,
+        nextStatus,
+      })
+
+      return {
+        ok: true,
+        domain: toSummary(updatedRow, [challenge]),
+        check: {
+          outcome: 'expired',
+          checkedAt,
+          expectedValue: challenge.recordValue,
+          detectedValues: [],
+        },
+      }
+    }
+
+    const resolver = resolverForChallenge({
+      domain: row.domain,
+      recordHost: challenge.recordHost,
+      recordValue: challenge.recordValue,
+      brandSlug: slug,
+      challengeCreatedAt: challenge.createdAt,
+      now,
+    })
+
+    const result = await checkTxt(
+      resolver,
+      challenge.recordHost,
+      challenge.token,
+      slug,
+    )
+
+    const event = eventForCheckOutcome(currentStatus, result.outcome)
+
+    let nextStatus: DomainStatus = currentStatus
+    if (event) {
+      const transitioned = transition(currentStatus, event)
+      if (transitioned.ok) {
+        nextStatus = transitioned.next
+      }
+      // else: eventForCheckOutcome proposed an illegal (status, event)
+      // pair — its own tests guarantee this can't happen, but if it ever
+      // did, the safest thing to do is nothing, not throw and lose the
+      // attempt.
+    }
+
+    const verifiedAt = nextStatus === 'verified' ? checkedAt : undefined
+
+    const detectedValues =
+      result.outcome === 'wrong_value' ? result.detected : []
+
+    const updatedRow = await repository.recordVerificationAttempt({
+      domainId: row.id,
+      nextStatus,
+      verifiedAt,
+    })
+
+    await publishVerifyDomainEvents(eventBus, {
+      domainId: row.id,
+      projectId: row.projectId,
+      mode: row.mode,
+      domain: row.domain,
+      outcome: result.outcome,
+      previousStatus: currentStatus,
+      nextStatus,
+    })
+
+    return {
+      ok: true,
+      domain: toSummary(updatedRow, [challenge]),
+      check: {
+        outcome: result.outcome,
+        checkedAt,
+        expectedValue: challenge.recordValue,
+        detectedValues,
+      },
+    }
+  }
+
   return {
     async claimDomain({ projectId, mode, domain }) {
       const normalized = normalizeDomain(domain)
@@ -441,142 +629,81 @@ export function createDomainsService(
       return toSummary(row, [])
     },
 
+    async releaseProjectDomain(projectId, id) {
+      const row = await repository.releaseByProjectId(projectId, id)
+      if (!row) {
+        return null
+      }
+      // No challenge lookup here: the cascade delete already removed the
+      // released domain's challenges, so there's nothing left to fetch.
+      return toSummary(row, [])
+    },
+
     async verifyDomain(projectId, mode, id) {
       const row = await repository.findById(projectId, mode, id)
       if (!row) {
         return { ok: false, error: 'not_found' }
       }
+      return verifyRow(row)
+    },
 
-      const challenge = await repository.findLatestChallenge(row.id)
-      if (!challenge) {
-        // Cannot happen: claimDomain always creates a challenge alongside
-        // the domain, in the same transaction — guarded rather than
-        // asserted so a corrupted/partially-migrated row fails loudly.
-        throw new Error(`No challenge found for domain ${row.id}`)
+    async verifyProjectDomain(projectId, id) {
+      const row = await repository.findByProjectId(projectId, id)
+      if (!row) {
+        return { ok: false, error: 'not_found' }
       }
+      return verifyRow(row)
+    },
 
-      const slug = await projectsService.getProjectSlug(projectId)
-      if (!slug) {
-        // Cannot happen for a projectId resolved from an authenticated api
-        // key context — see the identical guard in claimDomain.
-        throw new Error(`No project found for id ${projectId}`)
+    async regenerateChallenge(projectId, id) {
+      const row = await repository.findByProjectId(projectId, id)
+      if (!row) {
+        return { ok: false, error: 'not_found' }
       }
 
       const currentStatus = row.status as DomainStatus
-      const checkedAt = now()
-
-      // The verification window (states.ts: pending -> failed once it
-      // "elapses with no correct record") is scoped to a domain's *first*
-      // verification, tracked by the challenge's own `expiresAt` — not to
-      // every recheck for the rest of the domain's life. Only a `pending`
-      // domain can still be inside (or have outlived) that window; a
-      // `verified` domain's original challenge already did its job, and
-      // its ongoing rechecks are governed by the separate
-      // recheck_passed/recheck_record_lost/grace_expired vocabulary, which
-      // has nothing to do with this challenge's expiry. So this guard is
-      // scoped to `pending` only, deliberately.
-      //
-      // A stale challenge is hard-failed here without ever running the DNS
-      // check: whatever is (or isn't) published is moot once the window
-      // that would have counted it has already closed — spending a DNS
-      // query on it would be pure latency with no possible different
-      // outcome.
-      if (
-        currentStatus === 'pending' &&
-        isExpired(challenge.createdAt, checkedAt)
-      ) {
-        const transitioned = transition(currentStatus, {
-          type: 'check_hard_failed',
-        })
-        const nextStatus = transitioned.ok ? transitioned.next : currentStatus
-
-        const updatedRow = await repository.recordVerificationAttempt({
-          domainId: row.id,
-          nextStatus,
-        })
-
-        await publishVerifyDomainEvents(eventBus, {
-          domainId: row.id,
-          projectId,
-          mode,
-          domain: row.domain,
-          outcome: 'expired',
-          previousStatus: currentStatus,
-          nextStatus,
-        })
-
-        return {
-          ok: true,
-          domain: toSummary(updatedRow, [challenge]),
-          check: {
-            outcome: 'expired',
-            checkedAt,
-            expectedValue: challenge.recordValue,
-            detectedValues: [],
-          },
-        }
+      const transitioned = transition(currentStatus, {
+        type: 'challenge_regenerated',
+      })
+      if (!transitioned.ok) {
+        return { ok: false, error: 'invalid_status' }
       }
 
-      const resolver = resolverForChallenge({
-        domain: row.domain,
-        recordHost: challenge.recordHost,
-        recordValue: challenge.recordValue,
-        brandSlug: slug,
-        challengeCreatedAt: challenge.createdAt,
-        now,
-      })
-
-      const result = await checkTxt(
-        resolver,
-        challenge.recordHost,
-        challenge.token,
-        slug,
-      )
-
-      const event = eventForCheckOutcome(currentStatus, result.outcome)
-
-      let nextStatus: DomainStatus = currentStatus
-      if (event) {
-        const transitioned = transition(currentStatus, event)
-        if (transitioned.ok) {
-          nextStatus = transitioned.next
-        }
-        // else: eventForCheckOutcome proposed an illegal (status, event)
-        // pair — its own tests guarantee this can't happen, but if it ever
-        // did, the safest thing to do is nothing, not throw and lose the
-        // attempt.
+      const slug = await projectsService.getProjectSlug(row.projectId)
+      if (!slug) {
+        // Cannot happen for a domain resolved via `findByProjectId` from
+        // an owned project — see the identical guard in claimDomain.
+        throw new Error(`No project found for id ${row.projectId}`)
       }
 
-      const verifiedAt = nextStatus === 'verified' ? checkedAt : undefined
+      const token = generateToken()
+      const method: ChallengeMethod = 'dns_txt'
+      const recordHost = challengeHost(row.domain, slug)
+      const recordValueString = recordValue(token, slug)
+      const expiresAt = new Date(Date.now() + DEFAULT_TOKEN_TTL_MS)
 
-      const detectedValues =
-        result.outcome === 'wrong_value' ? result.detected : []
-
-      const updatedRow = await repository.recordVerificationAttempt({
+      const result = await repository.regenerateChallenge({
         domainId: row.id,
-        nextStatus,
-        verifiedAt,
+        nextStatus: transitioned.next,
+        challenge: {
+          method,
+          token,
+          recordHost,
+          recordValue: recordValueString,
+          expiresAt,
+        },
       })
 
-      await publishVerifyDomainEvents(eventBus, {
+      await eventBus.publish('domain.challenge_regenerated', {
         domainId: row.id,
-        projectId,
-        mode,
+        projectId: row.projectId,
+        mode: row.mode,
         domain: row.domain,
-        outcome: result.outcome,
-        previousStatus: currentStatus,
-        nextStatus,
       })
 
       return {
         ok: true,
-        domain: toSummary(updatedRow, [challenge]),
-        check: {
-          outcome: result.outcome,
-          checkedAt,
-          expectedValue: challenge.recordValue,
-          detectedValues,
-        },
+        domain: toSummary(result.domain, [result.challenge]),
       }
     },
   }

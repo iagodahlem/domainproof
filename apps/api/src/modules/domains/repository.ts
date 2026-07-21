@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { challenges, domains } from '@infra/db/schema'
 import type { DomainStatus } from '@domainproof/core'
@@ -54,6 +54,13 @@ export interface VerificationAttemptInsert {
    * domain doesn't erase when it was last confirmed good).
    */
   verifiedAt?: Date
+}
+
+export interface RegenerateChallengeInsert {
+  domainId: string
+  /** The status computed by the caller via core's state machine. */
+  nextStatus: DomainStatus
+  challenge: ChallengeInsert
 }
 
 /**
@@ -122,6 +129,16 @@ export interface DomainsRepository {
   ): Promise<DomainRow | undefined>
 
   /**
+   * Like `release`, but scoped only to `projectId` (no `mode`) — the
+   * dashboard's domain delete route, whose caller has no api-key mode to
+   * further scope by. Same cascade-delete behavior as `release`.
+   */
+  releaseByProjectId(
+    projectId: string,
+    id: string,
+  ): Promise<DomainRow | undefined>
+
+  /**
    * Persists the outcome of one `verifyDomain` attempt: updates the
    * domain's status (and `verified_at`, if provided). Not scoped to
    * `(projectId, mode)` — the caller is expected to have already resolved
@@ -133,6 +150,20 @@ export interface DomainsRepository {
   recordVerificationAttempt(
     values: VerificationAttemptInsert,
   ): Promise<DomainRow>
+
+  /**
+   * Regenerates a domain's challenge: marks its current (non-superseded)
+   * challenge as superseded and inserts a fresh one, atomically in one
+   * transaction, alongside updating the domain's status — see
+   * `infra/db/schema.ts`'s `challenges` table doc comment for why this
+   * supersedes rather than deletes/mutates the old row. Not scoped to
+   * `(projectId, mode)` — the caller is expected to have already resolved
+   * and authorized `domainId` (via `findByProjectId`), same contract as
+   * `recordVerificationAttempt`.
+   */
+  regenerateChallenge(
+    values: RegenerateChallengeInsert,
+  ): Promise<DomainWithChallenge>
 }
 
 export function createDomainsRepository(db: Database): DomainsRepository {
@@ -261,6 +292,14 @@ export function createDomainsRepository(db: Database): DomainsRepository {
       return row
     },
 
+    async releaseByProjectId(projectId, id) {
+      const [row] = await db
+        .delete(domains)
+        .where(and(eq(domains.projectId, projectId), eq(domains.id, id)))
+        .returning()
+      return row
+    },
+
     async recordVerificationAttempt(values) {
       const [domainRow] = await db
         .update(domains)
@@ -279,6 +318,50 @@ export function createDomainsRepository(db: Database): DomainsRepository {
       }
 
       return domainRow
+    },
+
+    async regenerateChallenge(values) {
+      return db.transaction(async (tx) => {
+        await tx
+          .update(challenges)
+          .set({ supersededAt: new Date() })
+          .where(
+            and(
+              eq(challenges.domainId, values.domainId),
+              isNull(challenges.supersededAt),
+            ),
+          )
+
+        const [challengeRow] = await tx
+          .insert(challenges)
+          .values({
+            domainId: values.domainId,
+            method: values.challenge.method,
+            token: values.challenge.token,
+            recordHost: values.challenge.recordHost,
+            recordValue: values.challenge.recordValue,
+            expiresAt: values.challenge.expiresAt,
+          })
+          .returning()
+
+        if (!challengeRow) {
+          throw new Error('Failed to create challenge: insert returned no row')
+        }
+
+        const [domainRow] = await tx
+          .update(domains)
+          .set({ status: values.nextStatus, updatedAt: new Date() })
+          .where(eq(domains.id, values.domainId))
+          .returning()
+
+        if (!domainRow) {
+          throw new Error(
+            `No domain found for id ${values.domainId} while regenerating its challenge`,
+          )
+        }
+
+        return { domain: domainRow, challenge: challengeRow }
+      })
     },
   }
 }
