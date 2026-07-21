@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { generateToken } from '@domainproof/core'
 import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
+import { createFakeLogger } from '@shared/testing/fake-logger'
 import { createApiKeyAuthMiddleware, type ApiKeyAuthVariables } from './api-key'
 import { generateKeyId } from '@modules/keys/domain/encoding'
 import { formatApiKey, type ApiKeyMode } from '@modules/keys/domain/parse'
@@ -75,13 +76,17 @@ function makeKeyRow(mode: ApiKeyMode = 'live'): {
 
 function buildApp(repository: KeysRepository) {
   const app = new Hono<{ Variables: ApiKeyAuthVariables }>()
-  app.get('/protected', createApiKeyAuthMiddleware(repository), (c) => {
-    return c.json({
-      projectId: c.get('projectId'),
-      mode: c.get('mode'),
-      keyId: c.get('keyId'),
-    })
-  })
+  app.get(
+    '/protected',
+    createApiKeyAuthMiddleware(repository, createFakeLogger()),
+    (c) => {
+      return c.json({
+        projectId: c.get('projectId'),
+        mode: c.get('mode'),
+        keyId: c.get('keyId'),
+      })
+    },
+  )
   return app
 }
 

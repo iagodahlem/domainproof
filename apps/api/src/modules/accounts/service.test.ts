@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { EventBus } from '@shared/events'
+import { createFakeLogger } from '@shared/testing/fake-logger'
 import type { AccountEmailResolver } from './ports'
 import type { AccountRow, AccountsRepository } from './repository'
 import { createAccountsService } from './service'
@@ -53,7 +54,12 @@ function fakeEventBus(): EventBus & {
 
 describe('ensureAccount', () => {
   it('creates a new account and reports created: true', async () => {
-    const service = createAccountsService(fakeRepository())
+    const service = createAccountsService(
+      fakeRepository(),
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
 
     const result = await service.ensureAccount('user_123')
 
@@ -62,7 +68,12 @@ describe('ensureAccount', () => {
   })
 
   it('returns the existing account and reports created: false on a second call', async () => {
-    const service = createAccountsService(fakeRepository())
+    const service = createAccountsService(
+      fakeRepository(),
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
 
     const first = await service.ensureAccount('user_123')
     const second = await service.ensureAccount('user_123')
@@ -83,7 +94,12 @@ describe('ensureAccount', () => {
         return undefined
       },
     }
-    const service = createAccountsService(repository)
+    const service = createAccountsService(
+      repository,
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
 
     await expect(service.ensureAccount('user_123')).rejects.toThrow(
       /row not found after conflict/,
@@ -92,7 +108,12 @@ describe('ensureAccount', () => {
 
   it('publishes account.created only when it actually creates the account', async () => {
     const eventBus = fakeEventBus()
-    const service = createAccountsService(fakeRepository(), eventBus)
+    const service = createAccountsService(
+      fakeRepository(),
+      eventBus,
+      undefined,
+      createFakeLogger(),
+    )
 
     await service.ensureAccount('user_123')
     await service.ensureAccount('user_123') // second call: existing account
@@ -106,7 +127,12 @@ describe('ensureAccount', () => {
 
   it('stores the emailHint (from session claims) on creation and publishes it', async () => {
     const eventBus = fakeEventBus()
-    const service = createAccountsService(fakeRepository(), eventBus)
+    const service = createAccountsService(
+      fakeRepository(),
+      eventBus,
+      undefined,
+      createFakeLogger(),
+    )
 
     const result = await service.ensureAccount(
       'user_123',
@@ -123,14 +149,24 @@ describe('ensureAccount', () => {
     const resolver: AccountEmailResolver = {
       resolveEmail: async () => 'resolved@example.com',
     }
-    const service = createAccountsService(fakeRepository(), undefined, resolver)
+    const service = createAccountsService(
+      fakeRepository(),
+      undefined,
+      resolver,
+      createFakeLogger(),
+    )
 
     const result = await service.ensureAccount('user_123')
     expect(result.email).toBe('resolved@example.com')
   })
 
   it('resolves to a null email (never throws) when neither source has one', async () => {
-    const service = createAccountsService(fakeRepository())
+    const service = createAccountsService(
+      fakeRepository(),
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
 
     const result = await service.ensureAccount('user_123')
     expect(result.email).toBeNull()
@@ -138,9 +174,12 @@ describe('ensureAccount', () => {
 
   it('never calls the email resolver for an already-existing account', async () => {
     const resolveEmail = vi.fn(async () => 'resolved@example.com')
-    const service = createAccountsService(fakeRepository(), undefined, {
-      resolveEmail,
-    })
+    const service = createAccountsService(
+      fakeRepository(),
+      undefined,
+      { resolveEmail },
+      createFakeLogger(),
+    )
 
     await service.ensureAccount('user_123')
     resolveEmail.mockClear()
@@ -153,7 +192,12 @@ describe('ensureAccount', () => {
 describe('getEmailForProject', () => {
   it("delegates to the repository's projectId -> email lookup", async () => {
     const repository = fakeRepository()
-    const service = createAccountsService(repository)
+    const service = createAccountsService(
+      repository,
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
 
     const { accountId } = await service.ensureAccount(
       'user_123',

@@ -1,4 +1,5 @@
 import type { EventBus } from '@shared/events'
+import type { Logger } from '@shared/logger'
 import type { AccountEmailResolver } from './ports'
 import type { AccountsRepository } from './repository'
 
@@ -56,6 +57,7 @@ export function createAccountsService(
   emailResolver: AccountEmailResolver = {
     resolveEmail: async () => undefined,
   },
+  logger: Logger,
 ): AccountsService {
   return {
     async ensureAccount(clerkUserId, emailHint) {
@@ -71,8 +73,9 @@ export function createAccountsService(
 
       const email = emailHint ?? (await emailResolver.resolveEmail(clerkUserId))
       if (!email) {
-        console.log(
-          `No email available for clerk user ${clerkUserId} at account bootstrap; welcome email will be skipped.`,
+        logger.info(
+          { clerkUserId },
+          'No email available at account bootstrap; welcome email will be skipped',
         )
       }
 

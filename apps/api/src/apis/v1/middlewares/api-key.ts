@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { apiError } from '@shared/http-errors'
+import type { Logger } from '@shared/logger'
 import { parseApiKey, type ApiKeyMode } from '@modules/keys/domain/parse'
 import type { KeysRepository } from '@modules/keys/repository'
 
@@ -44,6 +45,7 @@ function invalidApiKey() {
  */
 export function createApiKeyAuthMiddleware(
   repository: KeysRepository,
+  logger: Logger,
 ): MiddlewareHandler<{ Variables: ApiKeyAuthVariables }> {
   return async (c, next) => {
     const header = c.req.header('Authorization')
@@ -81,7 +83,7 @@ export function createApiKeyAuthMiddleware(
     }
 
     void repository.touchLastUsed(row.id).catch((err: unknown) => {
-      console.error('Failed to update api key last_used_at', err)
+      logger.error({ err }, 'Failed to update api key last_used_at')
     })
 
     c.set('projectId', row.projectId)

@@ -39,6 +39,13 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default('DomainProof <notifications@domainproof.dev>'),
+  // Verbosity for `infra/logging/logger.ts`'s pino instance. `debug`
+  // additionally logs sanitized request/response payloads (see
+  // `shared/middlewares/request-logger.ts`) — never secrets, but noisy, so
+  // it's opt-in rather than the default.
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -47,6 +54,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source)
 
   if (!parsed.success) {
+    // Deliberately plain console output, not the pino logger: this runs
+    // before `env` itself exists, and `infra/logging/logger.ts` reads
+    // `LOG_LEVEL` off the very env this branch just failed to produce —
+    // there's no validated config yet to build a logger from.
     console.error(
       'Invalid environment configuration:',
       parsed.error.flatten().fieldErrors,

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { createDb } from '@infra/db/client'
 import { runMigrations } from '@infra/db/migrate'
+import { logger } from '@infra/logging/logger'
 import { createApp } from './app'
 import { env } from './env'
 
@@ -18,24 +19,24 @@ try {
   // level below apps/api) and from the tsup-bundled dist/index.js (one
   // level below the deployed image root).
   await runMigrations(db, join(__dirname, '..', 'drizzle'))
-  console.log('Migrations applied')
+  logger.info({}, 'Migrations applied')
 } catch (err) {
-  console.error('Migration failed, exiting', err)
+  logger.error({ err }, 'Migration failed, exiting')
   process.exit(1)
 }
 
 const app = createApp({ db })
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-  console.log(`API listening on port ${info.port}`)
+  logger.info({ port: info.port }, 'API listening')
 })
 
 function shutdown(signal: string) {
-  console.log(`Received ${signal}, shutting down`)
+  logger.info({ signal }, 'Received shutdown signal')
 
   server.close((err) => {
     if (err) {
-      console.error('Error during shutdown', err)
+      logger.error({ err }, 'Error during shutdown')
       process.exit(1)
     }
     process.exit(0)

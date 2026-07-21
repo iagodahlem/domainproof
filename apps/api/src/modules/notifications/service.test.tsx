@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { createFakeLogger } from '@shared/testing/fake-logger'
 import type { EmailMessage, EmailSender } from './ports'
 import { createNotificationsService } from './service'
 
@@ -19,6 +20,7 @@ describe('onAccountCreated', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger: createFakeLogger(),
     })
 
     await service.onAccountCreated({
@@ -38,13 +40,12 @@ describe('onAccountCreated', () => {
 
   it('logs and skips when the account has no email', async () => {
     const emailSender = fakeEmailSender()
+    const logger = createFakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger,
     })
-    const consoleLog = vi
-      .spyOn(console, 'log')
-      .mockImplementation(() => undefined)
 
     await service.onAccountCreated({
       accountId: 'account_1',
@@ -53,8 +54,9 @@ describe('onAccountCreated', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(consoleLog).toHaveBeenCalled()
-    consoleLog.mockRestore()
+    const infoCalls = logger.calls.filter((call) => call.level === 'info')
+    expect(infoCalls).toHaveLength(1)
+    expect(infoCalls[0]?.fields).toMatchObject({ accountId: 'account_1' })
   })
 })
 
@@ -65,6 +67,7 @@ describe('onDomainVerified', () => {
       emailSender,
       getAccountEmailByProjectId: async (projectId) =>
         projectId === 'project_1' ? 'builder@example.com' : undefined,
+      logger: createFakeLogger(),
     })
 
     await service.onDomainVerified({
@@ -86,6 +89,7 @@ describe('onDomainVerified', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainVerified({
@@ -100,13 +104,12 @@ describe('onDomainVerified', () => {
 
   it('logs and skips when the project has no account email on file', async () => {
     const emailSender = fakeEmailSender()
+    const logger = createFakeLogger()
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => undefined,
+      logger,
     })
-    const consoleLog = vi
-      .spyOn(console, 'log')
-      .mockImplementation(() => undefined)
 
     await service.onDomainVerified({
       domainId: 'domain_1',
@@ -116,8 +119,9 @@ describe('onDomainVerified', () => {
     })
 
     expect(emailSender.sent).toHaveLength(0)
-    expect(consoleLog).toHaveBeenCalled()
-    consoleLog.mockRestore()
+    const infoCalls = logger.calls.filter((call) => call.level === 'info')
+    expect(infoCalls).toHaveLength(1)
+    expect(infoCalls[0]?.fields).toMatchObject({ projectId: 'project_1' })
   })
 })
 
@@ -127,6 +131,7 @@ describe('onDomainTemporarilyFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainTemporarilyFailed({
@@ -150,6 +155,7 @@ describe('onDomainFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainFailed({
@@ -170,6 +176,7 @@ describe('onDomainFailed', () => {
     const service = createNotificationsService({
       emailSender,
       getAccountEmailByProjectId: async () => 'builder@example.com',
+      logger: createFakeLogger(),
     })
 
     await service.onDomainFailed({

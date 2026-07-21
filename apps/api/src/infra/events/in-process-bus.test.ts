@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createFakeLogger } from '@shared/testing/fake-logger'
 import { createInProcessEventBus } from './in-process-bus'
 
 describe('createInProcessEventBus', () => {
   it('delivers a published event to every subscriber of that type', async () => {
-    const bus = createInProcessEventBus()
+    const bus = createInProcessEventBus(createFakeLogger())
     const first = vi.fn()
     const second = vi.fn()
 
@@ -23,7 +24,7 @@ describe('createInProcessEventBus', () => {
   })
 
   it('never delivers a published event to a subscriber of a different type', async () => {
-    const bus = createInProcessEventBus()
+    const bus = createInProcessEventBus(createFakeLogger())
     const subscriber = vi.fn()
 
     bus.subscribe('domain.failed', subscriber)
@@ -38,7 +39,7 @@ describe('createInProcessEventBus', () => {
   })
 
   it('runs subscribers in registration order and awaits each one', async () => {
-    const bus = createInProcessEventBus()
+    const bus = createInProcessEventBus(createFakeLogger())
     const calls: string[] = []
 
     bus.subscribe('account.created', async () => {
@@ -59,10 +60,8 @@ describe('createInProcessEventBus', () => {
   })
 
   it('logs and continues past a subscriber that throws, without rejecting publish', async () => {
-    const bus = createInProcessEventBus()
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
+    const logger = createFakeLogger()
+    const bus = createInProcessEventBus(logger)
     const survivor = vi.fn()
 
     bus.subscribe('domain.failed', () => {
@@ -80,12 +79,13 @@ describe('createInProcessEventBus', () => {
     ).resolves.toBeUndefined()
 
     expect(survivor).toHaveBeenCalled()
-    expect(consoleError).toHaveBeenCalled()
-    consoleError.mockRestore()
+    const errorCalls = logger.calls.filter((call) => call.level === 'error')
+    expect(errorCalls).toHaveLength(1)
+    expect(errorCalls[0]?.fields.type).toBe('domain.failed')
   })
 
   it('is a no-op when nothing is subscribed to a published type', async () => {
-    const bus = createInProcessEventBus()
+    const bus = createInProcessEventBus(createFakeLogger())
     await expect(
       bus.publish('domain.claimed', {
         domainId: 'd1',

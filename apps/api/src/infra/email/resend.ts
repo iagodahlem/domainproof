@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import type { EmailSender } from '@modules/notifications/ports'
+import type { Logger } from '@shared/logger'
 
 export interface ResendEmailSenderConfig {
   apiKey: string
@@ -21,6 +22,7 @@ export interface ResendEmailSenderConfig {
  */
 export function createResendEmailSender(
   config: ResendEmailSenderConfig,
+  logger: Logger,
 ): EmailSender {
   const client = new Resend(config.apiKey)
 
@@ -35,10 +37,10 @@ export function createResendEmailSender(
           text,
         })
         if (error) {
-          console.error('Resend rejected an email send', error)
+          logger.error({ error }, 'Resend rejected an email send')
         }
       } catch (err) {
-        console.error('Failed to send email via Resend', err)
+        logger.error({ err }, 'Failed to send email via Resend')
       }
     },
   }

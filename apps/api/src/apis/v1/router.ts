@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { KeysRepository } from '@modules/keys/repository'
 import type { DomainsService } from '@modules/domains/service'
 import type { EventsService } from '@modules/events/service'
+import type { Logger } from '@shared/logger'
 import { createRateLimitMiddleware } from '@shared/middlewares/rate-limit'
 import {
   createApiKeyAuthMiddleware,
@@ -13,6 +14,8 @@ export interface V1RouterDeps {
   keysRepository: KeysRepository
   domainsService: DomainsService
   eventsService: EventsService
+  /** Threaded into `createApiKeyAuthMiddleware` — the composition root (`app.ts`) always wires a real child logger; tests use `createFakeLogger` from `@shared/testing/fake-logger`. */
+  logger: Logger
 }
 
 /**
@@ -30,7 +33,7 @@ export function createV1Router(deps: V1RouterDeps) {
 
   router.use(
     '*',
-    createApiKeyAuthMiddleware(deps.keysRepository),
+    createApiKeyAuthMiddleware(deps.keysRepository, deps.logger),
     createRateLimitMiddleware(),
   )
 
