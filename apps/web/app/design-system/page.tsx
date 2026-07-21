@@ -24,6 +24,9 @@ import {
   CodeToken,
   VerificationLog,
   VerificationLogStatus,
+  TextField,
+  Select,
+  Checkbox,
 } from '@domainproof/ui'
 import { ThemeToggle } from './theme-toggle'
 import { PathChooserDemo } from './path-chooser-demo'
@@ -996,6 +999,88 @@ export default function DesignSystemPage() {
                 </Example>
                 <Example label="empty">
                   <VerificationLog className="w-full max-w-xl" entries={[]} />
+                </Example>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="form-controls">
+          <SectionHead eyebrow="Inputs" title="Form controls" />
+
+          <div className="flex flex-col gap-10">
+            <div>
+              <ComponentGroupLabel>Text field</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="label + placeholder">
+                  <TextField label="Domain" placeholder="acme.co" />
+                </Example>
+                <Example label="filled">
+                  <TextField label="Domain" defaultValue="acme.co" />
+                </Example>
+                <Example label="disabled">
+                  <TextField label="Domain" defaultValue="acme.co" disabled />
+                </Example>
+                <Example label="invalid + inline error">
+                  <TextField
+                    label="Webhook URL"
+                    defaultValue="ftp://acme.co/hook"
+                    error="Must be a valid https:// URL"
+                  />
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Select</ComponentGroupLabel>
+              <div className="flex flex-col gap-6">
+                <Example label="label + options">
+                  <Select
+                    label="Verification method"
+                    options={[
+                      { value: 'txt', label: 'DNS TXT record' },
+                      { value: 'http', label: 'HTTP well-known file' },
+                    ]}
+                  />
+                </Example>
+                <Example label="disabled">
+                  <Select
+                    label="Verification method"
+                    options={[
+                      { value: 'txt', label: 'DNS TXT record' },
+                      { value: 'http', label: 'HTTP well-known file' },
+                    ]}
+                    disabled
+                  />
+                </Example>
+                <Example label="invalid + inline error">
+                  <Select
+                    label="Retry backoff"
+                    options={[
+                      { value: '', label: 'Choose a backoff strategy' },
+                      { value: 'linear', label: 'Linear' },
+                      { value: 'exponential', label: 'Exponential' },
+                    ]}
+                    error="Choose a backoff strategy"
+                  />
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Checkbox</ComponentGroupLabel>
+              <div className="flex flex-col gap-4">
+                <Example label="unchecked / checked">
+                  <Checkbox label="Send me webhook retries" />
+                  <Checkbox label="Include test-mode events" defaultChecked />
+                </Example>
+                <Example label="disabled">
+                  <Checkbox label="Send me webhook retries" disabled />
+                  <Checkbox
+                    label="Include test-mode events"
+                    defaultChecked
+                    disabled
+                  />
                 </Example>
               </div>
             </div>
