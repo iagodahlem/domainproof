@@ -31,9 +31,14 @@ function fakeDomainsService(
     expiryCalls,
     claimDomain: notUsed('claimDomain'),
     listDomains: notUsed('listDomains'),
+    listProjectDomains: notUsed('listProjectDomains'),
     getDomain: notUsed('getDomain'),
+    getProjectDomain: notUsed('getProjectDomain'),
     releaseDomain: notUsed('releaseDomain'),
+    releaseProjectDomain: notUsed('releaseProjectDomain'),
     verifyDomain: notUsed('verifyDomain'),
+    verifyProjectDomain: notUsed('verifyProjectDomain'),
+    regenerateChallenge: notUsed('regenerateChallenge'),
     async recheckDueDomains(now, limit): Promise<RecheckBatchResult> {
       recheckCalls.push({ now, limit })
       return overrides.recheckDueDomains
@@ -134,9 +139,7 @@ describe('createRecheckScheduler', () => {
     const errorCalls = logger.calls.filter((call) => call.level === 'error')
     expect(errorCalls).toHaveLength(1)
     expect(errorCalls[0]?.message).toBe('recheck tick failed')
-    expect((errorCalls[0]?.fields.err as Error).message).toBe(
-      'db unavailable',
-    )
+    expect((errorCalls[0]?.fields.err as Error).message).toBe('db unavailable')
   })
 
   it('a tick that failed clears the in-flight guard so the next tick can run', async () => {
