@@ -29,6 +29,12 @@ const envSchema = z.object({
   PUBLIC_API_HOST: bareHostname.optional(),
   DASHBOARD_API_HOST: bareHostname.optional(),
   FRONTEND_API_HOST: bareHostname.optional(),
+  // Optional: the dashboard web app's origin, for the dashboard plane's
+  // CORS policy (see apis/dashboard/router.ts) — the only plane a browser
+  // calls directly. Unset means any origin is allowed, which is what
+  // keeps local dev (web on whatever port) and tests working without
+  // configuration.
+  WEB_ORIGIN: z.string().url().optional(),
   // Optional: unset means the email notification subscribers aren't
   // registered at all (see `app.ts`) — a clean log-and-skip, not a crash,
   // since dev/test environments won't have this configured. See

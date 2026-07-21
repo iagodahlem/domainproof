@@ -40,10 +40,17 @@ export function createClerkSessionVerifier(
         return { ok: false, reason: 'missing_subject' }
       }
 
-      // Only present if this Clerk instance is configured to include email
-      // as a custom session token claim — not the default, and not
-      // configured for this repo today. See `modules/accounts/service.ts`'s
-      // `ensureAccount` for the fallback when it's absent.
+      // Confirmed empirically (FD-021 A2's e2e signup-flow suite, which
+      // decodes a real dev-instance session token): this instance's v2
+      // session token already carries an `email` key by default — no
+      // custom claim config needed. It's `null` rather than a string for
+      // any user with no email address attached, which is every user on
+      // this dev instance right now (the Backend API 403s attaching one —
+      // "Email address" is disabled instance-wide, Google-only per D-043),
+      // so the `typeof` guard below still matters: it's what turns that
+      // `null` into `undefined` rather than a literal `"null"`. See
+      // `modules/accounts/service.ts`'s `ensureAccount` for the fallback
+      // when it's absent.
       const email =
         typeof payload.email === 'string' ? payload.email : undefined
 

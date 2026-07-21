@@ -133,6 +133,10 @@ export interface AppDependencies {
    * `shared/middlewares/host-restriction.ts`.
    */
   frontendApiHost?: string
+   * Injected for tests; defaults to `env.WEB_ORIGIN`. See
+   * `apis/dashboard/router.ts`'s CORS policy.
+   */
+  webOrigin?: string
   /**
    * Injected for tests (a fake — never hit the real Resend network from a
    * test); defaults to a Resend-backed sender built from
@@ -376,6 +380,7 @@ export function createApp(
       eventsService,
       webhooksService,
       sessionVerifier,
+      webOrigin: deps.webOrigin ?? env.WEB_ORIGIN,
     }),
   )
   app.route(
