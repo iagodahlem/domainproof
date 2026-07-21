@@ -9,13 +9,20 @@ import { ApiError, dashboardApi, type CreateProjectResult } from '@/lib/api'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
 
+export interface CreateProjectFlowProps {
+  /** Repeat visit via the dashboard shell's "New project" item rather than fresh onboarding — swaps the "first project" copy for one that doesn't assume it. */
+  hasExistingProjects?: boolean
+}
+
 /**
- * The locked create-project screen's interactive half: the name field and
- * its submit, then (on success) the show-once keys handoff — held in
- * client state rather than a route, since the keys are never retrievable
- * again once this component unmounts.
+ * The create-project screen's interactive half: the name field and its
+ * submit, then (on success) the show-once keys handoff — held in client
+ * state rather than a route, since the keys are never retrievable again
+ * once this component unmounts.
  */
-export function CreateProjectFlow() {
+export function CreateProjectFlow({
+  hasExistingProjects = false,
+}: CreateProjectFlowProps) {
   const router = useRouter()
   const { getToken } = useAuth()
   const [name, setName] = useState('')
@@ -28,7 +35,9 @@ export function CreateProjectFlow() {
     return (
       <KeysHandoff
         result={result}
-        onContinue={() => router.push('/dashboard')}
+        onContinue={() =>
+          router.push(`/dashboard/${result.project.id}/domains`)
+        }
       />
     )
   }
@@ -71,9 +80,18 @@ export function CreateProjectFlow() {
           Name your project
         </h3>
         <p className="mt-2 text-sm leading-body text-text-muted">
-          Projects group your API keys, domains, and webhooks. You&rsquo;re
-          creating your first one now — add more later if you&rsquo;re running
-          multiple products.
+          {hasExistingProjects ? (
+            <>
+              Projects group your API keys, domains, and webhooks — add another
+              one for a separate product or environment.
+            </>
+          ) : (
+            <>
+              Projects group your API keys, domains, and webhooks. You&rsquo;re
+              creating your first one now — add more later if you&rsquo;re
+              running multiple products.
+            </>
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-2">

@@ -7,14 +7,14 @@ import { STATE_FILE } from './global-setup'
  * Full signup + bootstrap loop against a live local web + api stack (see
  * `e2e/README.md`): fresh Clerk test user -> landing -> sign-in via a
  * Clerk testing token (no real Google UI) -> locked create-project screen
- * -> create -> show-once keys handoff -> dashboard placeholder.
+ * -> create -> show-once keys handoff -> dashboard shell.
  *
  * The first assertion after sign-in is the email-claim check itself
  * (D-045/A2): decodes the real session JWT this dev instance issues and
  * records whether `email` is present as a default claim, without assuming
  * either way.
  */
-test('fresh signup reaches the dashboard placeholder with a named project', async ({
+test('fresh signup reaches the dashboard shell with a named project', async ({
   page,
 }) => {
   const { ticket } = JSON.parse(await readFile(STATE_FILE, 'utf-8')) as {
@@ -62,9 +62,17 @@ test('fresh signup reaches the dashboard placeholder with a named project', asyn
   await expect(page.getByText(/^dp_live_/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Continue to dashboard' }).click()
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/dashboard\/[^/]+\/domains$/)
+  await expect(page.getByRole('heading', { name: 'Domains' })).toBeVisible()
+
+  // Shell assertion: the project switcher lists the project just created.
+  const switcherTrigger = page.getByRole('button', {
+    name: 'E2E Test Project',
+    exact: true,
+  })
+  await expect(switcherTrigger).toBeVisible()
+  await switcherTrigger.click()
   await expect(
-    page.getByRole('heading', { name: 'Your projects' }),
+    page.getByRole('menuitem', { name: 'E2E Test Project' }),
   ).toBeVisible()
-  await expect(page.getByText('E2E Test Project')).toBeVisible()
 })

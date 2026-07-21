@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { SignOutButton } from '@clerk/nextjs'
 import { Button, Logo } from '@domainproof/ui'
@@ -11,18 +10,15 @@ export const metadata: Metadata = {
 }
 
 /**
- * Locked create-project screen (D-045): a fresh account has no project yet,
- * so it lands here and stays here — no nav, nothing else to click. Routing
- * is derived from the projects list (no `/me` route): a caller who already
- * has one is sent straight to `/dashboard` instead.
+ * Create-project screen (D-045): a fresh account has no project yet, so it
+ * lands here and stays here — no nav, nothing else to click. The dashboard
+ * shell's project switcher also routes its "New project" item here, so a
+ * caller with existing projects can reach it too — routing is derived from
+ * the projects list either way (no `/me` route).
  */
 export default async function NewProjectPage() {
   const { getToken } = await auth()
   const { projects } = await dashboardApi.listProjects(await getToken())
-
-  if (projects.length > 0) {
-    redirect('/dashboard')
-  }
 
   const user = await currentUser()
   const email =
@@ -47,7 +43,7 @@ export default async function NewProjectPage() {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <CreateProjectFlow />
+        <CreateProjectFlow hasExistingProjects={projects.length > 0} />
       </main>
     </div>
   )
