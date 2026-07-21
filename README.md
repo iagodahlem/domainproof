@@ -111,8 +111,9 @@ so the split below is what matters for local development:
   its own unguessable `frontendToken`, embedded directly in
   `verificationUrl`, that grants read access plus a rate-limited re-check
   on that one claim and nothing else. This is what the hosted verification
-  page calls, and the pattern drop-in frontend components will use later.
-  See "Frontend API" below.
+  page calls, and what a drop-in component calls after a component session
+  (minted on `/v1`) hands it a domain claim of its own. See "Frontend API"
+  below.
 
 | Method | Path                                                                                   | Plane     | Description                                                                                                             |
 | ------ | -------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -146,9 +147,11 @@ so the split below is what matters for local development:
 | POST   | `/v1/domains/:id/verify`                                                               | Public    | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                 |
 | POST   | `/v1/domains/:id/regenerate`                                                           | Public    | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                   |
 | GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                              |
+| POST   | `/v1/component-sessions`                                                               | Public    | Mints a short-lived, single-use session token for a drop-in component to claim one domain.                              |
 | GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, and last check outcome by its `frontendToken`.                             |
 | POST   | `/frontend/verifications/:token/check`                                                 | Frontend  | Runs the DNS check for a claim (rate limited) and returns the same shape as the `GET` above.                            |
 | GET    | `/frontend/verifications/:token/events`                                                | Frontend  | Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.                 |
+| POST   | `/frontend/component-sessions/:sessionToken/claim`                                     | Frontend  | Spends a component session to claim a domain (rate limited); returns the claim plus its own `frontendToken`.            |
 
 This table is maintained by hand until an OpenAPI spec exists — any PR that
 adds or changes an endpoint must update it. See [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -277,6 +280,55 @@ An unknown token, a released domain's now-defunct token, and any other
 lookup miss all 404 identically (`{ "error": { "code": "not_found" } }`)
 — there is no second factor to fail differently once the token itself
 doesn't resolve.
+
+#### Component sessions
+
+For a builder embedding a drop-in component (rather than calling `/v1`
+directly), the flow is one backend touchpoint and then a component that
+talks to the Frontend API on its own:
+
+1. The builder's backend mints a session with its own api key:
+   `POST /v1/component-sessions` with an optional `{ "externalId": "..." }`
+   (the builder's own id for whoever's about to claim a domain — a user id,
+   an account id, whatever makes sense in their own data model) returns
+   `{ "sessionToken": "...", "expiresAt": "..." }`. The token is unguessable
+   (the same entropy as an api key secret or a `frontendToken`) and expires
+   in an hour if never spent.
+2. The backend hands `sessionToken` to its frontend component — never the
+   api key itself.
+3. The component calls
+   `POST /frontend/component-sessions/:sessionToken/claim` with
+   `{ "domain": "example.com" }`. This claims the domain through the exact
+   same path `/v1/domains` uses (same validation, same conflict/sandbox
+   rules, same `domain.claimed` event), with the project/mode and
+   `externalId` carried over from the session, and returns the same shape
+   `GET /frontend/verifications/:token` does, plus the new claim's own
+   `frontendToken`:
+
+   ```json
+   {
+     "domain": "example.com",
+     "mode": "live",
+     "status": "pending",
+     "projectName": "Acme",
+     "records": ["..."],
+     "check": null,
+     "updatedAt": "2026-07-19T12:00:00.000Z",
+     "frontendToken": "..."
+   }
+   ```
+
+4. The component switches to the normal Frontend API endpoints
+   (`/frontend/verifications/:frontendToken`, `/check`, `/events`) from
+   there — the session has done its one job.
+
+A session is single-use: spending it (successfully or not) consumes it, so
+a second claim attempt on the same token — concurrent or sequential —
+never succeeds. An unknown, expired, or already-consumed session all 404
+identically (`{ "error": { "code": "not_found" } }`), the same
+anti-enumeration stance as a `frontendToken` lookup miss. The claim itself
+is rate limited per session token (10 attempts per hour) — generous for a
+component retrying after a mistyped domain, not tuned for a bot.
 
 ### Webhooks
 

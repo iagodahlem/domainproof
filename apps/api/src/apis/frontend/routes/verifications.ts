@@ -73,9 +73,11 @@ function serializeCheck(check: LastCheckSummary | VerifyDomainCheck | null) {
  * The Frontend API's hosted-verification-page view of a domain claim: only
  * what the page renders — never an account id, project id, or key
  * material. `projectName` is the one project fact the page needs ("who
- * this belongs to"), not the project's internal id.
+ * this belongs to"), not the project's internal id. Exported for reuse by
+ * `routes/component-sessions.ts`'s claim response, which returns this
+ * exact shape plus the claim's `frontendToken`.
  */
-function serializeVerification(
+export function serializeVerification(
   domain: DomainSummary,
   projectName: string,
   check: LastCheckSummary | VerifyDomainCheck | null,
@@ -119,7 +121,8 @@ function serializeEvent(event: EventSummary) {
   }
 }
 
-async function resolveProjectName(
+/** Exported for reuse by `routes/component-sessions.ts`'s claim response. */
+export async function resolveProjectName(
   projectsService: ProjectsService,
   domain: DomainSummary,
 ): Promise<string> {

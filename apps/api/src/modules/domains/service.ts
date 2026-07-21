@@ -70,12 +70,16 @@ export interface DomainSummary {
   frontendToken: string
   /** `null` until the first check ever runs. See {@link LastCheckSummary}. */
   lastCheck: LastCheckSummary | null
+  /** Stamped from a component session's mint-time `externalId`, if this claim was made through one — see `infra/db/schema.ts`'s `domains.externalId` doc comment. `null` for every other claim path. */
+  externalId: string | null
 }
 
 export interface ClaimDomainInput {
   projectId: string
   mode: DomainMode
   domain: string
+  /** Stamped onto the created claim — see `DomainSummary.externalId`. Only ever populated by `modules/component-sessions/service.ts`'s `claimDomain`, which threads through its session's own `externalId`. */
+  externalId?: string
 }
 
 export type ClaimDomainResult =
@@ -157,6 +161,10 @@ export interface DomainsService {
    * DNS and exist purely to demo/test the verification flow — claiming one
    * "for real" with a live key would be a live-mode project silently
    * depending on fixture behavior that isn't actually verifying anything.
+   *
+   * `externalId`, when given, is stamped onto the created claim verbatim
+   * — see `ClaimDomainInput.externalId`'s doc comment for who actually
+   * populates it.
    * `test`-mode keys are unaffected either direction: they can claim both
    * sandbox and real domains, same as before this rule existed.
    */
@@ -377,6 +385,7 @@ function toSummary(
             detectedValues: domain.lastCheckResult.detectedValues,
           }
         : null,
+    externalId: domain.externalId,
   }
 }
 
@@ -702,7 +711,7 @@ export function createDomainsService(
   }
 
   return {
-    async claimDomain({ projectId, mode, domain }) {
+    async claimDomain({ projectId, mode, domain, externalId }) {
       const normalized = normalizeDomain(domain)
       if (!normalized.ok) {
         return {
@@ -758,6 +767,7 @@ export function createDomainsService(
         // for the Frontend API plane and must never be guessable from
         // (or leak into) anything DNS-visible.
         frontendToken: generateToken(),
+        externalId,
         challenge: {
           method,
           token,

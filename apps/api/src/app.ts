@@ -22,6 +22,11 @@ import {
   type DomainsService,
 } from '@modules/domains/service'
 import type { ResolverForChallenge } from '@modules/domains/ports'
+import { createComponentSessionsRepository } from '@modules/component-sessions/repository'
+import {
+  createComponentSessionsService,
+  type ComponentSessionsService,
+} from '@modules/component-sessions/service'
 import { createEventsRepository } from '@modules/events/repository'
 import {
   createEventsService,
@@ -156,6 +161,7 @@ export interface AppServices {
   domainsService: DomainsService
   eventsService: EventsService
   webhooksService: WebhooksService
+  componentSessionsService: ComponentSessionsService
   sessionVerifier: SessionVerifier | undefined
 }
 
@@ -217,6 +223,13 @@ export function createServices(deps: AppDependencies = {}): AppServices {
     createResolverForChallenge(),
     deps.now ?? (() => new Date()),
     eventBus,
+  )
+
+  const componentSessionsRepository = createComponentSessionsRepository(db)
+  const componentSessionsService = createComponentSessionsService(
+    componentSessionsRepository,
+    domainsService,
+    deps.now ?? (() => new Date()),
   )
 
   // Only registered when a sender is actually configured — same pattern
@@ -290,6 +303,7 @@ export function createServices(deps: AppDependencies = {}): AppServices {
     domainsService,
     eventsService,
     webhooksService,
+    componentSessionsService,
     sessionVerifier,
   }
 }
@@ -319,6 +333,7 @@ export function createApp(
     domainsService,
     eventsService,
     webhooksService,
+    componentSessionsService,
     sessionVerifier,
   } = services
 
@@ -369,12 +384,18 @@ export function createApp(
       keysRepository,
       domainsService,
       eventsService,
+      componentSessionsService,
       logger: createChildLogger({ module: 'v1.api-key' }),
     }),
   )
   app.route(
     '/frontend',
-    createFrontendRouter({ domainsService, eventsService, projectsService }),
+    createFrontendRouter({
+      domainsService,
+      eventsService,
+      projectsService,
+      componentSessionsService,
+    }),
   )
 
   app.notFound((c) => {
