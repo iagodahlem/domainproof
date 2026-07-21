@@ -138,6 +138,68 @@ describe('listByProject', () => {
   })
 })
 
+describe('listByProjectPaginated', () => {
+  it('returns domains for the project only, newest first, paginated', async () => {
+    const projectId = await createTestProject()
+    const otherProjectId = await createTestProject()
+
+    const first = await repository.claim(
+      claimValues(projectId, { domain: 'first.test' }),
+    )
+    const second = await repository.claim(
+      claimValues(projectId, { domain: 'second.test' }),
+    )
+    const third = await repository.claim(
+      claimValues(projectId, { domain: 'third.test' }),
+    )
+    await repository.claim(
+      claimValues(otherProjectId, { domain: 'other.test' }),
+    )
+    if (!first || !second || !third) throw new Error('setup failed')
+
+    const firstPage = await repository.listByProjectPaginated(projectId, {
+      limit: 2,
+    })
+    expect(firstPage.rows.map((r) => r.domain)).toEqual([
+      'third.test',
+      'second.test',
+    ])
+    expect(firstPage.hasMore).toBe(true)
+
+    const lastRow = firstPage.rows[firstPage.rows.length - 1]
+    if (!lastRow) throw new Error('expected a last row')
+
+    const secondPage = await repository.listByProjectPaginated(projectId, {
+      limit: 2,
+      cursor: { id: lastRow.id },
+    })
+    expect(secondPage.rows.map((r) => r.domain)).toEqual(['first.test'])
+    expect(secondPage.hasMore).toBe(false)
+  })
+
+  it('includes domains across both modes', async () => {
+    const projectId = await createTestProject()
+    await repository.claim(claimValues(projectId, { mode: 'live' }))
+    await repository.claim(claimValues(projectId, { mode: 'test' }))
+
+    const { rows } = await repository.listByProjectPaginated(projectId, {
+      limit: 10,
+    })
+    expect(rows).toHaveLength(2)
+  })
+
+  it('returns an empty page for a project with no domains', async () => {
+    const projectId = await createTestProject()
+
+    const { rows, hasMore } = await repository.listByProjectPaginated(
+      projectId,
+      { limit: 10 },
+    )
+    expect(rows).toEqual([])
+    expect(hasMore).toBe(false)
+  })
+})
+
 describe('findById', () => {
   it('finds a domain scoped to its project and mode', async () => {
     const projectId = await createTestProject()
@@ -172,6 +234,37 @@ describe('findById', () => {
 
     expect(
       await repository.findById(projectId, 'test', created.domain.id),
+    ).toBeUndefined()
+  })
+})
+
+describe('findByProjectId', () => {
+  it('finds a domain scoped to its project, regardless of mode', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(
+      claimValues(projectId, { mode: 'test' }),
+    )
+    if (!created) throw new Error('setup failed')
+
+    const found = await repository.findByProjectId(projectId, created.domain.id)
+    expect(found?.id).toBe(created.domain.id)
+  })
+
+  it("returns undefined for another project's domain", async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const created = await repository.claim(claimValues(projectA))
+    if (!created) throw new Error('setup failed')
+
+    expect(
+      await repository.findByProjectId(projectB, created.domain.id),
+    ).toBeUndefined()
+  })
+
+  it('returns undefined for an unknown id', async () => {
+    const projectId = await createTestProject()
+    expect(
+      await repository.findByProjectId(projectId, randomUUID()),
     ).toBeUndefined()
   })
 })

@@ -14,6 +14,7 @@ import {
 } from '@domainproof/core'
 import type { ProjectsService } from '@modules/projects/service'
 import type { DomainEventMap, EventBus, Mode } from '@shared/events'
+import { decodeDomainsCursor, encodeDomainsCursor } from './domain/cursor'
 import { eventForCheckOutcome } from './domain/verification-event'
 import type { ResolverForChallenge } from './ports'
 import type {
@@ -90,6 +91,17 @@ export type VerifyDomainResult =
   | { ok: true; domain: DomainSummary; check: VerifyDomainCheck }
   | { ok: false; error: 'not_found' }
 
+export interface ListProjectDomainsOptions {
+  limit: number
+  cursor?: string
+}
+
+export interface ListProjectDomainsResult {
+  domains: DomainSummary[]
+  /** `null` once the last page has been reached. */
+  nextCursor: string | null
+}
+
 export interface DomainsService {
   /**
    * Claims a domain for a project: normalizes/validates the input,
@@ -114,12 +126,32 @@ export interface DomainsService {
   /** All domains claimed by a project in the given mode. */
   listDomains(projectId: string, mode: DomainMode): Promise<DomainSummary[]>
 
+  /**
+   * A project's domains across both modes, newest first, cursor-paginated
+   * — the dashboard's domains table. Plane-agnostic unlike `listDomains`:
+   * a dashboard caller resolves `projectId` via `resolveOwnedProject` and
+   * has no api-key `mode` to scope by, since the dashboard shows a
+   * project's test and live claims together (with `mode` as a per-row
+   * field, not a filter).
+   */
+  listProjectDomains(
+    projectId: string,
+    options: ListProjectDomainsOptions,
+  ): Promise<ListProjectDomainsResult>
+
   /** `null` if `id` doesn't belong to `(projectId, mode)`. */
   getDomain(
     projectId: string,
     mode: DomainMode,
     id: string,
   ): Promise<DomainSummary | null>
+
+  /**
+   * Like `getDomain`, but scoped only to `projectId` (no `mode`) — the
+   * dashboard's domain detail/events routes. `null` if `id` doesn't belong
+   * to `projectId`.
+   */
+  getProjectDomain(projectId: string, id: string): Promise<DomainSummary | null>
 
   /**
    * Releases a claim: deletes the domain (and, via cascade, its challenges
@@ -360,8 +392,38 @@ export function createDomainsService(
       )
     },
 
+    async listProjectDomains(projectId, { limit, cursor }) {
+      const decodedCursor = cursor ? decodeDomainsCursor(cursor) : undefined
+      const { rows, hasMore } = await repository.listByProjectPaginated(
+        projectId,
+        { limit, cursor: decodedCursor },
+      )
+
+      const summaries = await Promise.all(
+        rows.map(async (row) => {
+          const challenge = await repository.findLatestChallenge(row.id)
+          return toSummary(row, challenge ? [challenge] : [])
+        }),
+      )
+
+      const lastRow = rows[rows.length - 1]
+      const nextCursor =
+        hasMore && lastRow ? encodeDomainsCursor({ id: lastRow.id }) : null
+
+      return { domains: summaries, nextCursor }
+    },
+
     async getDomain(projectId, mode, id) {
       const row = await repository.findById(projectId, mode, id)
+      if (!row) {
+        return null
+      }
+      const challenge = await repository.findLatestChallenge(row.id)
+      return toSummary(row, challenge ? [challenge] : [])
+    },
+
+    async getProjectDomain(projectId, id) {
+      const row = await repository.findByProjectId(projectId, id)
       if (!row) {
         return null
       }
