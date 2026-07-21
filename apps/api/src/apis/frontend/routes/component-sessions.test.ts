@@ -153,7 +153,7 @@ describe('POST /frontend/component-sessions/:sessionToken/claim', () => {
     expect(verifyBody.domain).toBe('component-example.test')
   })
 
-  it("stamps the session's externalId onto the created domain claim", async () => {
+  it("stamps the session's externalId onto the created domain claim, without leaking it back to the claiming component", async () => {
     const app = buildApp()
     const apiKey = await createTestApiKey()
     const sessionToken = await mintSession(app, apiKey.key, {
@@ -172,6 +172,14 @@ describe('POST /frontend/component-sessions/:sessionToken/claim', () => {
       .from(domains)
       .where(eq(domains.domain, 'attributed-example.test'))
     expect(row?.externalId).toBe('user_55')
+
+    // Stamped server-side for the builder's own attribution — never
+    // returned to the component running in the end user's browser, same
+    // as `/frontend/verifications/:token` (see its own no-leak test).
+    const raw = await res.clone().text()
+    expect(raw).not.toContain('user_55')
+    expect(raw).not.toContain('external_id')
+    expect(raw).not.toContain('externalId')
   })
 
   it('rejects a second claim attempt on the same, now-consumed session', async () => {

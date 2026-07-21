@@ -75,6 +75,7 @@ async function createTestDomain(
   overrides: {
     domain?: string
     mode?: 'test' | 'live'
+    externalId?: string
     withChallenge?: boolean
   } = {},
 ): Promise<string> {
@@ -86,6 +87,7 @@ async function createTestDomain(
       projectId,
       domain: domainName,
       mode: overrides.mode ?? 'live',
+      externalId: overrides.externalId,
       status: 'pending',
       frontendToken: `frontend-token-${randomUUID()}`,
     })
@@ -112,6 +114,7 @@ interface DomainResponseBody {
     domain: string
     mode: string
     status: string
+    external_id: string | null
     verificationUrl: string
     records: Array<{
       type: string
@@ -127,7 +130,11 @@ async function createDomain(
   app: ReturnType<typeof buildApp>,
   clerkUserId: string,
   projectId: string,
-  overrides: { domain: string; mode?: 'test' | 'live' },
+  overrides: {
+    domain: string
+    mode?: 'test' | 'live'
+    external_id?: string
+  },
 ) {
   return asUser(app, clerkUserId, `/dashboard/projects/${projectId}/domains`, {
     method: 'POST',
@@ -260,6 +267,37 @@ describe('/dashboard/projects/:projectId/domains', () => {
       )
       const body = (await res.json()) as { domains: Array<{ domain: string }> }
       expect(body.domains.map((d) => d.domain)).toEqual(['a.example.test'])
+    })
+
+    it('filters by external_id, matching every domain claimed under it', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      await createTestDomain(projectId, {
+        domain: 'customer-a.test',
+        externalId: 'customer_1',
+      })
+      await createTestDomain(projectId, {
+        domain: 'customer-a-alt.test',
+        externalId: 'customer_1',
+      })
+      await createTestDomain(projectId, {
+        domain: 'customer-b.test',
+        externalId: 'customer_2',
+      })
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?external_id=customer_1`,
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { domains: Array<{ domain: string }> }
+      expect(body.domains.map((d) => d.domain).sort()).toEqual([
+        'customer-a-alt.test',
+        'customer-a.test',
+      ])
     })
 
     it('paginates with limit and cursor', async () => {
@@ -493,6 +531,47 @@ describe('/dashboard/projects/:projectId/domains', () => {
       expect(body.domain.records).toHaveLength(1)
       expect(body.domain.records[0]?.type).toBe('TXT')
       expect(body.domain.records[0]?.status).toBe('pending')
+    })
+
+    it('claims a domain with an external_id and returns it on every response', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+        external_id: 'customer_1',
+      })
+      expect(res.status).toBe(201)
+      const body = (await res.json()) as DomainResponseBody
+      expect(body.domain.external_id).toBe('customer_1')
+    })
+
+    it('claims a domain without an external_id, which defaults to null', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+      })
+      expect(res.status).toBe(201)
+      const body = (await res.json()) as DomainResponseBody
+      expect(body.domain.external_id).toBeNull()
+    })
+
+    it('rejects an external_id over 256 characters', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await createDomain(app, clerkUserId, projectId, {
+        domain: 'example.test',
+        external_id: 'a'.repeat(257),
+      })
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_request')
     })
 
     it('rejects a request body missing mode', async () => {

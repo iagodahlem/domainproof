@@ -160,6 +160,21 @@ export const domains = pgTable(
       .references(() => projects.id, { onDelete: 'cascade' }),
     domain: text('domain').notNull(),
     mode: modeEnum('mode').notNull(),
+    /**
+     * An opaque identifier the claiming project attaches to correlate this
+     * domain with its own end user — the multi-tenant case, where a builder
+     * brings a custom domain per customer. Settable only at claim time,
+     * never changed afterward: either stamped verbatim from `POST
+     * /v1/domains`'s or the dashboard create route's `external_id`, or
+     * threaded through from a component session's mint-time `externalId`
+     * (see `component_sessions.external_id` and
+     * `modules/component-sessions/service.ts`'s `claimDomain`). `null` when
+     * the claim didn't set one. Deliberately carries no uniqueness
+     * constraint: the same external_id may own several domains (one
+     * customer with more than one custom domain), so this is a lookup key,
+     * not an identity key.
+     */
+    externalId: text('external_id'),
     status: domainStatusEnum('status').notNull().default('not_started'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -229,15 +244,6 @@ export const domains = pgTable(
       expectedValue: string
       detectedValues: string[]
     } | null>(),
-    /**
-     * An opaque identifier stamped from a component session's mint-time
-     * `externalId` (see `component_sessions.external_id` and
-     * `modules/component-sessions/service.ts`'s `claimDomain`) — lets the
-     * claiming caller correlate this claim with their own data model.
-     * `null` for every claim made through `/v1/domains` or the dashboard
-     * directly, neither of which has such an id to stamp.
-     */
-    externalId: text('external_id'),
   },
   (table) => [
     unique('domains_project_domain_mode_unique').on(

@@ -394,6 +394,190 @@ describe('/v1/domains', () => {
     expect(body.domains.map((d) => d.domain).sort()).toEqual(['a.com', 'b.com'])
   })
 
+  it('claims a domain with an external_id and returns it on every response', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        domain: 'example.com',
+        external_id: 'customer_1',
+      }),
+    })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as {
+      domain: { external_id: string | null }
+    }
+    expect(body.domain.external_id).toBe('customer_1')
+  })
+
+  it('claims a domain without an external_id, which defaults to null', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'example.com' }),
+    })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as {
+      domain: { external_id: string | null }
+    }
+    expect(body.domain.external_id).toBeNull()
+  })
+
+  it('rejects an external_id over 256 characters', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+    const tooLong = 'a'.repeat(257)
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'example.com', external_id: tooLong }),
+    })
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('invalid_request')
+  })
+
+  it('surfaces a component-session claim’s external_id in the list, exactly like a direct v1 claim', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    const sessionRes = await withKey(
+      app,
+      apiKey.key,
+      '/v1/component-sessions',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ externalId: 'customer_3' }),
+      },
+    )
+    expect(sessionRes.status).toBe(201)
+    const { sessionToken } = (await sessionRes.json()) as {
+      sessionToken: string
+    }
+
+    // No api key here — a drop-in component spends the session token
+    // directly, same as a real end user's browser would.
+    const claimRes = await app.request(
+      `/frontend/component-sessions/${sessionToken}/claim`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'session-claimed.com' }),
+      },
+    )
+    expect(claimRes.status).toBe(201)
+
+    const listRes = await withKey(
+      app,
+      apiKey.key,
+      '/v1/domains?external_id=customer_3',
+    )
+    expect(listRes.status).toBe(200)
+    const listBody = (await listRes.json()) as {
+      domains: Array<{ domain: string; external_id: string | null }>
+    }
+    expect(listBody.domains).toHaveLength(1)
+    expect(listBody.domains[0]?.domain).toBe('session-claimed.com')
+    expect(listBody.domains[0]?.external_id).toBe('customer_3')
+  })
+
+  it('filters the list by external_id, matching every domain claimed under it', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        domain: 'customer-a.com',
+        external_id: 'customer_1',
+      }),
+    })
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        domain: 'customer-a-alt.com',
+        external_id: 'customer_1',
+      }),
+    })
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        domain: 'customer-b.com',
+        external_id: 'customer_2',
+      }),
+    })
+
+    const res = await withKey(
+      app,
+      apiKey.key,
+      '/v1/domains?external_id=customer_1',
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { domains: Array<{ domain: string }> }
+    expect(body.domains.map((d) => d.domain).sort()).toEqual([
+      'customer-a-alt.com',
+      'customer-a.com',
+    ])
+  })
+
+  it('filters the list by an exact domain match', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'acme.co' }),
+    })
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'other.co' }),
+    })
+
+    const res = await withKey(app, apiKey.key, '/v1/domains?domain=acme.co')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { domains: Array<{ domain: string }> }
+    expect(body.domains.map((d) => d.domain)).toEqual(['acme.co'])
+  })
+
+  it('combines external_id and domain filters', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'acme.co', external_id: 'customer_1' }),
+    })
+    await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'other.co', external_id: 'customer_1' }),
+    })
+
+    const res = await withKey(
+      app,
+      apiKey.key,
+      '/v1/domains?external_id=customer_1&domain=acme.co',
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { domains: Array<{ domain: string }> }
+    expect(body.domains).toHaveLength(1)
+    expect(body.domains[0]?.domain).toBe('acme.co')
+  })
+
   it('gets a single domain by id', async () => {
     const app = buildApp()
     const apiKey = await createTestApiKey()

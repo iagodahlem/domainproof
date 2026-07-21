@@ -191,6 +191,7 @@ const PAYLOAD = {
   projectId: 'project_1',
   mode: 'live' as const,
   domain: 'example.com',
+  externalId: null,
 }
 
 describe('createEndpoint', () => {

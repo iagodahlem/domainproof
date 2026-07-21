@@ -20,9 +20,25 @@ const MAX_PAGE_LIMIT = 100
 // and `apis/v1` never import from each other (ARCHITECTURE.md).
 const MAX_DOMAIN_LENGTH = 253
 
+// Duplicated from `apis/v1/routes/domains.ts`'s identical constant — same
+// cross-plane-import restriction as `MAX_DOMAIN_LENGTH` above.
+const MAX_EXTERNAL_ID_LENGTH = 256
+
+// Shared by every cursor-paginated GET on this router (the domains list
+// below and `/:domainId/events`).
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(MAX_PAGE_LIMIT).optional(),
   cursor: z.string().min(1).optional(),
+})
+
+// The domains list's own query schema: `listQuerySchema`'s pagination
+// fields plus the `external_id` filter, which only makes sense here, not on
+// the events list. Stays snake_case on the wire (query param and the create
+// body's `external_id`) rather than following this plane's otherwise-
+// camelCase convention — see the identical note in
+// `apis/v1/routes/domains.ts`.
+const listDomainsQuerySchema = listQuerySchema.extend({
+  external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
 })
 
 const createDomainBodySchema = z.object({
@@ -31,6 +47,7 @@ const createDomainBodySchema = z.object({
   // live — authenticated the request), the dashboard has no api key in
   // play, so the caller states the mode explicitly.
   mode: z.enum(['test', 'live']),
+  external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
 })
 
 const RECORD_TYPE_BY_METHOD: Record<string, string> = {
@@ -109,6 +126,7 @@ function serializeDomainSummary(summary: DomainSummary) {
     domain: summary.domain,
     mode: summary.mode,
     status: summary.status,
+    external_id: summary.externalId,
     method: summary.challenges[0]?.method ?? null,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
@@ -235,6 +253,7 @@ export function createDomainsRoutes(
       projectId,
       mode: parsed.data.mode,
       domain: parsed.data.domain,
+      externalId: parsed.data.external_id,
     })
 
     if (!result.ok) {
@@ -264,7 +283,7 @@ export function createDomainsRoutes(
       return c.json(body, status)
     }
 
-    const parsed = listQuerySchema.safeParse(c.req.query())
+    const parsed = listDomainsQuerySchema.safeParse(c.req.query())
     if (!parsed.success) {
       const { body, status } = invalidRequest('Invalid query parameters')
       return c.json(body, status)
@@ -275,6 +294,7 @@ export function createDomainsRoutes(
       {
         limit: parsed.data.limit ?? DEFAULT_PAGE_LIMIT,
         cursor: parsed.data.cursor,
+        externalId: parsed.data.external_id,
       },
     )
 
