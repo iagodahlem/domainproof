@@ -11,6 +11,7 @@ export {
   type ProviderBadgeProps,
   StatusPill,
   type StatusPillProps,
+  dotVariants,
 } from './badge'
 export {
   Callout,
