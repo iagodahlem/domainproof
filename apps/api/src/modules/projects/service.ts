@@ -62,6 +62,21 @@ export interface ProjectsService {
    * (an api key already resolved to a project) shouldn't normally see this.
    */
   getProjectSlug(projectId: string): Promise<string | undefined>
+
+  /**
+   * Renames a project. Callers must resolve `projectId` via
+   * `resolveOwnedProject` first — this method performs no ownership check
+   * of its own, matching the shape `keysService`'s per-key methods use once
+   * a project id is already scoped.
+   *
+   * Deliberately never touches `slug`: the slug is frozen at creation and
+   * is not re-derived from the new name, because a domain's verification
+   * record (`_<slug>-challenge.<domain>`, `<slug>-verify=<token>`) is
+   * addressed by slug — shifting it out from under an already-verified
+   * domain just because its project got renamed would break that domain's
+   * proof without the builder touching DNS at all.
+   */
+  renameProject(projectId: string, name: string): Promise<ProjectSummary>
 }
 
 function toSummary(row: ProjectRow): ProjectSummary {
@@ -140,6 +155,18 @@ export function createProjectsService(
 
     async getProjectSlug(projectId) {
       return repository.findSlugById(projectId)
+    },
+
+    async renameProject(projectId, name) {
+      const updated = await repository.updateName(projectId, name)
+      if (!updated) {
+        // Cannot happen: callers only reach here after resolveOwnedProject
+        // has already confirmed projectId exists.
+        throw new Error(
+          `Failed to rename project ${projectId}: no such project`,
+        )
+      }
+      return toSummary(updated)
     },
   }
 }

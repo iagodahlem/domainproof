@@ -4,7 +4,8 @@ import type { SessionAuthVariables } from '../middlewares/session-auth'
 import type { ProjectsService } from '@modules/projects/service'
 import { apiError } from '@shared/http-errors'
 
-const createProjectBodySchema = z.object({
+/** Shared with `PATCH /:projectId` — a rename uses the same name rules as creation. */
+const projectNameBodySchema = z.object({
   name: z.string().min(1).max(200),
 })
 
@@ -12,6 +13,13 @@ function invalidRequest(message: string) {
   return {
     body: apiError('invalid_request', message),
     status: 400 as const,
+  }
+}
+
+function projectNotFound() {
+  return {
+    body: apiError('not_found', 'Project not found'),
+    status: 404 as const,
   }
 }
 
@@ -26,7 +34,9 @@ function invalidRequest(message: string) {
  *
  * Session auth is applied once for the whole plane in
  * `apis/dashboard/router.ts` — by the time a handler here runs,
- * `c.get("userId")` is already set.
+ * `c.get("userId")` is already set. `PATCH /:projectId` renames a project;
+ * it resolves ownership the same way `keys`/`domains` routes do via
+ * `resolveOwnedProject`, so an unknown or unowned id 404s rather than 403s.
  */
 export function createProjectsRoutes(projectsService: ProjectsService) {
   const router = new Hono<{ Variables: SessionAuthVariables }>()
@@ -42,7 +52,7 @@ export function createProjectsRoutes(projectsService: ProjectsService) {
 
   router.post('/', async (c) => {
     const json = await c.req.json().catch(() => undefined)
-    const parsed = createProjectBodySchema.safeParse(json)
+    const parsed = projectNameBodySchema.safeParse(json)
 
     if (!parsed.success) {
       const { body, status } = invalidRequest('Invalid request body')
@@ -56,6 +66,33 @@ export function createProjectsRoutes(projectsService: ProjectsService) {
     )
 
     return c.json(result, 201)
+  })
+
+  router.patch('/:projectId', async (c) => {
+    const json = await c.req.json().catch(() => undefined)
+    const parsed = projectNameBodySchema.safeParse(json)
+
+    if (!parsed.success) {
+      const { body, status } = invalidRequest('Invalid request body')
+      return c.json(body, status)
+    }
+
+    const projectId = await projectsService.resolveOwnedProject(
+      c.get('userId'),
+      c.req.param('projectId'),
+      c.get('userEmail'),
+    )
+    if (!projectId) {
+      const { body, status } = projectNotFound()
+      return c.json(body, status)
+    }
+
+    const project = await projectsService.renameProject(
+      projectId,
+      parsed.data.name,
+    )
+
+    return c.json({ project })
   })
 
   return router

@@ -256,6 +256,9 @@ function fakeProjectsService(
     async getProjectSlug(projectId) {
       return slugsByProjectId[projectId]
     },
+    async renameProject() {
+      throw new Error('not used by domains service')
+    },
   }
 }
 

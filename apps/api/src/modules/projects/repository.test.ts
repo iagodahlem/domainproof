@@ -138,6 +138,32 @@ describe('findSlugById', () => {
   })
 })
 
+describe('updateName', () => {
+  it('returns undefined for an unknown project id', async () => {
+    expect(
+      await repository.updateName(randomUUID(), 'New Name'),
+    ).toBeUndefined()
+  })
+
+  it('updates the name without touching the slug', async () => {
+    const accountId = await createTestAccount()
+    const { project } = await repository.createProject(
+      accountId,
+      'Skylane HR',
+      'skylane-hr',
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+
+    const updated = await repository.updateName(project.id, 'Skylane People')
+    expect(updated?.name).toBe('Skylane People')
+    expect(updated?.slug).toBe('skylane-hr')
+
+    const reread = await repository.findByIdForAccount(project.id, accountId)
+    expect(reread?.name).toBe('Skylane People')
+    expect(reread?.slug).toBe('skylane-hr')
+  })
+})
+
 describe('createProject', () => {
   it('creates a project and both of its keys atomically', async () => {
     const accountId = await createTestAccount()
