@@ -60,6 +60,7 @@ function fakeRepository(): DomainsRepository {
         graceExpiresAt: null,
         frontendToken: values.frontendToken,
         lastCheckResult: null,
+        externalId: values.externalId ?? null,
       }
       domainRows.set(domainRow.id, domainRow)
 

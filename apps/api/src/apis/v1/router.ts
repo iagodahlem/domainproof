@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { KeysRepository } from '@modules/keys/repository'
 import type { DomainsService } from '@modules/domains/service'
 import type { EventsService } from '@modules/events/service'
+import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import type { Logger } from '@shared/logger'
 import { createRateLimitMiddleware } from '@shared/middlewares/rate-limit'
 import {
@@ -9,11 +10,13 @@ import {
   type ApiKeyAuthVariables,
 } from './middlewares/api-key'
 import { createDomainsRoutes } from './routes/domains'
+import { createComponentSessionsRoutes } from './routes/component-sessions'
 
 export interface V1RouterDeps {
   keysRepository: KeysRepository
   domainsService: DomainsService
   eventsService: EventsService
+  componentSessionsService: ComponentSessionsService
   /** Threaded into `createApiKeyAuthMiddleware` — the composition root (`app.ts`) always wires a real child logger; tests use `createFakeLogger` from `@shared/testing/fake-logger`. */
   logger: Logger
 }
@@ -26,7 +29,10 @@ export interface V1RouterDeps {
  * whole plane.
  *
  * `/domains` (domain claiming and its branded verification records) is
- * the first product route on this plane.
+ * the first product route on this plane. `/component-sessions` mints the
+ * short-lived, single-use tokens a first-party drop-in component spends
+ * against the Frontend API plane to claim a domain without an api key of
+ * its own — see `routes/component-sessions.ts`.
  */
 export function createV1Router(deps: V1RouterDeps) {
   const router = new Hono<{ Variables: ApiKeyAuthVariables }>()
@@ -40,6 +46,11 @@ export function createV1Router(deps: V1RouterDeps) {
   router.route(
     '/domains',
     createDomainsRoutes(deps.domainsService, deps.eventsService),
+  )
+
+  router.route(
+    '/component-sessions',
+    createComponentSessionsRoutes(deps.componentSessionsService),
   )
 
   return router

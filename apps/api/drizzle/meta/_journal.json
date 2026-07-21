@@ -36,6 +36,13 @@
       "when": 1784657471671,
       "tag": "0004_rapid_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784659099750,
+      "tag": "0005_hesitant_maddog",
+      "breakpoints": true
     }
   ]
 }

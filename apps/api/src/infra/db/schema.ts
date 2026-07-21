@@ -108,6 +108,43 @@ export const apiKeys = pgTable('api_keys', {
 })
 
 /**
+ * A short-lived, single-use bearer token minted via
+ * `POST /v1/component-sessions` (see `modules/component-sessions/service.ts`)
+ * that lets a first-party drop-in component claim exactly one domain
+ * without ever holding an api key of its own — the Stripe-Checkout-session
+ * shape: one backend touchpoint mints, the component spends it against
+ * `POST /frontend/component-sessions/:token/claim`. Stored in plaintext and
+ * looked up by exact match, same as `domains.frontendToken`: it must be
+ * read back verbatim, and — unlike an api key secret — it's scoped to one
+ * bounded action rather than long-lived broad access, so hashing buys
+ * little here. `expiresAt` bounds how long an unspent session stays valid
+ * (~1h); `consumedAt` is set atomically the moment it's spent (see
+ * `ComponentSessionsRepository.consumeIfAvailable`), so a second claim
+ * attempt — even a concurrent one racing the first — can never succeed.
+ */
+export const componentSessions = pgTable('component_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  mode: modeEnum('mode').notNull(),
+  /**
+   * An opaque identifier the minting caller supplies to correlate the
+   * claim this session produces with their own data model — stamped onto
+   * the resulting domain row (see `domains.externalId` below). Never
+   * validated or interpreted by this app beyond being persisted and
+   * carried forward.
+   */
+  externalId: text('external_id'),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+/**
  * `domain` is the normalized registrable domain (e.g. via tldts). The
  * UNIQUE(project_id, domain, mode) constraint enforces one claim per
  * project — it deliberately does NOT span projects, because different
@@ -192,6 +229,15 @@ export const domains = pgTable(
       expectedValue: string
       detectedValues: string[]
     } | null>(),
+    /**
+     * An opaque identifier stamped from a component session's mint-time
+     * `externalId` (see `component_sessions.external_id` and
+     * `modules/component-sessions/service.ts`'s `claimDomain`) — lets the
+     * claiming caller correlate this claim with their own data model.
+     * `null` for every claim made through `/v1/domains` or the dashboard
+     * directly, neither of which has such an id to stamp.
+     */
+    externalId: text('external_id'),
   },
   (table) => [
     unique('domains_project_domain_mode_unique').on(

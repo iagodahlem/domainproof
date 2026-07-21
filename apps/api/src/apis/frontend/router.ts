@@ -2,12 +2,15 @@ import { Hono } from 'hono'
 import type { DomainsService } from '@modules/domains/service'
 import type { EventsService } from '@modules/events/service'
 import type { ProjectsService } from '@modules/projects/service'
+import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import { createVerificationsRoutes } from './routes/verifications'
+import { createComponentSessionsRoutes } from './routes/component-sessions'
 
 export interface FrontendRouterDeps {
   domainsService: DomainsService
   eventsService: EventsService
   projectsService: ProjectsService
+  componentSessionsService: ComponentSessionsService
 }
 
 /**
@@ -23,8 +26,11 @@ export interface FrontendRouterDeps {
  * no `router.use('*', ...)` here the way the other two planes have.
  *
  * `/verifications` (read a claim's status, trigger a bounded re-check,
- * read its event timeline) is the first — and so far only — route group
- * on this plane.
+ * read its event timeline) is the first route group on this plane.
+ * `/component-sessions` is the second: it spends the single-use tokens
+ * minted by `POST /v1/component-sessions`, letting a drop-in component
+ * claim a domain with no api key of its own — see
+ * `routes/component-sessions.ts`.
  */
 export function createFrontendRouter(deps: FrontendRouterDeps) {
   const router = new Hono()
@@ -34,6 +40,14 @@ export function createFrontendRouter(deps: FrontendRouterDeps) {
     createVerificationsRoutes(
       deps.domainsService,
       deps.eventsService,
+      deps.projectsService,
+    ),
+  )
+
+  router.route(
+    '/component-sessions',
+    createComponentSessionsRoutes(
+      deps.componentSessionsService,
       deps.projectsService,
     ),
   )
