@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens.css",
+    "./theme.css": "./src/theme.css",
     "./focus-ring.css": "./src/focus-ring.css"
   },
   "scripts": {
@@ -15,8 +16,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^26.1.1",
     "eslint": "^10.7.0",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4",
     "typescript": "catalog:",
     "typescript-eslint": "^8.64.0",
     "vitest": "catalog:"

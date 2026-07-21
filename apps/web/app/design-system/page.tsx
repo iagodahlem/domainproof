@@ -60,21 +60,10 @@ const RADIUS_TOKENS = ['sm', 'md', 'lg', 'xl', 'full']
 function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div className="mb-6 flex flex-col gap-1">
-      <span
-        className="font-mono text-xs font-semibold tracking-widest uppercase"
-        style={{ color: 'var(--accent)' }}
-      >
+      <span className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
         {eyebrow}
       </span>
-      <h2
-        className="text-2xl"
-        style={{
-          fontWeight: 'var(--font-weight-heading)',
-          color: 'var(--text)',
-        }}
-      >
-        {title}
-      </h2>
+      <h2 className="font-heading text-2xl text-text">{title}</h2>
     </div>
   )
 }
@@ -83,8 +72,8 @@ function ColorSwatch({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div
-        className="h-14 rounded-md border"
-        style={{ background: `var(--${token})`, borderColor: 'var(--border)' }}
+        className="h-14 rounded-[8px] border border-border"
+        style={{ background: `var(--${token})` }}
       />
       <span
         className="font-mono text-xs"
@@ -100,17 +89,10 @@ export default function DesignSystemPage() {
   return (
     <div
       data-design-system-root
-      className="min-h-screen"
-      style={{
-        background: 'var(--bg)',
-        color: 'var(--text)',
-        fontFamily: 'var(--font-sans)',
-      }}
+      className="min-h-screen bg-bg text-text"
+      style={{ fontFamily: 'var(--font-sans)' }}
     >
-      <header
-        className="sticky top-0 z-10 border-b px-6 py-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
-      >
+      <header className="sticky top-0 z-10 border-b border-border bg-bg px-6 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <span
             className="text-base"
@@ -129,11 +111,8 @@ export default function DesignSystemPage() {
           <div className="flex flex-col gap-10">
             <div>
               <h3
-                className="mb-4 text-sm"
-                style={{
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--text-muted)',
-                }}
+                className="mb-4 text-sm text-text-muted"
+                style={{ fontWeight: 'var(--font-weight-semibold)' }}
               >
                 Color
               </h3>

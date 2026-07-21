@@ -29,12 +29,7 @@ export function ThemeToggle() {
       onClick={() =>
         setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
       }
-      className="focus-ring inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-      style={{
-        borderColor: 'var(--border-strong)',
-        background: 'var(--surface)',
-        color: 'var(--text)',
-      }}
+      className="focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors"
     >
       {theme === 'dark' ? 'Dark theme' : 'Light theme'}
     </button>
