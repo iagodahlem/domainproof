@@ -29,6 +29,13 @@ import {
 } from '@modules/events/service'
 import { createNotificationsService } from '@modules/notifications/service'
 import type { EmailSender } from '@modules/notifications/ports'
+import { createWebhooksRepository } from '@modules/webhooks/repository'
+import {
+  createWebhooksService,
+  type WebhooksService,
+} from '@modules/webhooks/service'
+import { WEBHOOK_EVENT_TYPES } from '@modules/webhooks/domain/event-types'
+import type { WebhookSender } from '@modules/webhooks/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
@@ -38,6 +45,7 @@ import { createSandboxResolver } from '@infra/dns/sandbox'
 import { createInProcessEventBus } from '@infra/events/in-process-bus'
 import { createResendEmailSender } from '@infra/email/resend'
 import { createChildLogger, logger } from '@infra/logging/logger'
+import { createNodeFetchWebhookSender } from '@infra/http/webhook-sender'
 import { isSandboxDomain } from '@domainproof/core'
 import { DOMAIN_EVENT_TYPES } from '@shared/events'
 import { env } from './env'
@@ -123,6 +131,14 @@ export interface AppDependencies {
    * clean log-and-skip rather than a crash.
    */
   emailSender?: EmailSender
+  /**
+   * Injected for tests (a fake — never make real network requests to a
+   * receiver from a test); defaults to a fetch-backed sender. Unlike
+   * `emailSender`, this is always registered — a webhook endpoint can't be
+   * created before this is wired up, so there's no "unconfigured vendor"
+   * case to skip.
+   */
+  webhookSender?: WebhookSender
 }
 
 export interface AppServices {
@@ -133,6 +149,7 @@ export interface AppServices {
   keysRepository: KeysRepository
   domainsService: DomainsService
   eventsService: EventsService
+  webhooksService: WebhooksService
   sessionVerifier: SessionVerifier | undefined
 }
 
@@ -228,6 +245,25 @@ export function createServices(deps: AppDependencies = {}): AppServices {
     )
   }
 
+  const webhooksRepository = createWebhooksRepository(db)
+  const webhooksService = createWebhooksService(
+    webhooksRepository,
+    deps.webhookSender ?? createNodeFetchWebhookSender(),
+    { now: deps.now, maxAttempts: env.WEBHOOK_MAX_ATTEMPTS },
+    createChildLogger({ module: 'webhooks' }),
+  )
+  // Registered for every project-scoped event type (everything except
+  // `account.created`, which no endpoint can subscribe to — see
+  // `WEBHOOK_EVENT_TYPES`'s doc comment). `dispatchEvent` only creates the
+  // delivery rows synchronously; actual HTTP delivery runs in the
+  // background, so this never slows down the request that published the
+  // triggering event — see `modules/webhooks/service.ts`'s doc comment.
+  for (const type of WEBHOOK_EVENT_TYPES) {
+    eventBus.subscribe(type, async (payload) => {
+      await webhooksService.dispatchEvent(type, payload)
+    })
+  }
+
   const sessionVerifier =
     deps.sessionVerifier ??
     (env.CLERK_JWKS_URL && env.CLERK_ISSUER
@@ -245,6 +281,7 @@ export function createServices(deps: AppDependencies = {}): AppServices {
     keysRepository,
     domainsService,
     eventsService,
+    webhooksService,
     sessionVerifier,
   }
 }
@@ -262,6 +299,7 @@ export function createApp(deps: AppDependencies = {}) {
     projectsService,
     domainsService,
     eventsService,
+    webhooksService,
     sessionVerifier,
   } = createServices(deps)
 
@@ -301,6 +339,7 @@ export function createApp(deps: AppDependencies = {}) {
       projectsService,
       domainsService,
       eventsService,
+      webhooksService,
       sessionVerifier,
     }),
   )

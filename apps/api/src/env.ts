@@ -46,6 +46,10 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
+  // Total attempts (including the first) before a webhook delivery is
+  // marked `failed` for good — see `modules/webhooks/service.ts`'s
+  // `DEFAULT_MAX_ATTEMPTS` for the default this overrides.
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
