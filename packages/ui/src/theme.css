@@ -1,0 +1,81 @@
+/* =========================================================================
+   TAILWIND UTILITY MAPPING (board v4.1 tokens)
+   Exposes tokens.css as Tailwind v4 utilities. Every entry uses the
+   `@theme inline { --x: var(--y) }` indirection — never a literal value —
+   so the generated utility keeps referencing the raw token variable. That's
+   what lets `:root[data-theme='light']` keep flipping the rendered color
+   without a rebuild: the utility's CSS points at --accent, not at a frozen
+   oklch() value.
+
+   Font-size (--text-*) is deliberately NOT mapped here: several steps
+   collide with Tailwind's built-in type scale at different pixel values
+   (e.g. --text-sm is 13px here vs Tailwind's default 14px), and those
+   built-in utilities are already in use across the app. Namespacing our
+   ramp under Tailwind's default names would silently change unrelated
+   text. --font-mono is also intentionally left out — apps/web binds the
+   `font-mono` utility to its loaded Geist Mono variable, not to this
+   token's system-stack fallback, and that binding lives in apps/web's own
+   globals.css, not here.
+   ========================================================================= */
+@theme inline {
+  /* surfaces */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  /* text */
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  /* accent */
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* status */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  /* type — family. font-mono stays out, see file header. */
+  --font-sans: var(--font-sans);
+
+  /* type — weight */
+  --font-weight-medium: var(--font-weight-medium);
+  --font-weight-semibold: var(--font-weight-semibold);
+  --font-weight-heading: var(--font-weight-heading);
+  --font-weight-bold: var(--font-weight-bold);
+
+  /* type — line-height */
+  --leading-heading-tight: var(--leading-heading-tight);
+  --leading-heading: var(--leading-heading);
+  --leading-heading-loose: var(--leading-heading-loose);
+  --leading-caption: var(--leading-caption);
+  --leading-relaxed: var(--leading-relaxed);
+  --leading-body: var(--leading-body);
+  --leading-code: var(--leading-code);
+
+  /* radius. --radius-full is left out on purpose: Tailwind's built-in
+     `rounded-full` already renders a fully round pill via
+     `calc(infinity * 1px)`, which is a strict superset of this token's
+     fixed 999px (it never caps out on a larger element). Mapping our
+     --radius-full here would replace that with the capped value and
+     change rounded-full's computed border-radius for no visual gain. */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* shadow */
+  --shadow-card: var(--shadow-card);
+}
