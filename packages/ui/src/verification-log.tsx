@@ -46,7 +46,10 @@ export function VerificationLog({
       {...props}
     >
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-2 px-5 py-3">
-        <div className="flex items-center gap-2 font-mono text-xs font-semibold tracking-[0.04em] text-text-muted">
+        <div
+          // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off title tracking (non-uppercase), doesn't match tracking-label (0.06em, uppercase labels) or tracking-wider (0.05em); single use
+          className="flex items-center gap-2 font-mono text-xs font-semibold tracking-[0.04em] text-text-muted"
+        >
           {title}
         </div>
         {meta ? <span className="text-xs text-text-faint">{meta}</span> : null}
@@ -63,14 +66,14 @@ export function VerificationLog({
                 index === entries.length - 1 && 'border-b-0',
               )}
             >
-              <span className="w-16 flex-shrink-0 pt-[2px] font-mono text-2xs text-text-faint">
+              <span className="w-16 flex-shrink-0 pt-0.5 font-mono text-2xs text-text-faint">
                 {entry.time}
               </span>
               <div className="text-sm leading-body text-text-muted">
                 {entry.summary}
                 {entry.detail ? (
                   <details className="group mt-2">
-                    <summary className="inline-flex list-none items-center gap-1 font-mono text-2xs tracking-[0.05em] text-text-faint uppercase before:content-['▸'] before:text-3xs group-open:before:content-['▾'] [&::-webkit-details-marker]:hidden">
+                    <summary className="inline-flex list-none items-center gap-1 font-mono text-2xs tracking-wider text-text-faint uppercase before:content-['▸'] before:text-3xs group-open:before:content-['▾'] [&::-webkit-details-marker]:hidden">
                       Technical detail
                     </summary>
                     <div className="mt-2 overflow-x-auto rounded-sm border border-border bg-bg px-3 py-2 font-mono text-xs whitespace-nowrap">

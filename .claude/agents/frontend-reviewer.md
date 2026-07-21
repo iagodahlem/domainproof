@@ -135,6 +135,30 @@ w-14 border ${RADIUS_CLASS[step]}` `` in the design-system showcase,
     (grid columns, flex direction) at a breakpoint but leaves stale classes
     from the pre-collapse layout active underneath.
 
+13. **No hardcoded px/rem/em arbitrary values — CI-enforced.** CI runs
+    `better-tailwindcss/no-restricted-classes` (via
+    `eslint-plugin-better-tailwindcss`, configured in
+    `packages/ui/eslint.config.mjs` and `apps/web/eslint.config.mjs`) against
+    a pattern matching a bracketed px/rem/em value in a utility's own value
+    position (`w-[92px]`, `tracking-[0.06em]`, `pr-[calc(1rem+4.5rem)]`) —
+    it does not flag arbitrary breakpoint variants (`max-[780px]:`) since
+    the pattern only matches a bracket that isn't immediately followed by
+    `:`. This is a backstop for rules 2 and 4, not a replacement for
+    reviewing them by hand: it only catches the bracket syntax, not a
+    literal that happens to duplicate a token without brackets, and it
+    can't see through a variable holding a class string (e.g.
+    `domain-table.tsx`'s `GRID_COLS` constant), so still check those
+    manually. A genuinely one-off survivor (checked against rules 2-5
+    first) gets a `// eslint-disable-next-line
+better-tailwindcss/no-restricted-classes -- <reason>` comment stating
+    why no token fits — flag any disable comment with no reason, and flag
+    any disabled value that duplicates an existing token or a value used
+    more than once (that belongs in `tokens.css`/`theme.css` instead, per
+    rule 3). Since the CLI can't run linked to CI directly, if you can run
+    `pnpm --filter @domainproof/ui lint` / `pnpm --filter web lint` (or
+    `pnpm turbo run lint`) as part of the review, do so and cite any
+    failures the same way as a manual finding.
+
 ## Output format
 
 One section per rule above, in order:

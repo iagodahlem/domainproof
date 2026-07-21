@@ -18,7 +18,7 @@ const timelineNodeVariants = cva(
 )
 
 const timelineConnectorVariants = cva(
-  'mt-2 min-h-[16px] w-[2px] flex-1 bg-border-strong',
+  'mt-2 min-h-4 w-0.5 flex-1 bg-border-strong',
   {
     variants: {
       status: {
@@ -70,7 +70,7 @@ export function VerticalTimeline({
             key={step.id}
             className={cn('relative flex gap-4', !isLast && 'pb-8')}
           >
-            <div className="flex w-[28px] flex-shrink-0 flex-col items-center">
+            <div className="flex w-7 flex-shrink-0 flex-col items-center">
               <span className={timelineNodeVariants({ status: step.status })}>
                 {step.node}
               </span>
@@ -82,12 +82,12 @@ export function VerticalTimeline({
                 />
               ) : null}
             </div>
-            <div className="min-w-0 flex-1 pt-[2px]">
+            <div className="min-w-0 flex-1 pt-0.5">
               <div className={timelineTitleVariants({ status: step.status })}>
                 {step.title}
               </div>
               {step.meta ? (
-                <div className="mt-[2px] font-mono text-2xs text-text-faint">
+                <div className="mt-0.5 font-mono text-2xs text-text-faint">
                   {step.meta}
                 </div>
               ) : null}

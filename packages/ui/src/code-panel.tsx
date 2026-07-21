@@ -54,7 +54,7 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
           <pre
             key={tab.id}
             className={cn(
-              'm-0 overflow-x-auto p-4 pr-[calc(1rem+4.5rem)] font-mono text-xs leading-code break-words whitespace-pre-wrap max-[480px]:pr-[calc(1rem+2.25rem)]',
+              'm-0 overflow-x-auto p-4 pr-22 font-mono text-xs leading-code break-words whitespace-pre-wrap max-[480px]:pr-13',
               tab.id !== active?.id && 'hidden',
             )}
           >

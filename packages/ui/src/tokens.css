@@ -83,6 +83,12 @@
   --text-fluid-lede: clamp(0.95rem, 2vw, 1.0625rem);
   --text-fluid-ask: clamp(0.9375rem, 2vw, 1.0625rem);
 
+  /* type — letter-spacing. --tracking-label is the house uppercase-label
+     tracking (table headers, field labels, meta rows) — reused enough to
+     earn a token, unlike the one-off badge/log tracking values that stay
+     arbitrary at their call sites. */
+  --tracking-label: 0.06em;
+
   /* type — weight. 650 is the house heading weight: heavier than a normal
      semibold, lighter than true bold, used on nearly every h1-h4/title/label. */
   --font-weight-medium: 500;

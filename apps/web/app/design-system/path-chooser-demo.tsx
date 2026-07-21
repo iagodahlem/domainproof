@@ -102,7 +102,7 @@ export function PathChooserDemo() {
       options={OPTIONS}
       value={value}
       onChange={setValue}
-      className="mb-0"
+      className="mb-0 w-full"
       aria-label="Integration path"
     />
   )
