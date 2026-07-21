@@ -7,7 +7,14 @@
 @source '../../../packages/ui/src';
 
 /* Design-system tokens + focus-ring utility — the source of truth for the
-   /design-system showcase and every component built against it. */
+   /design-system showcase and every component built against it. --border,
+   --accent and --accent-foreground are intentionally NOT redeclared in the
+   shadcn placeholder theme below (it used to shadow these at equal
+   specificity in dark mode, which the placeholder's :root/.dark blocks
+   loaded after this import) — tokens.css owns those three names in every
+   theme. --radius-sm/md/lg/xl also share names with the placeholder's
+   @theme-derived scale, but Tailwind's compiled @theme output resolves
+   before this import in the cascade, so tokens.css already wins there. */
 @import '@domainproof/ui/tokens.css';
 @import '@domainproof/ui/focus-ring.css';
 @import '@domainproof/ui/pulse.css';
@@ -94,10 +101,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -129,10 +133,7 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
