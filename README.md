@@ -67,6 +67,8 @@ pnpm dev
 
 `pnpm test` also needs the database up and migrated, same as above.
 
+To wipe and rebuild the local database from scratch, run `pnpm --filter api db:reset -- --yes` (refuses without `--yes` or `DB_RESET_CONFIRM=1`, and always prints the host it's about to reset).
+
 ### Run with Docker
 
 `docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`
