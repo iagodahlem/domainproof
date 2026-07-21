@@ -9,10 +9,7 @@ export function FieldLabel({
   children: ReactNode
 }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className="text-[length:var(--text-sm)] font-medium text-text-muted"
-    >
+    <label htmlFor={htmlFor} className="text-sm font-medium text-text-muted">
       {children}
     </label>
   )
@@ -26,7 +23,7 @@ export function FieldError({
   children: ReactNode
 }) {
   return (
-    <p id={id} className="text-[length:var(--text-xs)] text-danger">
+    <p id={id} className="text-xs text-danger">
       {children}
     </p>
   )

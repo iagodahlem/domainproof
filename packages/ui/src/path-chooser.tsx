@@ -59,14 +59,11 @@ export function PathChooser({
             </span>
             <span className="flex min-w-0 flex-col gap-[2px]">
               <span
-                className={cn(
-                  'text-[length:var(--text-sm)] font-heading',
-                  active && 'text-accent',
-                )}
+                className={cn('text-sm font-heading', active && 'text-accent')}
               >
                 {option.label}
               </span>
-              <span className="text-[length:var(--text-2xs)] leading-caption text-text-faint">
+              <span className="text-2xs leading-caption text-text-faint">
                 {option.sub}
               </span>
             </span>

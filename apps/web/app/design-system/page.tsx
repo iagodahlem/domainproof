@@ -128,17 +128,19 @@ const TYPE_TOKENS = [
   '4xl',
 ]
 
+/* md and base are repositioned onto Tailwind's base/lg slots — see the
+   mapping note in theme.css. Every other step keeps its board name. */
 const TYPE_TOKEN_CLASS: Record<string, string> = {
-  '3xs': 'text-[length:var(--text-3xs)]',
-  '2xs': 'text-[length:var(--text-2xs)]',
-  xs: 'text-[length:var(--text-xs)]',
-  sm: 'text-[length:var(--text-sm)]',
-  md: 'text-[length:var(--text-md)]',
-  base: 'text-[length:var(--text-base)]',
-  xl: 'text-[length:var(--text-xl)]',
-  '2xl': 'text-[length:var(--text-2xl)]',
-  '3xl': 'text-[length:var(--text-3xl)]',
-  '4xl': 'text-[length:var(--text-4xl)]',
+  '3xs': 'text-3xs',
+  '2xs': 'text-2xs',
+  xs: 'text-xs',
+  sm: 'text-sm',
+  md: 'text-base',
+  base: 'text-lg',
+  xl: 'text-xl',
+  '2xl': 'text-2xl',
+  '3xl': 'text-3xl',
+  '4xl': 'text-4xl',
 }
 
 const RADIUS_TOKENS = ['sm', 'md', 'lg', 'xl', 'full']
@@ -278,7 +280,7 @@ export default function DesignSystemPage() {
     >
       <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <span className="flex items-center gap-2 text-base font-bold whitespace-nowrap">
+          <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
             <span
               aria-hidden="true"
               className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent"
@@ -481,7 +483,7 @@ export default function DesignSystemPage() {
                 </Example>
                 <Example label="emphasis=dashed">
                   <Callout emphasis="dashed" className="max-w-xl">
-                    <div className="mb-2 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
+                    <div className="mb-2 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
                       What&apos;s happening under the hood
                     </div>
                     <p>
@@ -500,27 +502,27 @@ export default function DesignSystemPage() {
                 <Example label="head + body + row composition">
                   <Card className="w-full max-w-xl">
                     <CardHead>
-                      <span className="text-[length:var(--text-base)] font-heading text-text">
+                      <span className="text-lg font-heading text-text">
                         Ownership record
                       </span>
                       <Badge tone="accent">TXT</Badge>
                     </CardHead>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
                           Host
                         </span>
-                        <span className="font-mono text-[length:var(--text-md)] text-text">
+                        <span className="font-mono text-base text-text">
                           _acmeapp-challenge.acme.co
                         </span>
                       </div>
                     </CardRow>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-[length:var(--text-2xs)] tracking-[0.06em] text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase">
                           Value
                         </span>
-                        <span className="font-mono text-[length:var(--text-md)] text-text">
+                        <span className="font-mono text-base text-text">
                           acmeapp-verify=8f2c9e1a4b7d3f60
                         </span>
                       </div>

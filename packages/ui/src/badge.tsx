@@ -5,7 +5,7 @@ import { cn } from './cn'
 export type Tone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral'
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-[length:var(--text-2xs)] font-bold uppercase tracking-[0.03em]',
+  'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-2xs font-bold uppercase tracking-[0.03em]',
   {
     variants: {
       tone: {
@@ -55,7 +55,7 @@ export function ProviderBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--text-xs)] font-semibold text-text-muted',
+        'inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-text-muted',
         className,
       )}
       {...props}
@@ -68,21 +68,44 @@ export function ProviderBadge({
   )
 }
 
-const PILL_TONE_CLASSES: Record<Tone, string> = {
-  accent: 'border-accent-border-strong bg-accent-soft text-accent',
-  success: 'border-success-border-strong bg-success-soft text-success',
-  warning: 'border-warning-border-strong bg-warning-soft text-warning-strong',
-  danger: 'border-danger-border-strong bg-danger-soft text-danger',
-  neutral: 'border-border-strong bg-surface-2 text-text-muted',
-}
+export const dotVariants = cva('h-2 w-2 shrink-0 rounded-full', {
+  variants: {
+    tone: {
+      accent: 'bg-accent',
+      success: 'bg-success',
+      warning: 'bg-warning',
+      danger: 'bg-danger',
+      neutral: 'bg-text-faint',
+    },
+  },
+  defaultVariants: {
+    tone: 'neutral',
+  },
+})
 
-const DOT_TONE_CLASSES: Record<Tone, string> = {
-  accent: 'bg-accent',
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-  neutral: 'bg-text-faint',
-}
+const statusPillVariants = cva(
+  'inline-flex items-center gap-2 rounded-full border font-heading',
+  {
+    variants: {
+      tone: {
+        accent: 'border-accent-border-strong bg-accent-soft text-accent',
+        success: 'border-success-border-strong bg-success-soft text-success',
+        warning:
+          'border-warning-border-strong bg-warning-soft text-warning-strong',
+        danger: 'border-danger-border-strong bg-danger-soft text-danger',
+        neutral: 'border-border-strong bg-surface-2 text-text-muted',
+      },
+      size: {
+        default: 'px-4 py-2 text-sm',
+        small: 'w-fit px-3 py-1 text-2xs',
+      },
+    },
+    defaultVariants: {
+      tone: 'neutral',
+      size: 'default',
+    },
+  },
+)
 
 export interface StatusPillProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: Tone
@@ -101,22 +124,11 @@ export function StatusPill({
 }: StatusPillProps) {
   return (
     <span
-      className={cn(
-        'inline-flex items-center gap-2 rounded-full border font-heading',
-        size === 'default'
-          ? 'px-4 py-2 text-[length:var(--text-sm)]'
-          : 'w-fit px-3 py-1 text-[length:var(--text-2xs)]',
-        PILL_TONE_CLASSES[tone],
-        className,
-      )}
+      className={cn(statusPillVariants({ tone, size }), className)}
       {...props}
     >
       <span
-        className={cn(
-          'h-2 w-2 shrink-0 rounded-full',
-          DOT_TONE_CLASSES[tone],
-          pulse && 'animate-dp-pulse',
-        )}
+        className={cn(dotVariants({ tone }), pulse && 'animate-dp-pulse')}
       />
       {children}
     </span>

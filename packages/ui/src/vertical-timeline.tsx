@@ -1,7 +1,44 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { cva } from 'class-variance-authority'
 import { cn } from './cn'
 
 export type TimelineStepStatus = 'done' | 'current' | 'upcoming'
+
+const timelineNodeVariants = cva(
+  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface font-mono text-xs font-bold text-text-faint',
+  {
+    variants: {
+      status: {
+        done: 'border-success bg-success text-success-foreground',
+        current: 'border-accent text-accent shadow-current',
+        upcoming: '',
+      },
+    },
+  },
+)
+
+const timelineConnectorVariants = cva(
+  'mt-2 min-h-[16px] w-[2px] flex-1 bg-border-strong',
+  {
+    variants: {
+      status: {
+        done: 'bg-success',
+        current: '',
+        upcoming: '',
+      },
+    },
+  },
+)
+
+const timelineTitleVariants = cva('text-lg font-heading', {
+  variants: {
+    status: {
+      done: '',
+      current: 'text-accent',
+      upcoming: '',
+    },
+  },
+})
 
 export interface VerticalTimelineStep {
   id: string
@@ -34,44 +71,30 @@ export function VerticalTimeline({
             className={cn('relative flex gap-4', !isLast && 'pb-8')}
           >
             <div className="flex w-[28px] flex-shrink-0 flex-col items-center">
-              <span
-                className={cn(
-                  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-border-strong bg-surface font-mono text-[length:var(--text-xs)] font-bold text-text-faint',
-                  step.status === 'done' &&
-                    'border-success bg-success text-success-foreground',
-                  step.status === 'current' &&
-                    'border-accent text-accent shadow-current',
-                )}
-              >
+              <span className={timelineNodeVariants({ status: step.status })}>
                 {step.node}
               </span>
               {!isLast ? (
                 <span
-                  className={cn(
-                    'mt-2 min-h-[16px] w-[2px] flex-1 bg-border-strong',
-                    step.status === 'done' && 'bg-success',
-                  )}
+                  className={timelineConnectorVariants({
+                    status: step.status,
+                  })}
                 />
               ) : null}
             </div>
             <div className="min-w-0 flex-1 pt-[2px]">
-              <div
-                className={cn(
-                  'text-[length:var(--text-base)] font-heading',
-                  step.status === 'current' && 'text-accent',
-                )}
-              >
+              <div className={timelineTitleVariants({ status: step.status })}>
                 {step.title}
               </div>
               {step.meta ? (
-                <div className="mt-[2px] font-mono text-[length:var(--text-2xs)] text-text-faint">
+                <div className="mt-[2px] font-mono text-2xs text-text-faint">
                   {step.meta}
                 </div>
               ) : null}
               {step.description ? (
                 <div
                   className={cn(
-                    'mt-2 max-w-[54ch] text-[length:var(--text-sm)] leading-body text-text-muted',
+                    'mt-2 max-w-[54ch] text-sm leading-body text-text-muted',
                     !isLast && 'mb-4',
                   )}
                 >

@@ -74,8 +74,6 @@ describe('StatusPill', () => {
         Verified
       </StatusPill>,
     )
-    expect(screen.getByText('Verified').className).toContain(
-      'text-[length:var(--text-2xs)]',
-    )
+    expect(screen.getByText('Verified').className).toContain('text-2xs')
   })
 })

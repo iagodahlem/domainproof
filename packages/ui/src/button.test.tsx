@@ -28,7 +28,7 @@ describe('Button', () => {
   it('applies the sm size classes', () => {
     render(<Button size="sm">Open Cloudflare DNS</Button>)
     const el = screen.getByRole('button')
-    expect(el.className).toContain('text-[length:var(--text-xs)]')
+    expect(el.className).toContain('text-xs')
   })
 
   it('applies the pill shape classes', () => {

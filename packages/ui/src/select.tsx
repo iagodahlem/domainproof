@@ -31,7 +31,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             className={cn(
-              'w-full appearance-none rounded-md border bg-bg py-2 pr-8 pl-3 text-[length:var(--text-sm)] text-text transition-[background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+              'w-full appearance-none rounded-md border bg-bg py-2 pr-8 pl-3 text-sm text-text transition-[background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50',
               error ? 'border-danger' : 'border-border',
               className,
             )}

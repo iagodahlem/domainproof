@@ -47,17 +47,17 @@ export function RecordCard({
             {step != null ? (
               <span
                 className={cn(
-                  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-[length:var(--text-2xs)] font-bold',
+                  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-2xs font-bold',
                   STEP_TONE_CLASSES[stepTone],
                 )}
               >
                 {step}
               </span>
             ) : null}
-            <div className="text-[length:var(--text-base)] font-heading">
+            <div className="text-lg font-heading">
               <div>{title}</div>
               {sub ? (
-                <div className="mt-[2px] text-[length:var(--text-sm)] font-medium text-text-faint">
+                <div className="mt-[2px] text-sm font-medium text-text-faint">
                   {sub}
                 </div>
               ) : null}

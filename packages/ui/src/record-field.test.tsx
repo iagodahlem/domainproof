@@ -39,7 +39,7 @@ describe('RecordField', () => {
       <RecordField label="Host" value="acme.co" compact data-testid="field" />,
     )
     const value = screen.getByText('acme.co')
-    expect(value.className).toContain('text-[length:var(--text-sm)]')
+    expect(value.className).toContain('text-sm')
     expect(screen.getByTestId('field').className).toContain('px-4')
   })
 

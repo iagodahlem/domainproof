@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { cva } from 'class-variance-authority'
 import { CopyButton } from './copy-button'
 import { cn } from './cn'
 
@@ -40,7 +41,7 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
             aria-selected={tab.id === active?.id}
             onClick={() => setActiveId(tab.id)}
             className={cn(
-              'rounded-full px-3 py-1 font-mono text-[length:var(--text-xs)] font-semibold whitespace-nowrap text-text-faint transition-colors duration-150 hover:text-text',
+              'rounded-full px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap text-text-faint transition-colors duration-150 hover:text-text',
               tab.id === active?.id && 'bg-surface-3 text-text',
             )}
           >
@@ -53,7 +54,7 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
           <pre
             key={tab.id}
             className={cn(
-              'm-0 overflow-x-auto p-4 pr-[calc(1rem+4.5rem)] font-mono text-[length:var(--text-xs)] leading-code break-words whitespace-pre-wrap max-[480px]:pr-[calc(1rem+2.25rem)]',
+              'm-0 overflow-x-auto p-4 pr-[calc(1rem+4.5rem)] font-mono text-xs leading-code break-words whitespace-pre-wrap max-[480px]:pr-[calc(1rem+2.25rem)]',
               tab.id !== active?.id && 'hidden',
             )}
           >
@@ -76,11 +77,15 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
 
 export type CodeTokenKind = 'comment' | 'string' | 'keyword'
 
-const TOKEN_TONE_CLASSES: Record<CodeTokenKind, string> = {
-  comment: 'text-text-faint',
-  string: 'text-success',
-  keyword: 'text-accent',
-}
+const codeTokenVariants = cva('', {
+  variants: {
+    kind: {
+      comment: 'text-text-faint',
+      string: 'text-success',
+      keyword: 'text-accent',
+    },
+  },
+})
 
 export function CodeToken({
   kind,
@@ -89,5 +94,5 @@ export function CodeToken({
   kind: CodeTokenKind
   children: ReactNode
 }) {
-  return <span className={TOKEN_TONE_CLASSES[kind]}>{children}</span>
+  return <span className={codeTokenVariants({ kind })}>{children}</span>
 }
