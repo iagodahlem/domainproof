@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { Slot } from '@radix-ui/react-slot'
 import { cn } from './cn'
 
 const buttonVariants = cva(
@@ -38,6 +39,8 @@ export interface ButtonProps
     ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   loading?: boolean
+  /** Merge button props/styling onto the single child element instead of rendering a <button> — for wrapping a Link or other element that should carry the button's semantics. */
+  asChild?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -50,11 +53,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       disabled,
       type = 'button',
+      asChild = false,
       children,
       ...props
     },
     ref,
   ) {
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          className={cn(buttonVariants({ variant, size, shape }), className)}
+          {...props}
+        >
+          {children}
+        </Slot>
+      )
+    }
+
     return (
       <button
         ref={ref}

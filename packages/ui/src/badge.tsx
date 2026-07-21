@@ -16,29 +16,25 @@ const badgeVariants = cva(
         danger: 'border-danger-border bg-danger-soft text-danger',
         neutral: 'border-transparent bg-surface-3 text-text-muted',
       },
+      /** The mode-pill treatment: same tone fill, no visible border, normal tracking. */
+      mode: {
+        true: 'border-transparent tracking-normal',
+        false: '',
+      },
     },
     defaultVariants: {
       tone: 'neutral',
+      mode: false,
     },
   },
 )
 
 export interface BadgeProps
-  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
-  /** The mode-pill treatment: same tone fill, no visible border, normal tracking. */
-  mode?: boolean
-}
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
-export function Badge({ tone, mode = false, className, ...props }: BadgeProps) {
+export function Badge({ tone, mode, className, ...props }: BadgeProps) {
   return (
-    <span
-      className={cn(
-        badgeVariants({ tone }),
-        mode && 'border-transparent tracking-normal',
-        className,
-      )}
-      {...props}
-    />
+    <span className={cn(badgeVariants({ tone, mode }), className)} {...props} />
   )
 }
 

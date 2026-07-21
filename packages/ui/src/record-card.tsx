@@ -1,13 +1,24 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { cva } from 'class-variance-authority'
 import { CardHead } from './card'
 import { cn } from './cn'
 
 export type RecordCardStepTone = 'accent' | 'success'
 
-const STEP_TONE_CLASSES: Record<RecordCardStepTone, string> = {
-  accent: 'bg-accent-soft text-accent',
-  success: 'bg-success-soft text-success',
-}
+const stepChipVariants = cva(
+  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-2xs font-bold',
+  {
+    variants: {
+      tone: {
+        accent: 'bg-accent-soft text-accent',
+        success: 'bg-success-soft text-success',
+      },
+    },
+    defaultVariants: {
+      tone: 'accent',
+    },
+  },
+)
 
 export interface RecordCardProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -45,12 +56,7 @@ export function RecordCard({
         <CardHead>
           <div className="flex items-start gap-3">
             {step != null ? (
-              <span
-                className={cn(
-                  'mt-px inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] font-mono text-2xs font-bold',
-                  STEP_TONE_CLASSES[stepTone],
-                )}
-              >
+              <span className={stepChipVariants({ tone: stepTone })}>
                 {step}
               </span>
             ) : null}

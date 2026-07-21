@@ -3,22 +3,20 @@
 import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Badge, dotVariants, type Tone } from './badge'
+import { Table, TableBody, TableCell, TableHeader, TableRow } from './table'
 import { cn } from './cn'
 
 const GRID_COLS = 'grid-cols-[20px_1fr_120px_130px_120px_16px] gap-x-4'
 
 export function DomainTable({
   className,
+  children,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      className={cn(
-        'mb-6 overflow-hidden rounded-lg border border-border',
-        className,
-      )}
-      {...props}
-    />
+    <Table className={cn('mb-6', className)} {...props}>
+      <TableBody>{children}</TableBody>
+    </Table>
   )
 }
 
@@ -27,12 +25,8 @@ export function DomainTableHead({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      className={cn(
-        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-2xs tracking-[0.06em] text-text-faint uppercase max-[760px]:hidden',
-        GRID_COLS,
-        className,
-      )}
+    <TableHeader
+      className={cn(GRID_COLS, 'max-[760px]:hidden', className)}
       {...props}
     >
       <span />
@@ -41,7 +35,7 @@ export function DomainTableHead({
       <span>Status</span>
       <span>Last checked</span>
       <span />
-    </div>
+    </TableHeader>
   )
 }
 
@@ -80,13 +74,12 @@ export function DomainTableRow({
   }
 
   return (
-    <div
+    <TableRow
       role="button"
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
       className={cn(
-        'grid items-center border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-surface-2',
         GRID_COLS,
         active && 'bg-accent-soft hover:bg-accent-soft',
         'max-[760px]:flex max-[760px]:flex-wrap max-[760px]:items-center max-[760px]:gap-x-3 max-[760px]:gap-y-2 max-[760px]:p-4',
@@ -94,30 +87,32 @@ export function DomainTableRow({
       )}
       {...props}
     >
-      <span
-        className={cn(dotVariants({ tone: statusTone }), 'max-[760px]:order-1')}
-      />
-      <div className="min-w-0 max-[760px]:order-2 max-[760px]:min-w-0 max-[760px]:flex-1">
+      <TableCell className="max-[760px]:order-1">
+        <span className={dotVariants({ tone: statusTone })} />
+      </TableCell>
+      <TableCell className="max-[760px]:order-2 max-[760px]:flex-1">
         <div className="truncate font-mono text-base font-heading">{name}</div>
         <div className="mt-[2px] hidden text-2xs text-text-faint max-[760px]:block">
           {statusLabel} · {lastChecked}
         </div>
-      </div>
-      <div className="min-w-0 max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-[calc(20px+0.75rem)]">
+      </TableCell>
+      <TableCell className="max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-[calc(20px+0.75rem)]">
         {provider ?? <span className="text-xs text-text-faint">—</span>}
-      </div>
-      <div className="max-[760px]:order-3">
+      </TableCell>
+      <TableCell className="max-[760px]:order-3">
         <Badge tone={statusTone}>{statusLabel}</Badge>
-      </div>
-      <span className="text-xs text-text-faint max-[760px]:hidden">
+      </TableCell>
+      <TableCell className="text-xs text-text-faint max-[760px]:hidden">
         {lastChecked}
-      </span>
-      <ChevronRight
-        aria-hidden="true"
-        size={16}
-        className="justify-self-end text-text-faint max-[760px]:hidden"
-      />
-    </div>
+      </TableCell>
+      <TableCell className="justify-self-end max-[760px]:hidden">
+        <ChevronRight
+          aria-hidden="true"
+          size={16}
+          className="text-text-faint"
+        />
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -126,20 +121,13 @@ export function DomainTableRowSkeleton({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      className={cn(
-        'grid items-center gap-x-4 border-b border-border px-4 py-3 last:border-b-0',
-        GRID_COLS,
-        className,
-      )}
-      {...props}
-    >
+    <TableRow className={cn(GRID_COLS, className)} {...props}>
       <span className="h-2 w-2 animate-pulse rounded-full bg-surface-3" />
       <span className="h-4 w-2/3 animate-pulse rounded-sm bg-surface-3" />
       <span className="h-4 w-16 animate-pulse rounded-sm bg-surface-3" />
       <span className="h-5 w-20 animate-pulse rounded-sm bg-surface-3" />
       <span className="h-4 w-14 animate-pulse rounded-sm bg-surface-3" />
       <span />
-    </div>
+    </TableRow>
   )
 }
