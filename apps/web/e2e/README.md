@@ -1,7 +1,7 @@
 # Signup flow e2e
 
 Drives the full signup + bootstrap loop (landing → Google sign-in → locked
-create-project → keys handoff → dashboard placeholder) against a live local
+create-project → keys handoff → dashboard shell) against a live local
 web + api stack, using `@clerk/testing` to sign in with a Clerk-issued
 sign-in ticket instead of a real Google OAuth screen.
 
