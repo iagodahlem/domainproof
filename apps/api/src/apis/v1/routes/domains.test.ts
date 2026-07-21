@@ -179,6 +179,56 @@ describe('/v1/domains', () => {
     expect(typeof record?.description).toBe('string')
   })
 
+  it('roots the TXT record at the exact claimed hostname for a subdomain claim', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'app.acme.com' }),
+    })
+    expect(res.status).toBe(201)
+
+    const body = (await res.json()) as {
+      domain: {
+        domain: string
+        records: Array<{ name: string; description: string }>
+      }
+    }
+
+    expect(body.domain.domain).toBe('app.acme.com')
+    const [record] = body.domain.records
+    expect(record?.name).toBe(`_${apiKey.slug}-challenge.app.acme.com`)
+    expect(record?.description).toContain('app.acme.com')
+  })
+
+  it('roots the TXT record at the exact claimed hostname for a multi-level subdomain claim', async () => {
+    const app = buildApp()
+    const apiKey = await createTestApiKey()
+
+    const res = await withKey(app, apiKey.key, '/v1/domains', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ domain: 'dashboard.api.acme.com' }),
+    })
+    expect(res.status).toBe(201)
+
+    const body = (await res.json()) as {
+      domain: {
+        domain: string
+        records: Array<{ name: string; description: string }>
+      }
+    }
+
+    expect(body.domain.domain).toBe('dashboard.api.acme.com')
+    const [record] = body.domain.records
+    expect(record?.name).toBe(
+      `_${apiKey.slug}-challenge.dashboard.api.acme.com`,
+    )
+    expect(record?.description).toContain('dashboard.api.acme.com')
+  })
+
   it('rejects an invalid request body', async () => {
     const app = buildApp()
     const apiKey = await createTestApiKey()

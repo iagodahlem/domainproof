@@ -89,6 +89,17 @@ describe('sandboxJourneyFor', () => {
   it('reports not_sandbox for input that fails normalization', () => {
     expect(sandboxJourneyFor('')).toEqual({ ok: false, reason: 'not_sandbox' })
   })
+
+  it('parses the journey off a subdomain of a .test sandbox domain', () => {
+    expect(sandboxJourneyFor('app.verified.test')).toEqual({
+      ok: true,
+      journey: 'verified',
+    })
+    expect(sandboxJourneyFor('dashboard.api.verified.test')).toEqual({
+      ok: true,
+      journey: 'verified',
+    })
+  })
 })
 
 describe('createSandboxResolver', () => {
@@ -247,6 +258,21 @@ describe('createSandboxResolver', () => {
       expect(await resolverA.resolveTxt(challengeB.recordHost)).toEqual({
         ok: false,
         reason: 'nxdomain',
+      })
+    })
+  })
+
+  describe('subdomain of a .test sandbox domain', () => {
+    it('resolves against the full claimed hostname, not the registrable domain', async () => {
+      const challenge = makeChallenge('dashboard.api.verified.test')
+      const resolver = createSandboxResolver(challenge, clockAt(0))
+
+      expect(challenge.recordHost).toBe(
+        '_domainproof-challenge.dashboard.api.verified.test',
+      )
+      expect(await resolver.resolveTxt(challenge.recordHost)).toEqual({
+        ok: true,
+        records: [RECORD_VALUE],
       })
     })
   })

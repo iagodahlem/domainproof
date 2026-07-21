@@ -1,5 +1,3 @@
-import { registrableDomain } from './domain'
-
 /**
  * Everything about the shape of a DomainProof verification record — the DNS
  * host a TXT record must be published at, the well-known HTTP path, and the
@@ -13,8 +11,18 @@ import { registrableDomain } from './domain'
 
 /**
  * The TXT record host a domain owner must publish to prove control, e.g.
- * `_skylane-challenge.acme.co.uk` for `sub.acme.co.uk` under the brand
- * `skylane`.
+ * `_skylane-challenge.dashboard.api.acme.com` for the claimed hostname
+ * `dashboard.api.acme.com` under the brand `skylane`.
+ *
+ * Rooted at the exact claimed hostname, not its registrable domain
+ * (eTLD+1): a record at `_x.<domain>` is a child label of `domain`, never a
+ * record placed AT `domain` itself, so there's no CNAME-conflict risk in
+ * publishing one per subdomain. Doing it this way also keeps the claim
+ * honest — a record published at the registrable domain only proves
+ * control of that eTLD+1, not of the specific subdomain being claimed —
+ * and keeps a builder's DNS zone legible, since each record's name visibly
+ * belongs to the claim that asked for it instead of every subdomain claim
+ * piling multiple TXT records onto one eTLD+1 name.
  *
  * Trust boundary: this function does not validate `brandSlug` beyond
  * trusting its type. Validation (format, reserved-word checks) happens at
@@ -22,7 +30,7 @@ import { registrableDomain } from './domain'
  * stays a pure string-formatting step.
  */
 export function challengeHost(domain: string, brandSlug: string): string {
-  return `_${brandSlug}-challenge.${registrableDomain(domain)}`
+  return `_${brandSlug}-challenge.${domain}`
 }
 
 /**
