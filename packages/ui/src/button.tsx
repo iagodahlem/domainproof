@@ -5,7 +5,7 @@ import { Slot } from '@radix-ui/react-slot'
 import { cn } from './cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center gap-2 rounded-md border font-semibold text-sm text-text transition-[background-color,border-color,color,transform] duration-150 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0',
+  'inline-flex items-center gap-2 border font-semibold text-sm text-text transition-[background-color,border-color,color,transform] duration-150 active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0',
   {
     variants: {
       variant: {
@@ -18,8 +18,8 @@ const buttonVariants = cva(
           'border-danger-border bg-transparent text-danger hover:bg-danger-soft',
       },
       size: {
-        default: 'px-4 py-2',
-        sm: 'px-3 py-1 text-xs',
+        default: 'rounded-md px-4 py-2',
+        sm: 'rounded-sm px-3 py-1 text-xs',
       },
       shape: {
         default: '',
