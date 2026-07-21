@@ -18,7 +18,8 @@ const logoVariants = cva(
 )
 
 const logoMarkVariants = cva(
-  'flex shrink-0 items-center justify-center rounded-md border border-accent-border bg-accent-soft text-accent',
+  // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- brand mark radius is a fixed 7px by design (owner-specified); rounded-md (10px) reads nearly circular at this size
+  'flex shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent',
   {
     variants: {
       size: {
