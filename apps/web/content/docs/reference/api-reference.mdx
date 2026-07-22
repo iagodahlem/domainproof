@@ -1,0 +1,66 @@
+---
+title: API reference
+description: Every endpoint on the Public and Frontend planes, plus the error shape every non-2xx response uses.
+section: Reference
+order: 1
+---
+
+# API reference
+
+Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://verify.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below.
+
+## Public API (`/v1/*`)
+
+Authenticated with a project API key (`Authorization: Bearer dp_test_...` / `dp_live_...`) — see [Authenticate with an API key](/docs/authenticate). Rate limited per key: 100 requests per rolling minute, returning `429 rate_limited` with a `Retry-After` header once exceeded.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/v1/domains` | Claims a domain and issues a challenge. Accepts an optional `external_id`. |
+| `GET` | `/v1/domains` | Cursor-paginated list of domains claimed by the key's project/mode. Filterable by `external_id` and/or `domain`. |
+| `GET` | `/v1/domains/:id` | Gets a claimed domain and its current verification record instructions. |
+| `DELETE` | `/v1/domains/:id` | Releases a domain claim. |
+| `POST` | `/v1/domains/:id/verify` | Runs the DNS check for a claim and returns the updated domain plus the check's outcome. Safe to call repeatedly. |
+| `POST` | `/v1/domains/:id/regenerate` | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification. |
+| `GET` | `/v1/domains/:id/events` | Cursor-paginated timeline of events published for a domain. |
+| `POST` | `/v1/component-sessions` | Mints a short-lived, single-use session token for a drop-in component to claim one domain on your behalf. |
+
+See [Claim and verify a domain](/docs/claim-and-verify) for the full walkthrough, and [How verification works](/docs/how-verification-works) for what each status and check outcome means.
+
+## Frontend API (`/frontend/*`)
+
+No session, no API key — each domain claim carries its own unguessable `frontendToken` (embedded in `verificationUrl`) that authorizes exactly these routes for that one claim. See [The hosted verification page](/docs/hosted-verification-page).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/frontend/verifications/:token` | Reads a claim's status, record instructions, and last check outcome. |
+| `POST` | `/frontend/verifications/:token/check` | Runs the DNS check for a claim (rate limited: 1 per 15 seconds, 20 per hour) and returns the same shape as the `GET` above. |
+| `GET` | `/frontend/verifications/:token/events` | Cursor-paginated timeline of events for a domain, with no account/project ids in the payload. |
+| `POST` | `/frontend/component-sessions/:sessionToken/claim` | Spends a component session (rate limited: 10 per hour, per session token) to claim a domain; returns the claim plus its own `frontendToken`. |
+
+## Dashboard API (`/dashboard/*`)
+
+Authenticated by your login session — this is what the DomainProof dashboard itself calls, covering project management, API key management, and webhook endpoint management. It's not meant to be called directly by an integration; everything an integration needs is on the Public and Frontend planes above.
+
+## Pagination
+
+Every list endpoint is cursor-paginated the same way: `?limit=` (default 20, max 100) and `?cursor=`, the opaque `nextCursor` from the previous page. `nextCursor` is `null` once there's nothing left to fetch.
+
+## Errors
+
+Every non-2xx response follows the same shape:
+
+```json
+{ "error": { "code": "not_found", "message": "Domain not found" } }
+```
+
+Named codes you'll actually see:
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `invalid_request` | 400 | The request body or query parameters didn't parse, or the domain you're trying to claim is malformed. |
+| `sandbox_requires_test_mode` | 400 | You tried to claim a `.test` sandbox domain with a live-mode key. |
+| `invalid_api_key` | 401 | The presented key is missing, malformed, unknown, revoked, or wrong — these are deliberately indistinguishable from each other. |
+| `not_found` | 404 | The resource doesn't exist, or belongs to a different project/key than the one authenticating the request — those two cases are also deliberately indistinguishable. |
+| `domain_already_claimed` | 409 | You tried to claim a domain your project already has claimed in this mode. |
+| `invalid_status` | 409 | You tried to regenerate a challenge for a domain that isn't currently `pending` or `failed`. |
+| `rate_limited` | 429 | You've exceeded the rate limit for this key or token. The response carries a `Retry-After` header (seconds) telling you when to try again. |

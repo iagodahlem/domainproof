@@ -1,0 +1,94 @@
+---
+title: Quickstart
+description: Claim a sandbox domain and watch it verify, in one curl session, no real DNS required.
+section: Start here
+order: 1
+---
+
+# Quickstart
+
+This walks through the entire verification lifecycle — claim, check, verified — against a sandbox domain that never touches real DNS. You'll need a test-mode API key (it looks like `dp_test_...`; grab one from your project's dashboard). Everything below uses `curl`, but the same three calls work from any HTTP client.
+
+## 1. Claim a domain
+
+```bash
+curl https://api.domainproof.dev/v1/domains \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3" \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "pending-then-verified.test"}'
+```
+
+`pending-then-verified.test` is a sandbox domain (see [Sandbox: verify without a real domain](/docs/sandbox)) — it simulates real-world DNS propagation delay instead of hitting the network. The response is the claim and its verification instructions:
+
+```json
+{
+  "domain": {
+    "id": "3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c",
+    "domain": "pending-then-verified.test",
+    "mode": "test",
+    "status": "pending",
+    "external_id": null,
+    "createdAt": "2026-07-22T10:00:00.000Z",
+    "updatedAt": "2026-07-22T10:00:00.000Z",
+    "verifiedAt": null,
+    "verificationUrl": "https://domainproof.dev/verify/f4h5k6m7n2p3q5r6s7t2u3v4w5",
+    "records": [
+      {
+        "type": "TXT",
+        "name": "_domainproof-challenge.pending-then-verified.test",
+        "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4",
+        "purpose": "ownership",
+        "description": "Proves control of pending-then-verified.test. This record does nothing else and can be removed after verification.",
+        "status": "pending"
+      }
+    ]
+  }
+}
+```
+
+Save `domain.id` — you'll need it for the next call.
+
+## 2. Run a check
+
+```bash
+curl -X POST https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c/verify \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+For the first 45 seconds after the claim, this sandbox domain reports the record isn't there yet:
+
+```json
+{
+  "domain": { "status": "pending", "...": "..." },
+  "check": {
+    "outcome": "not_found",
+    "checkedAt": "2026-07-22T10:00:05.000Z",
+    "explanation": "No record found yet. DNS changes usually take a few minutes to appear — we checked pending-then-verified.test's own nameservers to skip stale caches. Try verifying again shortly."
+  }
+}
+```
+
+This endpoint is safe to poll — it re-runs the check every time it's called, so you can call it again a moment later.
+
+## 3. Watch it verify
+
+Call the same endpoint again after 45 seconds have passed since the claim:
+
+```json
+{
+  "domain": { "status": "verified", "verifiedAt": "2026-07-22T10:00:46.000Z", "...": "..." },
+  "check": {
+    "outcome": "found",
+    "checkedAt": "2026-07-22T10:00:46.000Z"
+  }
+}
+```
+
+Done — that's the full loop: claim, check, verified. Polling `/verify` is entirely optional in production: a background scheduler re-checks every claimed domain on its own backoff schedule, so a claim eventually reflects a correct DNS record even if you never call this endpoint again. See [How verification works](/docs/how-verification-works) for the full state machine and recheck cadence.
+
+## Where to next
+
+- [Sandbox: verify without a real domain](/docs/sandbox) — every scripted journey (`verified.test`, `wrong-value.test`, `flaky.test`, ...), not just the pending-then-verified one used above.
+- [Authenticate with an API key](/docs/authenticate) — test vs. live keys, and the one rule that trips people up.
+- [Claim and verify a domain](/docs/claim-and-verify) — the full integration guide behind this quickstart: `external_id`, listing, releasing, regenerating, and event timelines.
+- [Webhooks](/docs/webhooks) — get notified the moment a domain verifies instead of polling for it.

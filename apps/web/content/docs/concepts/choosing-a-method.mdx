@@ -1,0 +1,36 @@
+---
+title: "Choosing a method: DNS TXT vs. a well-known file"
+description: What a DNS TXT challenge looks like, and where a well-known-file alternative fits in the verification engine's design.
+section: Concepts
+order: 2
+---
+
+# Choosing a method: DNS TXT vs. a well-known file
+
+Every domain claim today is verified with a DNS TXT record — that's the only method the API issues a challenge for, so there's nothing to configure here yet. This page covers the TXT record shape you'll actually see, and where an HTTP-based alternative fits into the picture.
+
+## The DNS TXT record
+
+Claiming a domain returns a `records` entry describing exactly what to publish:
+
+```json
+{
+  "type": "TXT",
+  "name": "_domainproof-challenge.example.com",
+  "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4",
+  "purpose": "ownership",
+  "status": "pending"
+}
+```
+
+The record name is rooted at the exact hostname you claimed (`_domainproof-challenge.<your-domain>`), not its registrable domain — a record at `_domainproof-challenge.dashboard.acme.com` is a child label of `dashboard.acme.com`, never a record placed at `acme.com` itself. That matters for two reasons: publishing a TXT record can never conflict with an existing `CNAME` at the apex or a subdomain you're claiming, and a record published at the registrable domain would only prove control of that eTLD+1 — not of the specific subdomain you're actually claiming.
+
+The value's `domainproof-verify=` prefix namespaces the token so a check only matches records meant for DomainProof — an unrelated TXT record at the same host (SPF, DKIM, another verification product) is simply ignored, not treated as a conflict. A check succeeds the moment any TXT record at that hostname parses with a matching token; you can have other, unrelated TXT records at the same name without issue.
+
+## What checkers actually do
+
+A check queries the claimed hostname's own authoritative nameservers (not a resolver cache, so a stale intermediate cache can't report a false negative) and looks for a TXT record whose value matches. See [How verification works](/docs/how-verification-works) for what happens next depending on what it finds.
+
+## A well-known-file method is designed, not yet available
+
+The verification engine's data model reserves a second challenge method (an HTTP file served at a `.well-known/<brand>-challenge` path) for cases where DNS isn't editable — a managed subdomain, for instance, where you control the web server but not the zone. The underlying check for it is implemented and tested, but there's currently no way to request it: every claim issues a DNS TXT challenge, full stop. If you're blocked on DNS access for a domain you need to claim, that's worth flagging to the DomainProof team directly rather than working around it — this page will be updated the moment the method is selectable.

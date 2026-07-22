@@ -1,0 +1,114 @@
+---
+title: Claim and verify a domain
+description: The real integration guide behind the quickstart — claiming, checking, listing, releasing, and regenerating a domain, plus multi-tenant correlation with external_id.
+section: Guides
+order: 2
+---
+
+# Claim and verify a domain
+
+This is the full integration guide behind the [Quickstart](/docs/quickstart) — everything you'd wire up to let your own users prove control of a domain.
+
+## Claim a domain
+
+```bash
+curl https://api.domainproof.dev/v1/domains \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3" \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "example.com", "external_id": "customer_123"}'
+```
+
+`external_id` is optional — an opaque identifier you attach at claim time to correlate a domain with your own end user (a customer id, a tenant id, whatever your data model uses). It's set once, returned on every response for that domain across every plane, carried on every event and webhook payload, and has no uniqueness constraint — the same `external_id` can own several domains. This is the multi-tenant case: a SaaS platform letting each of its customers connect their own custom domain.
+
+A successful claim returns `201` with the domain and its verification instructions — see the [Quickstart](/docs/quickstart) for the full response shape. A domain already claimed by your project (in the same mode) returns `409 domain_already_claimed`; an unclaimable hostname (empty, malformed, an IP address, or missing a recognized public suffix) returns `400 invalid_request`.
+
+## Get a domain
+
+```bash
+curl https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Returns the domain and its current record instructions, in the same shape the claim call returned. An unknown id — including one belonging to another project — returns `404 not_found`.
+
+## Run a check
+
+```bash
+curl -X POST https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c/verify \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Re-runs the DNS check right now and returns the updated domain alongside a `check` object describing what this specific attempt found:
+
+```json
+{
+  "domain": { "status": "verified", "...": "..." },
+  "check": { "outcome": "found", "checkedAt": "2026-07-22T10:00:46.000Z" }
+}
+```
+
+`outcome` is one of `found` (verified), `wrong_value` (a record exists but doesn't match — the response also carries `expected`/`detected`), `not_found`, `unreachable`, or `expired` (the verification window closed before a correct record ever appeared). `not_found`, `unreachable`, and `expired` all carry a plain-language `explanation`. See [How verification works](/docs/how-verification-works) for what each outcome means for the domain's status.
+
+This endpoint is safe to call repeatedly — it re-runs the check every time, never caches a prior result. That said, **calling it is entirely optional**: a background scheduler re-checks every domain on its own backoff schedule regardless of whether you ever poll, so a claim eventually reflects a correct DNS record even if you never call `/verify` again. Use it when you want an immediate answer — a "check now" button, a CI step waiting on a claim — not as a required part of the integration.
+
+## List domains
+
+```bash
+curl "https://api.domainproof.dev/v1/domains?external_id=customer_123&limit=20" \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Cursor-paginated (`?limit=`, default 20, max 100, and `?cursor=`, the opaque `nextCursor` from the previous page), scoped to the key's project and mode, newest first:
+
+```json
+{
+  "domains": [{ "...": "..." }],
+  "nextCursor": "eyJpZCI6Ii4uLiJ9"
+}
+```
+
+Two filters combine: `?external_id=` (every domain claimed under that identifier — the "does this customer have a verified domain?" check) and `?domain=` (an exact match on the claimed hostname). `nextCursor` is `null` once there's nothing left to fetch.
+
+## Release a domain
+
+```bash
+curl -X DELETE https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Releases the claim, freeing the hostname to be claimed again (by you or anyone else). Returns the domain as it was at the moment of release.
+
+## Regenerate a challenge
+
+```bash
+curl -X POST https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c/regenerate \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Issues a fresh token and record, restarting verification from `pending` with a new 72-hour window. Only valid for domains currently `pending` or `failed` — calling it on a `verified` or `temporarily_failed` domain returns `409 invalid_status`. This is how a `failed` domain (verification window elapsed, or grace window expired) gets a second chance.
+
+## Get a domain's event timeline
+
+```bash
+curl "https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c/events" \
+  -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
+```
+
+Returns every event published for this domain, oldest first, cursor-paginated the same way as the list endpoint above:
+
+```json
+{
+  "events": [
+    {
+      "id": "5c3b8f2e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+      "type": "domain.claimed",
+      "mode": "test",
+      "payload": { "...": "..." },
+      "createdAt": "2026-07-22T10:00:00.000Z"
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+`type` is one of the same event types [Webhooks](/docs/webhooks) covers — `domain.claimed`, `domain.challenge_regenerated`, `domain.check_passed`, `domain.check_failed`, `domain.verified`, `domain.temporarily_failed`, `domain.failed`. This is the same data a webhook subscription delivers, useful for backfilling a timeline UI or debugging a claim without setting up an endpoint.

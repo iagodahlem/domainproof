@@ -1,0 +1,64 @@
+---
+title: How verification works
+description: The claim → challenge → check → verified lifecycle, its five states, and how background rechecking keeps a domain's status honest over time.
+section: Concepts
+order: 1
+---
+
+# How verification works
+
+Every domain claim moves through a small state machine. This page covers what each state means, what moves a domain between them, and how the background scheduler keeps a claim's status current without you having to poll for it.
+
+## The five states
+
+```txt
+not_started --(claimed)--> pending --(check passes)--> verified
+                              |                            |
+                    (window expires)                (record disappears)
+                              v                            v
+                            failed <--(grace expires)-- temporarily_failed
+                              ^                            |
+                              |                    (record recovers)
+                       (regenerate) <--------------------- + back to verified
+```
+
+- **`not_started`** — a domain that hasn't been claimed yet. You never see this in an API response; it's the state before a claim exists.
+- **`pending`** — a challenge has been issued and is waiting for its first passing check. Every fresh claim starts here.
+- **`verified`** — the most recent check found the expected record. This is the steady state for a healthy claim.
+- **`temporarily_failed`** — a previously verified domain's record disappeared or changed on a recheck. This is a 72-hour grace window, not an immediate failure — the domain still shows as reversible.
+- **`failed`** — either a `pending` domain's verification window elapsed with no correct record ever appearing, or a `temporarily_failed` domain's grace window closed without recovering.
+
+## What moves a domain between states
+
+| From | Event | To |
+| --- | --- | --- |
+| `not_started` | Domain is claimed, issuing a challenge | `pending` |
+| `pending` | A check finds the expected record | `verified` |
+| `pending` | The 72-hour verification window elapses with no correct record | `failed` |
+| `pending` | The challenge is regenerated | `pending` (fresh token, window restarts) |
+| `verified` | A recheck still finds the expected record | `verified` (no-op refresh) |
+| `verified` | A recheck no longer finds the expected record | `temporarily_failed` |
+| `temporarily_failed` | A recheck finds the expected record again | `verified` |
+| `temporarily_failed` | The 72-hour grace window elapses with no recovery | `failed` |
+| `failed` | The challenge is regenerated | `pending` (fresh token, verification restarts from scratch) |
+
+A `failed` domain never recovers on its own — claim a fresh challenge with `POST /v1/domains/:id/regenerate` to restart verification (see [Claim and verify a domain](/docs/claim-and-verify)).
+
+## The verification window
+
+A freshly issued challenge has 72 hours to pass its first check. If nothing verifies it in that window, the domain moves straight to `failed` — not because a check actively failed, but because the window closed. Calling `POST /v1/domains/:id/verify` on an expired `pending` domain returns that outcome as `expired`, with a plain-language explanation telling the caller to claim the domain again for a fresh token.
+
+The `temporarily_failed` grace window is a separate 72-hour clock with the same duration, but a different meaning: it only starts once a domain has already verified and then lost its record. The two windows are tracked independently, even though they happen to be the same length today.
+
+## Automatic re-checking
+
+You never have to poll `/verify` to keep a domain's status current — a background worker re-checks every domain on its own schedule, running the exact same check/transition/publish path the API endpoint does:
+
+| Status | Recheck cadence |
+| --- | --- |
+| `pending` | Backs off as checks keep coming back empty: 1 minute, 5 minutes, 15 minutes, 1 hour, then every 6 hours from then on. |
+| `verified` | Every 24 hours — a slow safety net, since verified domains rarely change. |
+| `temporarily_failed` | Every 15 minutes, fast enough to catch a quick recovery well before the 72-hour grace window closes. |
+| `failed` | Never — a `failed` domain only moves again once you regenerate its challenge. |
+
+Calling `POST /v1/domains/:id/verify` yourself is always safe (it re-runs the check every time) and useful for anything that wants an immediate answer — a demo, a "check now" button, a CI step waiting on a claim — but it's never required for a correctly configured domain to eventually show as `verified`.

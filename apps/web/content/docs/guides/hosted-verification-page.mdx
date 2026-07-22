@@ -1,0 +1,62 @@
+---
+title: The hosted verification page
+description: What verificationUrl is, what data backs it, and when to redirect to it vs. building your own UI on the Frontend API directly.
+section: Guides
+order: 4
+---
+
+# The hosted verification page
+
+Every domain claim returns a `verificationUrl` — a link you can hand to whoever needs to publish the DNS record, without building any verification UI of your own:
+
+```json
+{ "verificationUrl": "https://domainproof.dev/verify/f4h5k6m7n2p3q5r6s7t2u3v4w5" }
+```
+
+The trailing segment is the claim's `frontendToken`: a 128-bit unguessable credential, distinct from the claim's own id, generated once when the domain is claimed. It authorizes exactly three things on exactly that one claim — reading its status, triggering a rate-limited recheck, and reading its event timeline — with no session and no API key involved.
+
+## What it's for
+
+Redirect an end user (the person who actually controls DNS for the domain — often not the same person as your own logged-in user) straight to `verificationUrl` and they'll see the record to publish, its current status, and a way to trigger a recheck once they've done it. This is the fast path: no UI to build, no polling to wire up yourself.
+
+## Building your own UI instead
+
+If you'd rather render the same information inside your own product, the page's data comes from three Frontend API endpoints, scoped by the same `frontendToken`:
+
+```bash
+curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5
+```
+
+```json
+{
+  "domain": "example.com",
+  "mode": "live",
+  "status": "pending",
+  "projectName": "Acme",
+  "records": [
+    { "label": "_domainproof-challenge.example.com", "type": "TXT", "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4" }
+  ],
+  "check": { "outcome": "not_found", "checkedAt": "2026-07-22T10:00:05.000Z" },
+  "updatedAt": "2026-07-22T10:00:05.000Z"
+}
+```
+
+Notice what's absent: no account id, no project id, no key material — only what's safe to show the person on the other end of this link, whether or not they're someone you trust with your own API key.
+
+```bash
+curl -X POST https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/check
+```
+
+Runs the same check `POST /v1/domains/:id/verify` does — same transitions, same events — and returns the identical shape as the read above. This is rate limited (at most once every 15 seconds, and 20 times per hour, per token — `429 rate_limited` beyond that), since it's exposed with no other credential than the link itself.
+
+```bash
+curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/events
+```
+
+A cursor-paginated timeline of the same event types [Webhooks](/docs/webhooks) covers, with `domainId`/`projectId`/`domain` stripped from each entry.
+
+An unknown token, or a released domain's now-defunct token, both 404 identically (`{ "error": { "code": "not_found" } }`) — there's no second factor to distinguish "wrong token" from "right token, wrong something else."
+
+## Which one should you use?
+
+Redirecting to `verificationUrl` is the fastest way to ship — nothing to build, and it stays current as the page evolves. Build directly on the Frontend API when you want the verification step to feel native inside your own product instead of a redirect. Both read from the same data, so you can start with the redirect and move to your own UI later without changing anything about how domains are claimed or checked.

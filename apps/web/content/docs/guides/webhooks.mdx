@@ -1,0 +1,83 @@
+---
+title: Webhooks
+description: Event types, delivery payload shape, signature verification, retries, and the delivery log.
+section: Guides
+order: 3
+---
+
+# Webhooks
+
+Instead of polling, subscribe a webhook endpoint to get notified the moment something happens to a domain you've claimed. Endpoints are created from your project's dashboard, subscribing to a non-empty subset of the event types below.
+
+## Event types
+
+A project-scoped subset of every event DomainProof can publish — every one except `account.created`, which isn't tied to a project:
+
+- `domain.claimed` — a domain was claimed and issued a fresh challenge.
+- `domain.challenge_regenerated` — a domain's challenge was regenerated (a fresh token issued), restarting verification.
+- `domain.check_passed` — a check found the expected record.
+- `domain.check_failed` — a check did not find the expected record, or the attempt's window expired.
+- `domain.verified` — the domain transitioned to `verified` (first pass, or recovery from the grace window).
+- `domain.temporarily_failed` — a previously verified domain lost its record and entered the 72-hour grace window.
+- `domain.failed` — the domain transitioned to `failed` (verification window elapsed, or the grace window expired).
+
+## Delivery payload
+
+Each subscribed event is delivered as an HTTP `POST` with this JSON body:
+
+```json
+{
+  "id": "5c3b8f2e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+  "type": "domain.verified",
+  "created_at": "2026-07-22T10:00:46.000Z",
+  "data": {
+    "domainId": "3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c",
+    "projectId": "8b6d3f2a-1c4e-9c2e-4a1f-1f0e2c7d5b6a",
+    "mode": "live",
+    "domain": "example.com",
+    "externalId": "customer_123"
+  }
+}
+```
+
+`data` always carries `mode`, so a single endpoint subscribed across both a test and a live key can tell which is which. `externalId` is `null` when the claim didn't set one (see [Claim and verify a domain](/docs/claim-and-verify)) — a stable field to correlate a delivery back to your own end user without a separate lookup.
+
+## Headers and signature verification
+
+Every delivery carries three headers alongside `content-type: application/json`:
+
+| Header | Value |
+| --- | --- |
+| `domainproof-webhook-id` | The delivery's id — stable across retries of the same delivery, so you can dedupe. |
+| `domainproof-webhook-timestamp` | Unix seconds at send time. |
+| `domainproof-webhook-signature` | `sha256=<hex hmac>`, computed as below. |
+
+Creating an endpoint returns its signing secret (`whsec_...`) exactly once — every later response only shows a masked form (`whsec_...ab12`). Store it when you create the endpoint; there's no way to retrieve it again later, only to rotate it.
+
+To verify a delivery, recompute the signature over `"<timestamp>.<raw body>"` with the endpoint's signing secret and compare it to the header, in constant time:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+function verify(secret, timestamp, rawBody, signatureHeader) {
+  const digest = createHmac('sha256', secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex')
+  const expected = `sha256=${digest}`
+  const a = Buffer.from(expected)
+  const b = Buffer.from(signatureHeader)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+```
+
+Always verify against the raw request body, before any JSON parsing — re-serializing the parsed body can produce a byte-for-byte different string and fail the comparison even for a legitimate delivery.
+
+## Retries
+
+A failed delivery (a non-2xx response, a timeout, or a connection error) retries with backoff: 1 minute, 5 minutes, 30 minutes, then 2 hours — up to 5 total attempts by default, after which it's marked `failed` for good.
+
+Delivery is fire-and-forget from the API's perspective: publishing an event never waits on your endpoint's response, so a slow or unreachable endpoint can't slow down the request that triggered it.
+
+## Delivery log and redelivery
+
+Every endpoint keeps a delivery log — every attempt, its response, and its outcome — viewable from your dashboard. If you fixed a bug that caused an endpoint to reject deliveries, you can redeliver a past event: it fires the same payload again as a brand-new delivery (a new log entry, attempt 1) without touching the original delivery's record.
