@@ -491,6 +491,7 @@ export function createApp(
       keysService,
       projectsService,
       domainsService,
+      providerForDomain,
       eventsService,
       webhooksService,
       sessionVerifier,

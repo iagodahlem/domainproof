@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import type { KeysService } from '@modules/keys/service'
 import type { ProjectsService } from '@modules/projects/service'
 import type { DomainsService } from '@modules/domains/service'
+import type { ProviderForDomain } from '@modules/domains/ports'
 import type { EventsService } from '@modules/events/service'
 import type { SessionVerifier } from '@modules/accounts/ports'
 import type { WebhooksService } from '@modules/webhooks/service'
@@ -20,6 +21,7 @@ export interface DashboardRouterDeps {
   keysService: KeysService
   projectsService: ProjectsService
   domainsService: DomainsService
+  providerForDomain: ProviderForDomain
   eventsService: EventsService
   webhooksService: WebhooksService
   /** `undefined` means session auth isn't configured — every plane request 500s until it is. */
@@ -68,6 +70,7 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
       deps.domainsService,
       deps.eventsService,
       deps.projectsService,
+      deps.providerForDomain,
     ),
   )
   router.route(

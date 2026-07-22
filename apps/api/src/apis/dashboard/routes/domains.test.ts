@@ -251,6 +251,26 @@ describe('/dashboard/projects/:projectId/domains', () => {
       expect(body.domains.every((d) => d.verifiedAt === null)).toBe(true)
     })
 
+    it("resolves each domain's provider — 'unknown' for a .test sandbox domain, since it has no real DNS to inspect", async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      await createTestDomain(projectId, { domain: 'sandbox.example.test' })
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains`,
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        domains: Array<{ domain: string; provider: string }>
+      }
+      expect(body.domains).toHaveLength(1)
+      expect(body.domains[0]?.provider).toBe('unknown')
+    })
+
     it("only returns the requested project's domains", async () => {
       const app = buildApp()
       const ownerId = freshClerkUserId()

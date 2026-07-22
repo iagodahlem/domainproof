@@ -7,6 +7,7 @@ import type {
   DomainSummary,
   VerifyDomainCheck,
 } from '@modules/domains/service'
+import type { ProviderForDomain } from '@modules/domains/ports'
 import type { EventSummary, EventsService } from '@modules/events/service'
 import { apiError } from '@shared/http-errors'
 
@@ -216,6 +217,7 @@ export function createDomainsRoutes(
   domainsService: DomainsService,
   eventsService: EventsService,
   projectsService: ProjectsService,
+  providerForDomain: ProviderForDomain,
 ) {
   const router = new Hono<{ Variables: SessionAuthVariables }>()
 
@@ -302,7 +304,19 @@ export function createDomainsRoutes(
       },
     )
 
-    return c.json({ domains: domains.map(serializeDomainSummary), nextCursor })
+    // Provider detection is a list-view presentation concern (the domains
+    // table's Provider column), not a domain fact — resolved here rather
+    // than folded into `serializeDomainSummary`, so the write routes below
+    // (which reuse that same serializer) don't each pay for an NS lookup
+    // their response never renders.
+    const domainsWithProvider = await Promise.all(
+      domains.map(async (domain) => ({
+        ...serializeDomainSummary(domain),
+        provider: await providerForDomain(domain.domain),
+      })),
+    )
+
+    return c.json({ domains: domainsWithProvider, nextCursor })
   })
 
   router.get('/:domainId', async (c) => {

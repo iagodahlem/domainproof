@@ -28,13 +28,18 @@ export function useCreateDomain(projectId: string) {
   })
 }
 
-/** Wraps `GET /dashboard/projects/:id/domains` — the domains table's "Load more" cursor pagination. */
-export function useListDomains(projectId: string) {
+/**
+ * Wraps `GET /dashboard/projects/:id/domains` — the domains table's "Load
+ * more" cursor pagination. `mode` is the mode the page's initial list was
+ * loaded for, threaded through so a later page doesn't drift onto the other
+ * mode's rows — same reasoning as `EventsView`'s own `loadMore`.
+ */
+export function useListDomains(projectId: string, mode: DomainMode) {
   const { getToken } = useAuth()
   return useMutation({
     mutationFn: async (cursor: string) => {
       const token = await getToken()
-      return dashboardApi.listDomains(token, projectId, { cursor })
+      return dashboardApi.listDomains(token, projectId, { cursor, mode })
     },
   })
 }
