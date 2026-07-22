@@ -2,14 +2,10 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useAuth } from '@clerk/nextjs'
 import { Button, Callout, Select, TextField } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import {
-  dashboardApi,
-  type DomainDetail,
-  type DomainMode,
-} from '@/lib/api/dashboard'
+import { ApiError } from '@/lib/query/errors'
+import type { DomainDetail, DomainMode } from '@/lib/api/dashboard'
+import { useCreateDomain } from '@/lib/query/domains'
 
 const MODE_OPTIONS = [
   { value: 'test', label: 'Test' },
@@ -35,14 +31,14 @@ export function AddDomainForm({
   onCreated,
   onCancel,
 }: AddDomainFormProps) {
-  const { getToken } = useAuth()
   const [domain, setDomain] = useState(initialDomain)
   const [mode, setMode] = useState<DomainMode>('test')
   const [fieldError, setFieldError] = useState<string | undefined>()
   const [formError, setFormError] = useState<string | undefined>()
-  const [submitting, setSubmitting] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const createDomain = useCreateDomain(projectId)
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmed = domain.trim()
@@ -53,24 +49,19 @@ export function AddDomainForm({
 
     setFieldError(undefined)
     setFormError(undefined)
-    setSubmitting(true)
-    try {
-      const token = await getToken()
-      const { domain: created } = await dashboardApi.createDomain(
-        token,
-        projectId,
-        { domain: trimmed, mode },
-      )
-      onCreated(created)
-    } catch (error) {
-      setFormError(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setSubmitting(false)
-    }
+    createDomain.mutate(
+      { domain: trimmed, mode },
+      {
+        onSuccess: ({ domain: created }) => onCreated(created),
+        onError: (error) => {
+          setFormError(
+            error instanceof ApiError
+              ? error.message
+              : 'Something went wrong. Please try again.',
+          )
+        },
+      },
+    )
   }
 
   return (
@@ -99,10 +90,18 @@ export function AddDomainForm({
               onChange={(event) => setMode(event.target.value as DomainMode)}
             />
           </div>
-          <Button type="submit" variant="primary" loading={submitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={createDomain.isPending}
+          >
             Add domain
           </Button>
-          <Button type="button" onClick={onCancel} disabled={submitting}>
+          <Button
+            type="button"
+            onClick={onCancel}
+            disabled={createDomain.isPending}
+          >
             Cancel
           </Button>
         </div>
