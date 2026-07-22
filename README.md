@@ -46,7 +46,14 @@ Postgres).
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 ```
+
+`apps/web/.env.local`'s Clerk keys and `apps/api/.env`'s `CLERK_JWKS_URL`/
+`CLERK_ISSUER` must come from the same Clerk instance, with
+`NEXT_PUBLIC_API_URL` pointed at the api configured with that instance —
+locally that's normally one dev instance for both, with `CLERK_JWKS_URL`
+following the pattern `https://<instance-domain>/.well-known/jwks.json`.
 
 `apps/api/.env` (`pnpm --filter api dev` loads it automatically via
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
@@ -56,6 +63,7 @@ nothing breaks if the file doesn't exist):
 | ------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
 | `CLERK_JWKS_URL`, `CLERK_ISSUER`                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
+| `WEB_ORIGIN`                                                 | No        | The dashboard web app's origin, for the dashboard plane's CORS policy — the only plane a browser calls directly. Unset allows any origin.                   |
 | `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST` | No        | Production-only host restriction, one per plane (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.  |
 | `PORT`                                                       | No        | Defaults to `3001`.                                                                                                                                         |
 | `RESEND_API_KEY`                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |

@@ -153,3 +153,45 @@ describe('host restriction (real app wiring)', () => {
     ).toBe('Verification not found')
   })
 })
+
+// The dashboard plane is the only one a browser calls directly (the web
+// app's client components attach a Clerk session token and fetch
+// cross-origin), so CORS is scoped to just that router — see
+// apis/dashboard/router.ts. A preflight OPTIONS request never carries the
+// caller's Authorization header, so these prove it's answered by the cors
+// middleware itself rather than falling through to session auth (which
+// would 401 it).
+describe('dashboard CORS (real app wiring)', () => {
+  function preflight(
+    restrictedApp: ReturnType<typeof createApp>,
+    origin: string,
+  ) {
+    return restrictedApp.request('/dashboard/projects', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'POST',
+      },
+    })
+  }
+
+  it('allows any origin by default', async () => {
+    const res = await preflight(app, 'http://localhost:4000')
+
+    expect(res.status).toBe(204)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+  })
+
+  it('scopes to the configured web origin', async () => {
+    const scopedApp = createApp({ db, webOrigin: 'https://domainproof.dev' })
+
+    const allowed = await preflight(scopedApp, 'https://domainproof.dev')
+    expect(allowed.status).toBe(204)
+    expect(allowed.headers.get('access-control-allow-origin')).toBe(
+      'https://domainproof.dev',
+    )
+
+    const other = await preflight(scopedApp, 'https://evil.example')
+    expect(other.headers.get('access-control-allow-origin')).toBeNull()
+  })
+})

@@ -30,7 +30,12 @@ const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   eslintConfigPrettier,
   {
-    files: ['app/**/*.tsx', 'app/**/*.ts'],
+    files: [
+      'app/**/*.tsx',
+      'app/**/*.ts',
+      'components/**/*.tsx',
+      'components/**/*.ts',
+    ],
     plugins: { 'better-tailwindcss': betterTailwindcss },
     settings: {
       'better-tailwindcss': {

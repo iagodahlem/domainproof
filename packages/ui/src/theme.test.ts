@@ -23,6 +23,7 @@ const CLASSES = [
   'leading-body',
   'border-accent-border',
   'bg-bg-glass',
+  'backdrop-blur-header',
 ]
 
 async function compile() {
@@ -84,6 +85,13 @@ describe('theme.css', () => {
     )
     expect(css).toMatch(
       /\.shadow-current\s*{[^}]*--tw-shadow:\s*var\(--shadow-current\)/,
+    )
+  })
+
+  it('points the header blur utility at the raw token variable', async () => {
+    const css = await compile()
+    expect(css).toMatch(
+      /\.backdrop-blur-header\s*{[^}]*--tw-backdrop-blur:\s*blur\(var\(--blur-header\)\)/,
     )
   })
 })

@@ -31,6 +31,19 @@ describe('Button', () => {
     expect(el.className).toContain('text-xs')
   })
 
+  it('scales radius down for the sm size', () => {
+    render(<Button size="sm">Open Cloudflare DNS</Button>)
+    const el = screen.getByRole('button')
+    expect(el.className).toContain('rounded-sm')
+    expect(el.className).not.toContain('rounded-md')
+  })
+
+  it('uses the default radius for the default size', () => {
+    render(<Button>Recheck now</Button>)
+    const el = screen.getByRole('button')
+    expect(el.className).toContain('rounded-md')
+  })
+
   it('applies the pill shape classes', () => {
     render(<Button shape="pill">Recheck now</Button>)
     const el = screen.getByRole('button')

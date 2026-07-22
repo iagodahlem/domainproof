@@ -11,6 +11,8 @@ export interface RecordFieldProps extends HTMLAttributes<HTMLDivElement> {
   copyable?: boolean
   copyLabel?: ReactNode
   explain?: ReactNode
+  /** Custom trailing control instead of the copy button — e.g. a "Reveal" action gating a value that isn't safe to copy until shown. Takes precedence over `copyable`. */
+  action?: ReactNode
 }
 
 export function RecordField({
@@ -20,6 +22,7 @@ export function RecordField({
   copyable = false,
   copyLabel = 'Copy',
   explain,
+  action,
   className,
   ...props
 }: RecordFieldProps) {
@@ -37,11 +40,12 @@ export function RecordField({
         >
           {value}
         </span>
-        {copyable ? (
-          <CopyButton value={value} size="sm">
-            {copyLabel}
-          </CopyButton>
-        ) : null}
+        {action ??
+          (copyable ? (
+            <CopyButton value={value} size="sm">
+              {copyLabel}
+            </CopyButton>
+          ) : null)}
       </div>
       {explain ? (
         <div className="mt-2 max-w-[58ch] pl-27 text-sm text-text-muted max-[560px]:pl-0">
