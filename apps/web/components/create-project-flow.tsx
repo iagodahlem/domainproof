@@ -8,6 +8,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Button, Callout, Card, CardBody, TextField, cn } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
+import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
 
@@ -17,11 +18,6 @@ export interface CreateProjectFlowProps {
   /** First-signup only: a suggested name (derived from the caller's Clerk profile) pre-filled into the field but fully editable. Omitted for the switcher-created flow, which starts blank. */
   namePrefill?: string
 }
-
-// Locked-screen card width matching the board's .lockscreen .card spec, no
-// spacing-scale equivalent — shared with the page's own back-link wrapper
-// so the two line up.
-export const CREATE_PROJECT_CARD_WIDTH = 'max-w-[440px]'
 
 /**
  * The create-project screen's interactive half: the name field and its
