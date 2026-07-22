@@ -36,7 +36,6 @@ import {
   Select,
   Checkbox,
 } from '@domainproof/ui'
-import { ThemeToggle } from './theme-toggle'
 import { PathChooserDemo } from './path-chooser-demo'
 
 export const metadata: Metadata = {
@@ -285,19 +284,6 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-bg font-sans text-text"
     >
-      <header
-        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off glass-header blur amount, no design token for blur; single use
-        className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-[10px] backdrop-saturate-[140%]"
-      >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
-            <Logo />
-            design system
-          </span>
-          <ThemeToggle />
-        </div>
-      </header>
-
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
         <section id="tokens">
           <SectionHead eyebrow="Foundations" title="Tokens" />

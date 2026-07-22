@@ -5,7 +5,7 @@ import { Moon, Sun } from 'lucide-react'
 
 type Theme = 'dark' | 'light'
 
-const STORAGE_KEY = 'design-system-theme'
+const STORAGE_KEY = 'theme'
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('dark')
