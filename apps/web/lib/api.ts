@@ -179,6 +179,21 @@ export const dashboardApi = {
     )
   },
 
+  updateProject(token: string | null, projectId: string, name: string) {
+    return request<{ project: ProjectSummary }>(
+      `/dashboard/projects/${projectId}`,
+      token,
+      { method: 'PATCH', body: JSON.stringify({ name }) },
+    )
+  },
+
+  listKeys(token: string | null, projectId: string) {
+    return request<{ apiKeys: ApiKeyListItem[] }>(
+      `/dashboard/projects/${projectId}/keys`,
+      token,
+    )
+  },
+
   createDomain(
     token: string | null,
     projectId: string,
@@ -221,9 +236,25 @@ export const dashboardApi = {
     )
   },
 
+  rotateKey(token: string | null, projectId: string, keyId: string) {
+    return request<CreateKeyResult>(
+      `/dashboard/projects/${projectId}/keys/${keyId}/rotate`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
   regenerateDomain(token: string | null, projectId: string, domainId: string) {
     return request<{ domain: DomainDetail }>(
       `/dashboard/projects/${projectId}/domains/${domainId}/regenerate`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  revokeKey(token: string | null, projectId: string, keyId: string) {
+    return request<{ apiKey: ApiKeyListItem }>(
+      `/dashboard/projects/${projectId}/keys/${keyId}/revoke`,
       token,
       { method: 'POST' },
     )
