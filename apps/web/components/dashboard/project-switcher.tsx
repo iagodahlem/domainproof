@@ -1,5 +1,6 @@
 'use client'
 
+import { cva } from 'class-variance-authority'
 import Link from 'next/link'
 import { ChevronDown, LayoutGrid, Plus } from 'lucide-react'
 import {
@@ -12,10 +13,30 @@ import {
 } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
 
+const triggerVariants = cva(
+  'flex items-center rounded-md border border-border bg-surface-2 text-left font-semibold text-foreground transition-colors duration-150 hover:border-border-strong',
+  {
+    variants: {
+      compact: {
+        // Icon + chevron only, no name — for the mobile strip, next to the
+        // logo, where 4 nav icons and the account menu already compete for
+        // width. Matches the mobile strip's own icon-only nav labels.
+        true: 'shrink-0 gap-1 p-1.5',
+        false: 'w-full gap-2 px-3 py-2 text-sm',
+      },
+    },
+    defaultVariants: {
+      compact: false,
+    },
+  },
+)
+
 export interface ProjectSwitcherProps {
   projects: ProjectSummary[]
   activeProject: ProjectSummary
   className?: string
+  /** Icon + truncated name in a narrower trigger — for the dashboard's mobile strip, next to the logo. The dropdown menu itself is unchanged. */
+  compact?: boolean
 }
 
 /**
@@ -26,24 +47,29 @@ export function ProjectSwitcher({
   projects,
   activeProject,
   className,
+  compact = false,
 }: ProjectSwitcherProps) {
   return (
     <Menu>
       <MenuTrigger
-        className={cn(
-          'flex w-full items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-left text-sm font-semibold text-foreground transition-colors duration-150 hover:border-border-strong',
-          className,
-        )}
+        aria-label={
+          compact
+            ? `Switch project — currently ${activeProject.name}`
+            : undefined
+        }
+        className={cn(triggerVariants({ compact }), className)}
       >
         <LayoutGrid
           aria-hidden="true"
-          size={14}
+          size={compact ? 13 : 14}
           className="shrink-0 text-faint-foreground"
         />
-        <span className="flex-1 truncate">{activeProject.name}</span>
+        {compact ? null : (
+          <span className="min-w-0 flex-1 truncate">{activeProject.name}</span>
+        )}
         <ChevronDown
           aria-hidden="true"
-          size={13}
+          size={compact ? 12 : 13}
           className="shrink-0 text-faint-foreground"
         />
       </MenuTrigger>

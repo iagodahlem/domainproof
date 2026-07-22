@@ -1,7 +1,13 @@
 'use client'
 
 import { cva } from 'class-variance-authority'
-import { Menu, MenuContent, MenuSeparator, MenuTrigger } from '@domainproof/ui'
+import {
+  Menu,
+  MenuContent,
+  MenuSeparator,
+  MenuTrigger,
+  cn,
+} from '@domainproof/ui'
 import { SignOutButton } from './sign-out-button'
 
 const triggerVariants = cva(
@@ -27,6 +33,7 @@ export interface UserMenuProps {
   email: string
   /** Icon-only trigger — just the avatar circle, no email label — for header contexts too narrow for the full pill (e.g. the locked /new screen). The dropdown still shows the full email once opened. The sidebar keeps the default, full-width pill. */
   iconOnly?: boolean
+  className?: string
 }
 
 /**
@@ -38,14 +45,18 @@ export interface UserMenuProps {
  * every side (`p-1`) so the circle reads as concentrically inset in the
  * pill rather than off-center.
  */
-export function UserMenu({ email, iconOnly = false }: UserMenuProps) {
+export function UserMenu({
+  email,
+  iconOnly = false,
+  className,
+}: UserMenuProps) {
   const initial = email ? email.charAt(0).toUpperCase() : '?'
 
   return (
     <Menu>
       <MenuTrigger
         aria-label={email ? `Account menu for ${email}` : 'Account menu'}
-        className={triggerVariants({ iconOnly })}
+        className={cn(triggerVariants({ iconOnly }), className)}
       >
         <span
           aria-hidden="true"

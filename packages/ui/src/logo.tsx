@@ -33,15 +33,23 @@ const logoMarkVariants = cva(
 )
 
 export interface LogoProps
-  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof logoVariants> {}
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof logoVariants> {
+  /** Mark only, no "DomainProof" wordmark — for chrome too narrow to carry it (e.g. the dashboard's mobile strip). */
+  iconOnly?: boolean
+}
 
-export function Logo({ size, className, ...props }: LogoProps) {
+export function Logo({
+  size,
+  className,
+  iconOnly = false,
+  ...props
+}: LogoProps) {
   return (
     <span className={cn(logoVariants({ size }), className)} {...props}>
       <span aria-hidden="true" className={logoMarkVariants({ size })}>
         <Check size={13} strokeWidth={2.2} />
       </span>
-      DomainProof
+      {iconOnly ? <span className="sr-only">DomainProof</span> : 'DomainProof'}
     </span>
   )
 }
