@@ -1,20 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
-  <!-- Favicon derived from the Logo mark in packages/ui/src/logo.tsx: a
-       7px-radius tile in the accent color with the same lucide "check"
-       glyph. Colors mirror tokens.css's accent / accent-foreground tokens
-       for each theme (a solid fill here, not the in-app translucent
-       accent-soft, since a favicon has no app background to sit on top
-       of); update both if those tokens change. prefers-color-scheme picks
-       the right pair automatically in browsers that support SVG favicons. -->
+  <!-- Favicon derived from the Logo mark in packages/ui/src/logo.tsx: the
+       same 7px-radius tile, accent-tint border, and lucide "check" glyph.
+       The tile fill and border are the accent color mixed in oklab (the
+       same space tokens.css uses for the accent-border token) with the
+       page background at each token's alpha, 14%/35% in dark and 10%/35%
+       in light, sourced from accent-soft and alpha-border in tokens.css,
+       rather than the in-app translucent accent-soft/accent-tint
+       themselves, since a favicon has no page background to composite
+       against; recompute these if those tokens change. The check glyph is
+       solid accent, same as text-accent on the Logo mark.
+       prefers-color-scheme picks the right pair automatically in browsers
+       that support SVG favicons. -->
   <style>
-    rect { fill: oklch(0.76 0.16 152); }
-    path { stroke: oklch(0.14 0.03 152); }
+    rect { fill: oklch(0.2182 0.0236 164.54); stroke: oklch(0.3505 0.0566 155.92); }
+    path { stroke: oklch(0.76 0.16 152); }
     @media (prefers-color-scheme: light) {
-      rect { fill: oklch(0.52 0.15 152); }
-      path { stroke: oklch(0.99 0.005 152); }
+      rect { fill: oklch(0.943 0.0153 158.70); stroke: oklch(0.8255 0.0527 153.40); }
+      path { stroke: oklch(0.52 0.15 152); }
     }
   </style>
-  <rect width="22" height="22" rx="7" />
+  <rect x="0.5" y="0.5" width="21" height="21" rx="6.5" stroke-width="1" />
   <svg x="4.5" y="4.5" width="13" height="13" viewBox="0 0 24 24" fill="none">
     <path
       d="M20 6 9 17l-5-5"
