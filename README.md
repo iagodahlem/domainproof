@@ -46,7 +46,14 @@ Postgres).
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 ```
+
+`apps/web/.env.local`'s Clerk keys and `apps/api/.env`'s `CLERK_JWKS_URL`/
+`CLERK_ISSUER` must come from the same Clerk instance, with
+`NEXT_PUBLIC_API_URL` pointed at the api configured with that instance —
+locally that's normally one dev instance for both, with `CLERK_JWKS_URL`
+following the pattern `https://<instance-domain>/.well-known/jwks.json`.
 
 `apps/api/.env` (`pnpm --filter api dev` loads it automatically via
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and

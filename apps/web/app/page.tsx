@@ -31,6 +31,9 @@ export default function LandingPage() {
             it&rsquo;s true.
           </p>
           <AuthCta className="mt-6" iconSize={15} />
+          {/* Clerk's Smart CAPTCHA widget — must be in the DOM before
+              authenticateWithRedirect() runs for either CTA above. */}
+          <div id="clerk-captcha" />
         </div>
       </main>
 

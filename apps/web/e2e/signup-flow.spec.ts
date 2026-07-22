@@ -28,6 +28,12 @@ test('fresh signup reaches the dashboard placeholder with a named project', asyn
       .getByRole('button', { name: /continue with google/i }),
   ).toBeVisible()
 
+  // Bot protection's CAPTCHA widget needs this mount element present
+  // before authenticateWithRedirect() runs, or Clerk rejects the sign-up
+  // on any instance with bot protection enabled — a structural regression
+  // guard since this dev instance itself doesn't have it turned on.
+  await expect(page.locator('#clerk-captcha')).toBeAttached()
+
   await clerk.signIn({ page, signInParams: { strategy: 'ticket', ticket } })
 
   const claims = await page.evaluate(async () => {
