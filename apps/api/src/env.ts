@@ -79,6 +79,7 @@ const envSchema = z.object({
   // instead of the app refusing to boot — same "unconfigured vendor is a
   // clean no-op" pattern as `RESEND_API_KEY`/`CLERK_JWKS_URL` above.
   CLOUDFLARE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  CLOUDFLARE_OAUTH_REDIRECT_URI: z.string().url().optional(),
   CLOUDFLARE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
 })
 

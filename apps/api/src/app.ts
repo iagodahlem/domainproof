@@ -135,6 +135,7 @@ function createProviderForDomain(): ProviderForDomain {
  * process itself, so there's no local/staging variant to wire up here.
  */
 const CLOUDFLARE_OAUTH_REDIRECT_URI =
+  env.CLOUDFLARE_OAUTH_REDIRECT_URI ??
   'https://frontend.api.domainproof.dev/frontend/cloudflare/callback'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
