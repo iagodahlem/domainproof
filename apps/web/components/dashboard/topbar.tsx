@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { Header } from '@domainproof/ui'
 import { DASHBOARD_NAV_ITEMS } from './nav-items'
 import { UserMenu } from './user-menu'
 
@@ -21,11 +22,14 @@ export function Topbar({ projectId, email }: TopbarProps) {
   )
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-5 py-4 max-[640px]:px-4">
-      <strong className="text-base font-heading text-text">
-        {activeItem?.label ?? 'Dashboard'}
-      </strong>
-      <UserMenu email={email} />
-    </div>
+    <Header
+      variant="solid"
+      left={
+        <strong className="text-base font-heading text-text">
+          {activeItem?.label ?? 'Dashboard'}
+        </strong>
+      }
+      right={<UserMenu email={email} />}
+    />
   )
 }

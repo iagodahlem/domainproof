@@ -4,9 +4,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
+import { useMutation } from '@tanstack/react-query'
 import { Button, Callout, Card, CardBody, TextField } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
-import { dashboardApi, type CreateProjectResult } from '@/lib/api/dashboard'
+import { dashboardApi } from '@/lib/api/dashboard'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
 
@@ -28,11 +29,19 @@ export function CreateProjectFlow({
   const { getToken } = useAuth()
   const [name, setName] = useState('')
   const [fieldError, setFieldError] = useState<string | undefined>()
-  const [formError, setFormError] = useState<string | undefined>()
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<CreateProjectResult | null>(null)
 
-  if (result) {
+  const createProject = useMutation({
+    mutationFn: async (projectName: string) => {
+      const token = await getToken()
+      return dashboardApi.createProject(token, projectName)
+    },
+    onError: (error) => {
+      console.error('Failed to create project', error)
+    },
+  })
+
+  if (createProject.data) {
+    const result = createProject.data
     return (
       <KeysHandoff
         result={result}
@@ -43,7 +52,13 @@ export function CreateProjectFlow({
     )
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const formError = createProject.error
+    ? createProject.error instanceof ApiError
+      ? createProject.error.message
+      : 'Something went wrong. Please try again.'
+    : undefined
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmed = name.trim()
@@ -53,22 +68,7 @@ export function CreateProjectFlow({
     }
 
     setFieldError(undefined)
-    setFormError(undefined)
-    setSubmitting(true)
-    try {
-      const token = await getToken()
-      const created = await dashboardApi.createProject(token, trimmed)
-      setResult(created)
-    } catch (error) {
-      console.error('Failed to create project', error)
-      setFormError(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setSubmitting(false)
-    }
+    createProject.mutate(trimmed)
   }
 
   return (
@@ -117,7 +117,7 @@ export function CreateProjectFlow({
           <Button
             type="submit"
             variant="primary"
-            loading={submitting}
+            loading={createProject.isPending}
             className="mt-4 w-full justify-center"
           >
             Continue

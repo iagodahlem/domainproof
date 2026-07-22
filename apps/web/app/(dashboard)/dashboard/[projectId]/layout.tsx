@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { Callout, Logo } from '@domainproof/ui'
+import { Callout, Header, Logo } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
 import { DashboardShell } from '@/components/dashboard/shell'
@@ -37,11 +37,7 @@ export default async function DashboardProjectLayout({
     console.error('Failed to load projects', error)
     return (
       <div className="flex min-h-screen flex-col bg-bg">
-        <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]">
-          <div className="mx-auto flex max-w-5xl items-center px-6 py-3">
-            <Logo />
-          </div>
-        </header>
+        <Header left={<Logo />} />
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16">
           <Callout tone="warning" className="max-w-md">
             {error instanceof ApiError
