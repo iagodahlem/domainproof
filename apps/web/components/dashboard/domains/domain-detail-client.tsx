@@ -21,13 +21,13 @@ import {
   StatusSummary,
   VerificationLog,
 } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   type DomainCheck,
   type DomainDetail,
   type DomainEvent,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 import { domainStatusPresentation } from './domain-status'
 import { domainStatusSteps } from './domain-status-steps'
 import { checkOutcomePresentation } from './domain-check-outcome'

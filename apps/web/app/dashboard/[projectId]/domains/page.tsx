@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import { Callout } from '@domainproof/ui'
-import { ApiError, dashboardApi } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi } from '@/lib/api/dashboard'
 import { DomainsPageClient } from '@/components/dashboard/domains/domains-page-client'
 
 export const metadata: Metadata = {

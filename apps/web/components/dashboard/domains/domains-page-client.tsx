@@ -12,12 +12,12 @@ import {
   DomainTableHead,
   DomainTableRow,
 } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   type DomainDetail,
   type DomainSummary,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 import { domainStatusPresentation } from './domain-status'
 import { formatRelativeTime } from './format-relative-time'
 import { AddDomainForm } from './add-domain-form'
