@@ -23,7 +23,7 @@ export interface SegmentedControlProps extends Omit<
 }
 
 const segmentVariants = cva(
-  'flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-semibold text-faint-foreground transition-colors duration-150 hover:text-foreground',
+  'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-faint-foreground transition-colors duration-150 hover:text-foreground',
   {
     variants: {
       tone: {
@@ -59,7 +59,7 @@ export function SegmentedControl({
     <div
       role="tablist"
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-md border border-border bg-surface-2 p-0.5',
+        'inline-flex items-center gap-0.5 rounded-full border border-border bg-surface-2 p-0.5',
         className,
       )}
       {...props}
