@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useAuth } from '@clerk/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { Button, Card, CardBody, TextField } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
+import { ApiError } from '@/lib/query/errors'
+import type { ProjectSummary } from '@/lib/api/dashboard'
+import { useRenameProject } from '@/lib/query/projects'
 
 export interface ProjectNameCardProps {
   project: ProjectSummary
@@ -25,36 +24,12 @@ const SAVED_BUTTON_CLASSES =
  * disabled until the value actually differs from what's persisted.
  */
 export function ProjectNameCard({ project }: ProjectNameCardProps) {
-  const { getToken } = useAuth()
   const [savedName, setSavedName] = useState(project.name)
   const [draft, setDraft] = useState(project.name)
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [error, setError] = useState<string>()
 
-  const renameProject = useMutation({
-    mutationFn: async (name: string) => {
-      const token = await getToken()
-      return dashboardApi.updateProject(token, project.id, name)
-    },
-    onSuccess: ({ project: updated }) => {
-      setSavedName(updated.name)
-      setDraft(updated.name)
-      setStatus('saved')
-      setTimeout(
-        () => setStatus((current) => (current === 'saved' ? 'idle' : current)),
-        SAVED_FLASH_MS,
-      )
-    },
-    onError: (err) => {
-      console.error('Failed to rename project', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-      setStatus('idle')
-    },
-  })
+  const renameProject = useRenameProject(project.id)
 
   const trimmed = draft.trim()
   const dirty = trimmed !== savedName
@@ -71,7 +46,27 @@ export function ProjectNameCard({ project }: ProjectNameCardProps) {
 
     setError(undefined)
     setStatus('saving')
-    renameProject.mutate(trimmed)
+    renameProject.mutate(trimmed, {
+      onSuccess: ({ project: updated }) => {
+        setSavedName(updated.name)
+        setDraft(updated.name)
+        setStatus('saved')
+        setTimeout(
+          () =>
+            setStatus((current) => (current === 'saved' ? 'idle' : current)),
+          SAVED_FLASH_MS,
+        )
+      },
+      onError: (err) => {
+        console.error('Failed to rename project', err)
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+        )
+        setStatus('idle')
+      },
+    })
   }
 
   return (

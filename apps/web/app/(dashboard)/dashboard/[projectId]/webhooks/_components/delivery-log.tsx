@@ -1,13 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-  type InfiniteData,
-} from '@tanstack/react-query'
 import { RotateCw } from 'lucide-react'
 import {
   Badge,
@@ -21,12 +14,12 @@ import {
   cn,
   type Tone,
 } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
+import { ApiError } from '@/lib/query/errors'
+import type { WebhookDeliverySummary } from '@/lib/api/dashboard'
 import {
-  dashboardApi,
-  type ListDeliveriesResult,
-  type WebhookDeliverySummary,
-} from '@/lib/api/dashboard'
+  useRedeliverWebhookDelivery,
+  useWebhookDeliveries,
+} from '@/lib/query/webhooks'
 
 export interface DeliveryLogProps {
   projectId: string
@@ -69,62 +62,22 @@ function errorMessage(error: unknown): string {
  * cached page, matching the API's own semantics.
  */
 export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
-  const { getToken } = useAuth()
-  const queryClient = useQueryClient()
   const [redeliveringId, setRedeliveringId] = useState<string | null>(null)
   const [redeliverError, setRedeliverError] = useState<string>()
 
-  const queryKey = ['webhook-deliveries', projectId, endpointId] as const
-
-  const deliveriesQuery = useInfiniteQuery({
-    queryKey,
-    queryFn: async ({ pageParam }) => {
-      const token = await getToken()
-      return dashboardApi.listWebhookDeliveries(token, projectId, endpointId, {
-        cursor: pageParam ?? undefined,
-      })
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-  })
-
-  const redeliver = useMutation({
-    mutationFn: async (deliveryId: string) => {
-      const token = await getToken()
-      const { delivery } = await dashboardApi.redeliverWebhookDelivery(
-        token,
-        projectId,
-        endpointId,
-        deliveryId,
-      )
-      return delivery
-    },
-    onSuccess: (delivery) => {
-      queryClient.setQueryData<
-        InfiniteData<ListDeliveriesResult, string | null>
-      >(queryKey, (old) => {
-        const [firstPage, ...restPages] = old?.pages ?? []
-        if (!old || !firstPage) return old
-        return {
-          ...old,
-          pages: [
-            { ...firstPage, deliveries: [delivery, ...firstPage.deliveries] },
-            ...restPages,
-          ],
-        }
-      })
-    },
-    onError: (err) => {
-      console.error('Failed to redeliver webhook delivery', err)
-      setRedeliverError(errorMessage(err))
-    },
-    onSettled: () => setRedeliveringId(null),
-  })
+  const deliveriesQuery = useWebhookDeliveries(projectId, endpointId)
+  const redeliver = useRedeliverWebhookDelivery(projectId, endpointId)
 
   function handleRedeliver(deliveryId: string) {
     setRedeliverError(undefined)
     setRedeliveringId(deliveryId)
-    redeliver.mutate(deliveryId)
+    redeliver.mutate(deliveryId, {
+      onError: (err) => {
+        console.error('Failed to redeliver webhook delivery', err)
+        setRedeliverError(errorMessage(err))
+      },
+      onSettled: () => setRedeliveringId(null),
+    })
   }
 
   if (deliveriesQuery.isLoading) {

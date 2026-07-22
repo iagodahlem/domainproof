@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { QueryProvider } from '@/components/query-provider'
+import { QueryProvider } from '@/lib/query/provider'
 
 /**
  * Boundary for every auth'd route (`/new`, `/dashboard/*`) — the narrowest

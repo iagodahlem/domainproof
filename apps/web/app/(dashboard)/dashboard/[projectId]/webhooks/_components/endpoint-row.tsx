@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { useAuth } from '@clerk/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import {
   Badge,
@@ -15,12 +13,13 @@ import {
   cn,
   dotVariants,
 } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
+import { ApiError } from '@/lib/query/errors'
+import type { WebhookEndpointSummary } from '@/lib/api/dashboard'
 import {
-  dashboardApi,
+  useDeleteWebhookEndpoint,
+  useToggleWebhookEndpointDisabled,
   WEBHOOK_EVENT_TYPES,
-  type WebhookEndpointSummary,
-} from '@/lib/api/dashboard'
+} from '@/lib/query/webhooks'
 import { DeliveryLog } from './delivery-log'
 
 export interface EndpointRowProps {
@@ -61,7 +60,6 @@ export function EndpointRow({
   onUpdated,
   onDeleted,
 }: EndpointRowProps) {
-  const { getToken } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState<string>()
@@ -73,59 +71,39 @@ export function EndpointRow({
     }
   }
 
-  const toggleDisabled = useMutation({
-    mutationFn: async () => {
-      const token = await getToken()
-      const { endpoint: updated } = endpoint.disabled
-        ? await dashboardApi.enableWebhookEndpoint(
-            token,
-            projectId,
-            endpoint.id,
-          )
-        : await dashboardApi.disableWebhookEndpoint(
-            token,
-            projectId,
-            endpoint.id,
-          )
-      return updated
-    },
-    onSuccess: onUpdated,
-    onError: (err) => {
-      console.error('Failed to toggle webhook endpoint', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    },
-  })
-
-  const deleteEndpoint = useMutation({
-    mutationFn: async () => {
-      const token = await getToken()
-      await dashboardApi.deleteWebhookEndpoint(token, projectId, endpoint.id)
-    },
-    onSuccess: () => onDeleted(endpoint.id),
-    onError: (err) => {
-      console.error('Failed to delete webhook endpoint', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    },
-  })
+  const toggleDisabled = useToggleWebhookEndpointDisabled(projectId, endpoint)
+  const deleteEndpoint = useDeleteWebhookEndpoint(projectId, endpoint.id)
 
   const busy = toggleDisabled.isPending || deleteEndpoint.isPending
 
   function handleToggleDisabled() {
     setError(undefined)
-    toggleDisabled.mutate()
+    toggleDisabled.mutate(undefined, {
+      onSuccess: onUpdated,
+      onError: (err) => {
+        console.error('Failed to toggle webhook endpoint', err)
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
   function handleDelete() {
     setError(undefined)
-    deleteEndpoint.mutate()
+    deleteEndpoint.mutate(undefined, {
+      onSuccess: () => onDeleted(endpoint.id),
+      onError: (err) => {
+        console.error('Failed to delete webhook endpoint', err)
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
   const summary = eventsSummary(endpoint.eventTypes)

@@ -37,8 +37,8 @@ import {
   Select,
   Checkbox,
 } from '@domainproof/ui'
-import { ThemeToggle } from './theme-toggle'
-import { PathChooserDemo } from './path-chooser-demo'
+import { ThemeToggle } from './_components/theme-toggle'
+import { PathChooserDemo } from './_components/path-chooser-demo'
 
 export const metadata: Metadata = {
   title: 'Design system — DomainProof',

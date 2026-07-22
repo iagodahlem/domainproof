@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@clerk/nextjs'
 import {
   Check,
   ChevronDown,
@@ -21,13 +20,17 @@ import {
   StatusSummary,
   VerificationLog,
 } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import {
-  dashboardApi,
-  type DomainCheck,
-  type DomainDetail,
-  type DomainEvent,
+import { ApiError } from '@/lib/query/errors'
+import type {
+  DomainCheck,
+  DomainDetail,
+  DomainEvent,
 } from '@/lib/api/dashboard'
+import {
+  useListDomainEvents,
+  useRegenerateDomain,
+  useVerifyDomain,
+} from '@/lib/query/domains'
 import { domainStatusPresentation } from './domain-status'
 import { domainStatusSteps } from './domain-status-steps'
 import { checkOutcomePresentation } from './domain-check-outcome'
@@ -48,104 +51,72 @@ export function DomainDetailClient({
   initialEvents,
   initialEventsNextCursor,
 }: DomainDetailClientProps) {
-  const { getToken } = useAuth()
   const [domain, setDomain] = useState(initialDomain)
   const [events, setEvents] = useState(initialEvents)
   const [eventsNextCursor, setEventsNextCursor] = useState(
     initialEventsNextCursor,
   )
-  const [loadingMoreEvents, setLoadingMoreEvents] = useState(false)
 
-  const [verifying, setVerifying] = useState(false)
   const [lastCheck, setLastCheck] = useState<DomainCheck | null>(null)
   const [verifyError, setVerifyError] = useState<string | undefined>()
 
-  const [regenerating, setRegenerating] = useState(false)
   const [regenerateError, setRegenerateError] = useState<string | undefined>()
 
   const [deleteConfirming, setDeleteConfirming] = useState(false)
 
+  const verifyDomain = useVerifyDomain(projectId, domain.id)
+  const regenerateDomain = useRegenerateDomain(projectId, domain.id)
+  const loadMoreEvents = useListDomainEvents(projectId, domain.id)
+
   const presentation = domainStatusPresentation(domain.status)
   const outcome = lastCheck ? checkOutcomePresentation(lastCheck.outcome) : null
 
-  /** Re-fetches the timeline's first page — called after verify/regenerate, since both publish fresh domain events server-side that the initial server-rendered page never sees. */
-  async function refreshEvents() {
-    const token = await getToken()
-    const result = await dashboardApi.listDomainEvents(
-      token,
-      projectId,
-      domain.id,
-    )
-    setEvents(result.events)
-    setEventsNextCursor(result.nextCursor)
-  }
-
-  async function handleVerify() {
-    setVerifying(true)
+  function handleVerify() {
     setVerifyError(undefined)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.verifyDomain(
-        token,
-        projectId,
-        domain.id,
-      )
-      setDomain(result.domain)
-      setLastCheck(result.check)
-      await refreshEvents()
-    } catch (error) {
-      setVerifyError(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setVerifying(false)
-    }
+    verifyDomain.mutate(undefined, {
+      onSuccess: (result) => {
+        setDomain(result.domain)
+        setLastCheck(result.check)
+        setEvents(result.events)
+        setEventsNextCursor(result.nextCursor)
+      },
+      onError: (error) => {
+        setVerifyError(
+          error instanceof ApiError
+            ? error.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
-  async function handleRegenerate() {
-    setRegenerating(true)
+  function handleRegenerate() {
     setRegenerateError(undefined)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.regenerateDomain(
-        token,
-        projectId,
-        domain.id,
-      )
-      setDomain(result.domain)
-      setLastCheck(null)
-      await refreshEvents()
-    } catch (error) {
-      setRegenerateError(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setRegenerating(false)
-    }
+    regenerateDomain.mutate(undefined, {
+      onSuccess: (result) => {
+        setDomain(result.domain)
+        setLastCheck(null)
+        setEvents(result.events)
+        setEventsNextCursor(result.nextCursor)
+      },
+      onError: (error) => {
+        setRegenerateError(
+          error instanceof ApiError
+            ? error.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
-  async function handleLoadMoreEvents() {
+  function handleLoadMoreEvents() {
     if (!eventsNextCursor) return
-    setLoadingMoreEvents(true)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.listDomainEvents(
-        token,
-        projectId,
-        domain.id,
-        {
-          cursor: eventsNextCursor,
-        },
-      )
-      setEvents((current) => [...current, ...result.events])
-      setEventsNextCursor(result.nextCursor)
-    } finally {
-      setLoadingMoreEvents(false)
-    }
+    loadMoreEvents.mutate(eventsNextCursor, {
+      onSuccess: (result) => {
+        setEvents((current) => [...current, ...result.events])
+        setEventsNextCursor(result.nextCursor)
+      },
+    })
   }
 
   return (
@@ -212,16 +183,16 @@ export function DomainDetailClient({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => void handleVerify()}
-          loading={verifying}
+          onClick={handleVerify}
+          loading={verifyDomain.isPending}
         >
           <RefreshCw aria-hidden="true" size={13} />
           Verify now
         </Button>
         <Button
           size="sm"
-          onClick={() => void handleRegenerate()}
-          loading={regenerating}
+          onClick={handleRegenerate}
+          loading={regenerateDomain.isPending}
         >
           <RotateCw aria-hidden="true" size={13} />
           Regenerate challenge
@@ -272,8 +243,8 @@ export function DomainDetailClient({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void handleLoadMoreEvents()}
-            loading={loadingMoreEvents}
+            onClick={handleLoadMoreEvents}
+            loading={loadMoreEvents.isPending}
           >
             Load more events
             <ChevronDown aria-hidden="true" size={14} />

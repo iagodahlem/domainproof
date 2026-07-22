@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
 import { AlertTriangle } from 'lucide-react'
 import { Button, Callout } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { ApiError } from '@/lib/query/errors'
+import { useDeleteDomain } from '@/lib/query/domains'
 
 export interface DeleteConfirmProps {
   projectId: string
@@ -28,25 +27,22 @@ export function DeleteConfirm({
   onCancel,
 }: DeleteConfirmProps) {
   const router = useRouter()
-  const { getToken } = useAuth()
-  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
-  async function handleConfirm() {
-    setDeleting(true)
+  const deleteDomain = useDeleteDomain(projectId, domainId)
+
+  function handleConfirm() {
     setError(undefined)
-    try {
-      const token = await getToken()
-      await dashboardApi.deleteDomain(token, projectId, domainId)
-      router.push(`/dashboard/${projectId}/domains`)
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-      setDeleting(false)
-    }
+    deleteDomain.mutate(undefined, {
+      onSuccess: () => router.push(`/dashboard/${projectId}/domains`),
+      onError: (err) => {
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
   return (
@@ -69,14 +65,18 @@ export function DeleteConfirm({
           </span>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button size="sm" onClick={onCancel} disabled={deleting}>
+          <Button
+            size="sm"
+            onClick={onCancel}
+            disabled={deleteDomain.isPending}
+          >
             Cancel
           </Button>
           <Button
             size="sm"
             variant="danger-ghost"
-            onClick={() => void handleConfirm()}
-            loading={deleting}
+            onClick={handleConfirm}
+            loading={deleteDomain.isPending}
           >
             Confirm delete
           </Button>

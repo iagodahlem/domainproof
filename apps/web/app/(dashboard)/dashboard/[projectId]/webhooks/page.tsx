@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import { dashboardApi } from '@/lib/api/dashboard'
-import { WebhooksView } from '@/components/webhooks/webhooks-view'
+import { WebhooksView } from './_components/webhooks-view'
 
 export const metadata: Metadata = {
   title: 'Webhooks — DomainProof',

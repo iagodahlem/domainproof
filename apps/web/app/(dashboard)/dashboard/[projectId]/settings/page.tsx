@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
 import { dashboardApi } from '@/lib/api/dashboard'
-import { SettingsView } from '@/components/settings/settings-view'
+import { SettingsView } from './_components/settings-view'
 
 export const metadata: Metadata = {
   title: 'Settings — DomainProof',

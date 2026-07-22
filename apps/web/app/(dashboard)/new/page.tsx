@@ -5,9 +5,9 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { Button, CenteredMain, Header, Logo, cn } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
 import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
-import { CreateProjectFlow } from '@/components/create-project-flow'
-import { ApiErrorState } from '@/components/api-error-state'
-import { UserMenu } from '@/components/dashboard/user-menu'
+import { CreateProjectFlow } from './_components/create-project-flow'
+import { ApiErrorState } from './_components/api-error-state'
+import { UserMenu } from '@/components/dashboard-shell/user-menu'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',

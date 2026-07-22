@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
 import { ChevronDown, Plus } from 'lucide-react'
 import {
   Badge,
@@ -12,12 +11,9 @@ import {
   DomainTableHead,
   DomainTableRow,
 } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import {
-  dashboardApi,
-  type DomainDetail,
-  type DomainSummary,
-} from '@/lib/api/dashboard'
+import { ApiError } from '@/lib/query/errors'
+import type { DomainDetail, DomainSummary } from '@/lib/api/dashboard'
+import { useListDomains } from '@/lib/query/domains'
 import { domainStatusPresentation } from './domain-status'
 import { formatRelativeTime } from './format-relative-time'
 import { AddDomainForm } from './add-domain-form'
@@ -41,14 +37,14 @@ export function DomainsPageClient({
   initialNextCursor,
 }: DomainsPageClientProps) {
   const router = useRouter()
-  const { getToken } = useAuth()
   const [domains, setDomains] = useState(initialDomains)
   const [nextCursor, setNextCursor] = useState(initialNextCursor)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | undefined>()
   const [addFormState, setAddFormState] = useState<
     { open: false } | { open: true; prefill?: string }
   >({ open: false })
+
+  const listDomains = useListDomains(projectId)
 
   function goToDomain(domainId: string) {
     router.push(`/dashboard/${projectId}/domains/${domainId}`)
@@ -60,26 +56,22 @@ export function DomainsPageClient({
     goToDomain(created.id)
   }
 
-  async function handleLoadMore() {
+  function handleLoadMore() {
     if (!nextCursor) return
-    setLoadingMore(true)
     setLoadMoreError(undefined)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.listDomains(token, projectId, {
-        cursor: nextCursor,
-      })
-      setDomains((current) => [...current, ...result.domains])
-      setNextCursor(result.nextCursor)
-    } catch (error) {
-      setLoadMoreError(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setLoadingMore(false)
-    }
+    listDomains.mutate(nextCursor, {
+      onSuccess: (result) => {
+        setDomains((current) => [...current, ...result.domains])
+        setNextCursor(result.nextCursor)
+      },
+      onError: (error) => {
+        setLoadMoreError(
+          error instanceof ApiError
+            ? error.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
   return (
@@ -140,7 +132,7 @@ export function DomainsPageClient({
                 variant="ghost"
                 size="sm"
                 onClick={handleLoadMore}
-                loading={loadingMore}
+                loading={listDomains.isPending}
               >
                 Load more domains
                 <ChevronDown aria-hidden="true" size={14} />

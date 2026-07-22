@@ -2,17 +2,17 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useAuth } from '@clerk/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import { Button, Callout, Checkbox, Select, TextField } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import {
-  dashboardApi,
-  WEBHOOK_EVENT_TYPES,
-  type CreateWebhookEndpointResult,
-  type Mode,
-  type WebhookEventType,
+import { ApiError } from '@/lib/query/errors'
+import type {
+  CreateWebhookEndpointResult,
+  Mode,
+  WebhookEventType,
 } from '@/lib/api/dashboard'
+import {
+  useCreateWebhookEndpoint,
+  WEBHOOK_EVENT_TYPES,
+} from '@/lib/query/webhooks'
 
 export interface CreateEndpointFormProps {
   projectId: string
@@ -36,32 +36,13 @@ export function CreateEndpointForm({
   onCreated,
   onCancel,
 }: CreateEndpointFormProps) {
-  const { getToken } = useAuth()
   const [url, setUrl] = useState('')
   const [mode, setMode] = useState<Mode>('test')
   const [eventTypes, setEventTypes] = useState<Set<WebhookEventType>>(new Set())
   const [urlError, setUrlError] = useState<string>()
   const [formError, setFormError] = useState<string>()
 
-  const createEndpoint = useMutation({
-    mutationFn: async (input: {
-      url: string
-      mode: Mode
-      eventTypes: WebhookEventType[]
-    }) => {
-      const token = await getToken()
-      return dashboardApi.createWebhookEndpoint(token, projectId, input)
-    },
-    onSuccess: onCreated,
-    onError: (err) => {
-      console.error('Failed to create webhook endpoint', err)
-      setFormError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    },
-  })
+  const createEndpoint = useCreateWebhookEndpoint(projectId)
 
   function toggleEventType(type: WebhookEventType) {
     setEventTypes((prev) => {
@@ -91,11 +72,20 @@ export function CreateEndpointForm({
     }
     setFormError(undefined)
 
-    createEndpoint.mutate({
-      url: trimmedUrl,
-      mode,
-      eventTypes: [...eventTypes],
-    })
+    createEndpoint.mutate(
+      { url: trimmedUrl, mode, eventTypes: [...eventTypes] },
+      {
+        onSuccess: onCreated,
+        onError: (err) => {
+          console.error('Failed to create webhook endpoint', err)
+          setFormError(
+            err instanceof ApiError
+              ? err.message
+              : 'Something went wrong. Please try again.',
+          )
+        },
+      },
+    )
   }
 
   return (

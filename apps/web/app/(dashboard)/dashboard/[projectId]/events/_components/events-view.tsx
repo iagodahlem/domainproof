@@ -11,7 +11,13 @@ import {
   TableHeader,
   cn,
 } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
+import { ApiError } from '@/lib/query/errors'
+// loadMore below still hand-rolls its own fetch/state; converting it to a
+// lib/query hook is a real behavior change (new request
+// de-duplication/caching semantics), so it's deliberately excluded from
+// this structural migration and left for an immediate follow-on PR (see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
 import { dashboardApi, type ProjectEventSummary } from '@/lib/api/dashboard'
 import { EventRow, EVENT_GRID_COLS } from './event-row'
 
