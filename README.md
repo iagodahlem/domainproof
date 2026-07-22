@@ -27,7 +27,7 @@ rules.
 | Web (production)           | <https://domainproof.dev>                                                                     |
 | Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
 | Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
-| Frontend API (production)  | `verify.domainproof.dev` — serves `/frontend/*` only; pending DNS — being provisioned         |
+| Frontend API (production)  | `frontend.api.domainproof.dev` — serves `/frontend/*` only (live)         |
 | Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
 | Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
 
@@ -100,7 +100,7 @@ The API has three authentication planes, split by path prefix (see
 [ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
 plane is also confined to its own host — `api.domainproof.dev` serves
 `/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
-only, `verify.domainproof.dev` serves `/frontend/*` only — but locally
+only, `frontend.api.domainproof.dev` serves `/frontend/*` only — but locally
 and in the Railway service domain all three stay reachable on one origin,
 so the split below is what matters for local development:
 
@@ -423,7 +423,7 @@ dashboard that owns the zones this flow should write to:
    irreversible, ~2-day domain-ownership verification for a client URL this
    flow doesn't need).
 3. Set the **redirect URI** to exactly
-   `https://verify.domainproof.dev/frontend/cloudflare/callback` — this is
+   `https://frontend.api.domainproof.dev/frontend/cloudflare/callback` — this is
    hardcoded in `apps/api/src/app.ts`'s `CLOUDFLARE_OAUTH_REDIRECT_URI` and
    must match exactly, or Cloudflare will reject the exchange.
 4. Grant it **Zone → Zone → Read** and **Zone → DNS → Edit** permissions
