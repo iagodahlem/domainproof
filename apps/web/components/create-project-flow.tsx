@@ -14,6 +14,8 @@ import { KeysHandoff } from './keys-handoff'
 export interface CreateProjectFlowProps {
   /** Repeat visit via the dashboard shell's "New project" item rather than fresh onboarding — swaps the "first project" copy for one that doesn't assume it. */
   hasExistingProjects?: boolean
+  /** First-signup only: a suggested name (derived from the caller's Clerk profile) pre-filled into the field but fully editable. Omitted for the switcher-created flow, which starts blank. */
+  namePrefill?: string
 }
 
 /**
@@ -24,10 +26,11 @@ export interface CreateProjectFlowProps {
  */
 export function CreateProjectFlow({
   hasExistingProjects = false,
+  namePrefill,
 }: CreateProjectFlowProps) {
   const router = useRouter()
   const { getToken } = useAuth()
-  const [name, setName] = useState('')
+  const [name, setName] = useState(namePrefill ?? '')
   const [fieldError, setFieldError] = useState<string | undefined>()
 
   const createProject = useMutation({

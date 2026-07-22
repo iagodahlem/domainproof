@@ -66,7 +66,7 @@ export function ProjectSwitcher({
           tone="accent"
           icon={<Plus aria-hidden="true" size={14} />}
         >
-          <Link href="/new">New project</Link>
+          <Link href={`/new?from=${activeProject.id}`}>New project</Link>
         </MenuItem>
       </MenuContent>
     </Menu>
