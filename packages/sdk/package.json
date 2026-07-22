@@ -7,14 +7,19 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup",
+    "generate": "openapi-typescript http://localhost:3001/v1/openapi.json -o src/generated/openapi-types.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
+  },
+  "dependencies": {
+    "@domainproof/core": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "eslint": "^10.7.0",
+    "openapi-typescript": "^7.13.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.64.0",
