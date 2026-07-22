@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { Verification } from '../../../lib/frontend-api'
-import * as frontendApi from '../../../lib/frontend-api'
+import type { Verification } from '@/lib/api/frontend'
+// eslint-disable-next-line no-restricted-imports -- test spies on the frontend plane client's export, same exception as status-section.tsx
+import * as frontendApi from '@/lib/api/frontend'
 import { StatusSection } from './status-section'
 
 function verification(overrides: Partial<Verification> = {}): Verification {

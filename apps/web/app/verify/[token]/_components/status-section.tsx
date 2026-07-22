@@ -9,9 +9,14 @@ import {
   StatusPill,
   type Tone,
 } from '@domainproof/ui'
-import type { Verification } from '../../../lib/frontend-api'
-import { runVerificationCheck } from '../../../lib/frontend-api'
-import { describeStatus, type StatusTone } from './status-view'
+import type { Verification } from '@/lib/api/frontend'
+// This route mounts no QueryProvider (D-029: no auth/session context on the
+// anonymous verification page) — converting to a lib/query hook would mean
+// adding one, a real behavior change rather than a structural move (see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
+import { runVerificationCheck } from '@/lib/api/frontend'
+import { describeStatus, type StatusTone } from '../_lib/status-view'
 
 export interface StatusSectionProps {
   token: string

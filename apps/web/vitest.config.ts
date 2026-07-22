@@ -1,6 +1,12 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // Vite/Vitest doesn't read tsconfig "paths" on its own — resolve.tsconfigPaths
+  // is what makes @/* resolve the same way it already does for tsc and Next
+  // (same fix as apps/api/vitest.config.ts's @infra/*, @modules/*, @shared/*).
+  resolve: {
+    tsconfigPaths: true,
+  },
   // apps/web's own tsconfig sets `jsx: "preserve"` (Next's compiler does the
   // JSX transform itself), which Vite's oxc-based transform reads as "leave
   // JSX syntax alone" — override it here so the test runner actually

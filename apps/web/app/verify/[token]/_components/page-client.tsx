@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Badge, Logo } from '@domainproof/ui'
-import type { Verification } from '../../../lib/frontend-api'
-import {
-  getVerification,
-  runVerificationCheck,
-} from '../../../lib/frontend-api'
-import { useBoundedPoll } from './use-bounded-poll'
+import type { Verification } from '@/lib/api/frontend'
+// This route mounts no QueryProvider (D-029: the hosted verification page
+// is anonymous, with no auth/session context) — converting these calls to
+// a lib/query hook would mean adding one, a real behavior change rather
+// than a structural move, so it's out of scope here (same category of
+// deliberate exception as EventsView's loadMore — see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
+import { getVerification, runVerificationCheck } from '@/lib/api/frontend'
+import { useBoundedPoll } from '../_lib/use-bounded-poll'
 import { RecordCardSection } from './record-card-section'
 import { StatusSection } from './status-section'
 import { TimelineSection } from './timeline-section'

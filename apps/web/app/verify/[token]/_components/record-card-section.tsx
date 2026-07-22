@@ -6,10 +6,15 @@ import {
   RecordCard,
   RecordField,
 } from '@domainproof/ui'
-import type { VerificationRecord } from '../../../lib/frontend-api'
-import { cloudflareAuthorizeUrl } from '../../../lib/frontend-api'
+import type { VerificationRecord } from '@/lib/api/frontend'
+// This route mounts no QueryProvider (D-029: no auth/session context on the
+// anonymous verification page) — converting to a lib/query hook would mean
+// adding one, a real behavior change rather than a structural move (see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
+import { cloudflareAuthorizeUrl } from '@/lib/api/frontend'
 import { CloudflareButton } from './cloudflare-button'
-import { describeCloudflareOutcome } from './cloudflare-outcome'
+import { describeCloudflareOutcome } from '../_lib/cloudflare-outcome'
 
 export interface RecordCardSectionProps {
   token: string

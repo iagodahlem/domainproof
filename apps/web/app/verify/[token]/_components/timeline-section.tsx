@@ -6,8 +6,13 @@ import {
   VerificationLog,
   VerificationLogStatus,
 } from '@domainproof/ui'
-import type { VerificationEvent } from '../../../lib/frontend-api'
-import { listVerificationEvents } from '../../../lib/frontend-api'
+import type { VerificationEvent } from '@/lib/api/frontend'
+// This route mounts no QueryProvider (D-029: no auth/session context on the
+// anonymous verification page) — converting to a lib/query hook would mean
+// adding one, a real behavior change rather than a structural move (see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
+import { listVerificationEvents } from '@/lib/api/frontend'
 
 export interface TimelineSectionProps {
   token: string

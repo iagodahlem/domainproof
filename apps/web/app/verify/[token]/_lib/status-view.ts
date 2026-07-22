@@ -1,5 +1,5 @@
 import type { DomainStatus } from '@domainproof/core'
-import type { VerificationCheck } from '../../../lib/frontend-api'
+import type { VerificationCheck } from '@/lib/api/frontend'
 
 export type StatusTone = 'pending' | 'success' | 'warning' | 'danger'
 

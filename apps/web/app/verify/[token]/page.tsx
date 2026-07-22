@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getVerification } from '../../../lib/frontend-api'
-import { VerificationPageClient } from './page-client'
+import { getVerification } from '@/lib/api/frontend'
+import { VerificationPageClient } from './_components/page-client'
 
 interface VerifyTokenPageProps {
   params: Promise<{ token: string }>

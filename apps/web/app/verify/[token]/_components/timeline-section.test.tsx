@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import * as frontendApi from '../../../lib/frontend-api'
+// eslint-disable-next-line no-restricted-imports -- test spies on the frontend plane client's export, same exception as timeline-section.tsx
+import * as frontendApi from '@/lib/api/frontend'
 import { TimelineSection } from './timeline-section'
 
 function event(overrides: Partial<frontendApi.VerificationEvent> = {}) {
