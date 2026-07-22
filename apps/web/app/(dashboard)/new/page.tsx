@@ -2,9 +2,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { Button, CenteredMain, Header, Logo } from '@domainproof/ui'
+import { Button, CenteredMain, Header, Logo, cn } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
-import { CreateProjectFlow } from '@/components/create-project-flow'
+import {
+  CREATE_PROJECT_CARD_WIDTH,
+  CreateProjectFlow,
+} from '@/components/create-project-flow'
 import { ApiErrorState } from '@/components/api-error-state'
 import { UserMenu } from '@/components/dashboard/user-menu'
 
@@ -65,30 +68,33 @@ export default async function NewProjectPage({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
-        left={
-          <div className="flex items-center gap-4">
-            {previousProject ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link href={`/dashboard/${previousProject.id}/domains`}>
-                  <ArrowLeft aria-hidden="true" size={14} />
-                  Back to {previousProject.name}
-                </Link>
-              </Button>
-            ) : null}
-            <Logo />
-          </div>
-        }
-        right={email ? <UserMenu email={email} /> : null}
+        left={<Logo />}
+        right={email ? <UserMenu email={email} iconOnly /> : null}
       />
 
       <CenteredMain>
         {loadFailed ? (
           <ApiErrorState />
         ) : (
-          <CreateProjectFlow
-            hasExistingProjects={projects.length > 0}
-            namePrefill={namePrefill}
-          />
+          <div
+            className={cn(
+              'flex w-full flex-col gap-3',
+              CREATE_PROJECT_CARD_WIDTH,
+            )}
+          >
+            {previousProject ? (
+              <Button asChild variant="ghost" size="sm" className="self-start">
+                <Link href={`/dashboard/${previousProject.id}/domains`}>
+                  <ArrowLeft aria-hidden="true" size={14} />
+                  Back to {previousProject.name}
+                </Link>
+              </Button>
+            ) : null}
+            <CreateProjectFlow
+              hasExistingProjects={projects.length > 0}
+              namePrefill={namePrefill}
+            />
+          </div>
         )}
       </CenteredMain>
     </div>
