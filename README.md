@@ -437,3 +437,11 @@ slow down the request that triggered it. Retries are an in-process
 the api process restarts before it fires. That's an acceptable tradeoff
 for a demoable product; a real queue (SQS, pg-boss, ...) is the
 production-grade answer, same tradeoff the event bus itself makes.
+
+## Operations
+
+Checking a deploy, adding a custom domain, rotating a credential, or
+triaging a production incident — see
+[`.claude/skills/infra-ops/SKILL.md`](./.claude/skills/infra-ops/SKILL.md)
+for the runbook, and [`.env.example`](./.env.example) at the repo root for
+every credential/config name the infra needs.
