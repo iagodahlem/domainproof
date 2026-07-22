@@ -143,7 +143,7 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
 
       <RecordCard title="API keys">
         {keys.length === 0 ? (
-          <div className="px-5 py-6 text-sm text-text-faint">
+          <div className="px-5 py-6 text-sm text-faint-foreground">
             No API keys yet.
           </div>
         ) : (

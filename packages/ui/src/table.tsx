@@ -20,7 +20,7 @@ export function TableHeader({
   return (
     <div
       className={cn(
-        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-2xs tracking-label text-text-faint uppercase',
+        'grid items-center border-b border-border bg-surface-2 px-4 py-3 font-mono text-2xs tracking-label text-faint-foreground uppercase',
         className,
       )}
       {...props}

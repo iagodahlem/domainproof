@@ -128,7 +128,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
   }
 
   if (deliveriesQuery.isLoading) {
-    return <p className="text-sm text-text-faint">Loading deliveries…</p>
+    return <p className="text-sm text-faint-foreground">Loading deliveries…</p>
   }
 
   if (deliveriesQuery.isError && !deliveriesQuery.data) {
@@ -142,7 +142,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
   )
 
   if (!deliveries || deliveries.length === 0) {
-    return <p className="text-sm text-text-faint">No deliveries yet.</p>
+    return <p className="text-sm text-faint-foreground">No deliveries yet.</p>
   }
 
   // A "Load more" failure keeps the already-loaded pages (`deliveriesQuery.data`
@@ -174,7 +174,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
                 'max-[760px]:flex max-[760px]:flex-wrap max-[760px]:items-center max-[760px]:gap-x-3 max-[760px]:gap-y-2 max-[760px]:p-4',
               )}
             >
-              <TableCell className="font-mono text-2xs text-text-faint">
+              <TableCell className="font-mono text-2xs text-faint-foreground">
                 #{delivery.attempt}
               </TableCell>
               <TableCell>
@@ -185,7 +185,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
                   {responseLabel(delivery)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-xs text-text-faint">
+              <TableCell className="text-xs text-faint-foreground">
                 {formatTime(delivery.createdAt)}
               </TableCell>
               <TableCell className="max-[760px]:basis-full">

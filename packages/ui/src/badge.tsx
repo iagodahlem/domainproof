@@ -10,12 +10,12 @@ const badgeVariants = cva(
   {
     variants: {
       tone: {
-        accent: 'border-accent-border bg-accent-soft text-accent',
-        success: 'border-success-border bg-success-soft text-success',
+        accent: 'border-accent-tint bg-accent-soft text-accent',
+        success: 'border-success-tint bg-success-soft text-success',
         warning:
-          'border-warning-border-strong bg-warning-soft text-warning-strong',
-        danger: 'border-danger-border bg-danger-soft text-danger',
-        neutral: 'border-transparent bg-surface-3 text-text-muted',
+          'border-warning-tint-strong bg-warning-soft text-warning-strong',
+        danger: 'border-danger-tint bg-danger-soft text-danger',
+        neutral: 'border-transparent bg-surface-3 text-muted-foreground',
       },
       /** The mode-pill treatment: same tone fill, no visible border, normal tracking. */
       mode: {
@@ -52,13 +52,15 @@ export function ProviderBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-text-muted',
+        'inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted-foreground',
         className,
       )}
       {...props}
     >
       {icon ? (
-        <span className="inline-flex shrink-0 text-text-faint">{icon}</span>
+        <span className="inline-flex shrink-0 text-faint-foreground">
+          {icon}
+        </span>
       ) : null}
       {children}
     </span>
@@ -72,7 +74,7 @@ export const dotVariants = cva('inline-block h-2 w-2 shrink-0 rounded-full', {
       success: 'bg-success',
       warning: 'bg-warning',
       danger: 'bg-danger',
-      neutral: 'bg-text-faint',
+      neutral: 'bg-faint-foreground',
     },
   },
   defaultVariants: {
@@ -85,12 +87,12 @@ const statusPillVariants = cva(
   {
     variants: {
       tone: {
-        accent: 'border-accent-border-strong bg-accent-soft text-accent',
-        success: 'border-success-border-strong bg-success-soft text-success',
+        accent: 'border-accent-tint-strong bg-accent-soft text-accent',
+        success: 'border-success-tint-strong bg-success-soft text-success',
         warning:
-          'border-warning-border-strong bg-warning-soft text-warning-strong',
-        danger: 'border-danger-border-strong bg-danger-soft text-danger',
-        neutral: 'border-border-strong bg-surface-2 text-text-muted',
+          'border-warning-tint-strong bg-warning-soft text-warning-strong',
+        danger: 'border-danger-tint-strong bg-danger-soft text-danger',
+        neutral: 'border-border-strong bg-surface-2 text-muted-foreground',
       },
       size: {
         default: 'px-4 py-2 text-sm',

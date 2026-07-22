@@ -94,24 +94,24 @@ export function DomainTableRow({
       </TableCell>
       <TableCell className="max-[760px]:order-2 max-[760px]:flex-1">
         <div className="truncate font-mono text-base font-heading">{name}</div>
-        <div className="mt-0.5 hidden text-2xs text-text-faint max-[760px]:block">
+        <div className="mt-0.5 hidden text-2xs text-faint-foreground max-[760px]:block">
           {statusLabel} · {lastChecked}
         </div>
       </TableCell>
       <TableCell className="max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-8">
-        {provider ?? <span className="text-xs text-text-faint">—</span>}
+        {provider ?? <span className="text-xs text-faint-foreground">—</span>}
       </TableCell>
       <TableCell className="max-[760px]:order-3">
         <Badge tone={statusTone}>{statusLabel}</Badge>
       </TableCell>
-      <TableCell className="text-xs text-text-faint max-[760px]:hidden">
+      <TableCell className="text-xs text-faint-foreground max-[760px]:hidden">
         {lastChecked}
       </TableCell>
       <TableCell className="justify-self-end max-[760px]:hidden">
         <ChevronRight
           aria-hidden="true"
           size={16}
-          className="text-text-faint"
+          className="text-faint-foreground"
         />
       </TableCell>
     </TableRow>

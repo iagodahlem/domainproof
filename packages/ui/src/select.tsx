@@ -31,7 +31,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             className={cn(
-              'w-full appearance-none rounded-md border bg-bg py-2 pr-8 pl-3 text-sm text-text transition-[background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+              'w-full appearance-none rounded-md border bg-background py-2 pr-8 pl-3 text-sm text-foreground transition-[background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50',
               error ? 'border-danger' : 'border-border',
               className,
             )}
@@ -45,7 +45,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <ChevronDown
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 right-3 h-3 w-3 -translate-y-1/2 text-text-faint"
+            className="pointer-events-none absolute top-1/2 right-3 h-3 w-3 -translate-y-1/2 text-faint-foreground"
           />
         </div>
         {error ? <FieldError id={errorId}>{error}</FieldError> : null}

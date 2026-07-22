@@ -12,7 +12,7 @@ const stepNodeVariants = cva(
       status: {
         done: 'border-success bg-success text-success-foreground',
         current: 'border-accent bg-surface text-accent shadow-current',
-        upcoming: 'border-border-strong bg-surface text-text-faint',
+        upcoming: 'border-border-strong bg-surface text-faint-foreground',
       },
     },
   },
@@ -74,7 +74,7 @@ export function Stepper({ steps, className, ...props }: StepperProps) {
             <span className={stepLabelVariants({ status: step.status })}>
               {step.label}
               {step.time ? (
-                <span className="mt-px block font-mono text-2xs font-medium text-text-faint">
+                <span className="mt-px block font-mono text-2xs font-medium text-faint-foreground">
                   {step.time}
                 </span>
               ) : null}
@@ -117,10 +117,10 @@ export function StatusSummary({
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {statusBadge}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-faint">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-faint-foreground">
           {meta.map((item, index) => (
             <span key={index}>
-              <strong className="font-semibold text-text-muted">
+              <strong className="font-semibold text-muted-foreground">
                 {item.label}
               </strong>{' '}
               {item.value}

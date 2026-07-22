@@ -7,7 +7,7 @@ import { Button, type ButtonProps } from './button'
 import { cn } from './cn'
 
 const COPIED_CLASSES =
-  'border-success-border-strong bg-success-soft text-success hover:bg-success-soft'
+  'border-success-tint-strong bg-success-soft text-success hover:bg-success-soft'
 
 export interface CopyButtonProps extends Omit<ButtonProps, 'onClick'> {
   value: string

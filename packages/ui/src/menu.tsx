@@ -44,7 +44,7 @@ export const MenuContent = forwardRef<
 })
 
 const menuItemVariants = cva(
-  'flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-text-muted outline-none transition-colors duration-150 data-[highlighted]:bg-surface-2 data-[highlighted]:text-text',
+  'flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors duration-150 data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
   {
     variants: {
       tone: {
@@ -52,7 +52,7 @@ const menuItemVariants = cva(
         accent: 'text-accent',
       },
       active: {
-        true: 'bg-surface-2 text-text',
+        true: 'bg-surface-2 text-foreground',
         false: '',
       },
     },
@@ -90,7 +90,7 @@ export const MenuItem = forwardRef<
       aria-hidden="true"
       className={cn(
         'shrink-0',
-        tone === 'accent' ? 'text-accent' : 'text-text-faint',
+        tone === 'accent' ? 'text-accent' : 'text-faint-foreground',
       )}
     >
       {icon}

@@ -31,20 +31,20 @@ export function ProjectSwitcher({
     <Menu>
       <MenuTrigger
         className={cn(
-          'flex w-full items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-left text-sm font-semibold text-text transition-colors duration-150 hover:border-border-strong',
+          'flex w-full items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-left text-sm font-semibold text-foreground transition-colors duration-150 hover:border-border-strong',
           className,
         )}
       >
         <LayoutGrid
           aria-hidden="true"
           size={14}
-          className="shrink-0 text-text-faint"
+          className="shrink-0 text-faint-foreground"
         />
         <span className="flex-1 truncate">{activeProject.name}</span>
         <ChevronDown
           aria-hidden="true"
           size={13}
-          className="shrink-0 text-text-faint"
+          className="shrink-0 text-faint-foreground"
         />
       </MenuTrigger>
       <MenuContent aria-label="Projects">

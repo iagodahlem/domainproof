@@ -25,7 +25,7 @@ export function Topbar({ projectId, email }: TopbarProps) {
     <Header
       variant="solid"
       left={
-        <strong className="text-base font-heading text-text">
+        <strong className="text-base font-heading text-foreground">
           {activeItem?.label ?? 'Dashboard'}
         </strong>
       }

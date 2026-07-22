@@ -36,13 +36,13 @@ export default async function NewProjectPage() {
     ''
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header
         left={<Logo />}
         right={
           <div className="flex items-center gap-3">
             {email ? (
-              <span className="text-sm text-text-faint">{email}</span>
+              <span className="text-sm text-faint-foreground">{email}</span>
             ) : null}
             <SignOutButton size="sm" />
           </div>

@@ -84,15 +84,15 @@ const COLOR_GROUPS: { label: string; tokens: string[] }[] = [
    swatch's background is looked up from this table of literal utility
    classes instead of interpolated. */
 const COLOR_SWATCH_CLASS: Record<string, string> = {
-  bg: 'bg-bg',
+  bg: 'bg-background',
   surface: 'bg-surface',
   'surface-2': 'bg-surface-2',
   'surface-3': 'bg-surface-3',
   border: 'bg-border',
   'border-strong': 'bg-border-strong',
-  text: 'bg-text',
-  'text-muted': 'bg-text-muted',
-  'text-faint': 'bg-text-faint',
+  text: 'bg-foreground',
+  'text-muted': 'bg-muted-foreground',
+  'text-faint': 'bg-faint-foreground',
   accent: 'bg-accent',
   'accent-strong': 'bg-accent-strong',
   'accent-soft': 'bg-accent-soft',
@@ -167,7 +167,7 @@ function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
       <span className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
         {eyebrow}
       </span>
-      <h2 className="font-heading text-2xl text-text">{title}</h2>
+      <h2 className="font-heading text-2xl text-foreground">{title}</h2>
     </div>
   )
 }
@@ -178,21 +178,23 @@ function ColorSwatch({ token }: { token: string }) {
       <div
         className={`h-14 rounded-md border border-border ${COLOR_SWATCH_CLASS[token]}`}
       />
-      <span className="font-mono text-xs text-text-faint">--{token}</span>
+      <span className="font-mono text-xs text-faint-foreground">--{token}</span>
     </div>
   )
 }
 
 function ComponentGroupLabel({ children }: { children: ReactNode }) {
   return (
-    <h3 className="mb-4 text-sm font-semibold text-text-muted">{children}</h3>
+    <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
+      {children}
+    </h3>
   )
 }
 
 function Example({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="font-mono text-xs text-text-faint">{label}</span>
+      <span className="font-mono text-xs text-faint-foreground">{label}</span>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   )
@@ -284,7 +286,7 @@ export default function DesignSystemPage() {
   return (
     <div
       data-design-system-root
-      className="min-h-screen bg-bg font-sans text-text"
+      className="min-h-screen bg-background font-sans text-foreground"
     >
       <Header
         left={
@@ -302,13 +304,13 @@ export default function DesignSystemPage() {
 
           <div className="flex flex-col gap-10">
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-text-muted">
+              <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
                 Color
               </h3>
               <div className="flex flex-col gap-8">
                 {COLOR_GROUPS.map((group) => (
                   <div key={group.label}>
-                    <span className="mb-3 block font-mono text-xs tracking-wide text-text-faint uppercase">
+                    <span className="mb-3 block font-mono text-xs tracking-wide text-faint-foreground uppercase">
                       {group.label}
                     </span>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
@@ -322,13 +324,13 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-text-muted">
+              <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
                 Spacing
               </h3>
               <div className="flex flex-col gap-3">
                 {SPACE_TOKENS.map((step) => (
                   <div key={step} className="flex items-center gap-4">
-                    <span className="w-20 font-mono text-xs text-text-faint">
+                    <span className="w-20 font-mono text-xs text-faint-foreground">
                       space-{step}
                     </span>
                     <div
@@ -340,7 +342,7 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-text-muted">
+              <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
                 Type
               </h3>
               <div className="flex flex-col">
@@ -349,7 +351,7 @@ export default function DesignSystemPage() {
                     key={step}
                     className="flex items-baseline gap-4 border-b border-border py-3 last:border-b-0"
                   >
-                    <span className="w-20 flex-shrink-0 font-mono text-xs text-text-faint">
+                    <span className="w-20 flex-shrink-0 font-mono text-xs text-faint-foreground">
                       --text-{step}
                     </span>
                     <span className={`${TYPE_TOKEN_CLASS[step]} leading-body`}>
@@ -361,7 +363,7 @@ export default function DesignSystemPage() {
             </div>
 
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-text-muted">
+              <h3 className="mb-4 text-sm font-semibold text-muted-foreground">
                 Radius
               </h3>
               <div className="flex flex-wrap items-end gap-6">
@@ -370,7 +372,7 @@ export default function DesignSystemPage() {
                     <div
                       className={`h-14 w-14 border border-border-strong bg-surface-2 ${RADIUS_CLASS[step]}`}
                     />
-                    <span className="font-mono text-xs text-text-faint">
+                    <span className="font-mono text-xs text-faint-foreground">
                       --radius-{step}
                     </span>
                   </div>
@@ -395,7 +397,7 @@ export default function DesignSystemPage() {
 
             <div>
               <ComponentGroupLabel>Header</ComponentGroupLabel>
-              <p className="mb-4 text-xs text-text-faint">
+              <p className="mb-4 text-xs text-faint-foreground">
                 Empty chrome shell — height, background, border, and container.
                 Each surface composes its own left/right content; this
                 page&rsquo;s own header above is a glass-variant instance.
@@ -418,7 +420,7 @@ export default function DesignSystemPage() {
                     <Header
                       variant="solid"
                       left={
-                        <strong className="text-base font-heading text-text">
+                        <strong className="text-base font-heading text-foreground">
                           Domains
                         </strong>
                       }
@@ -529,7 +531,7 @@ export default function DesignSystemPage() {
                 </Example>
                 <Example label="emphasis=dashed">
                   <Callout emphasis="dashed" className="max-w-xl">
-                    <div className="mb-2 font-mono text-2xs tracking-label text-text-faint uppercase">
+                    <div className="mb-2 font-mono text-2xs tracking-label text-faint-foreground uppercase">
                       What&apos;s happening under the hood
                     </div>
                     <p>
@@ -548,27 +550,27 @@ export default function DesignSystemPage() {
                 <Example label="head + body + row composition">
                   <Card className="w-full max-w-xl">
                     <CardHead>
-                      <span className="text-lg font-heading text-text">
+                      <span className="text-lg font-heading text-foreground">
                         Ownership record
                       </span>
                       <Badge tone="accent">TXT</Badge>
                     </CardHead>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-faint-foreground uppercase">
                           Host
                         </span>
-                        <span className="font-mono text-base text-text">
+                        <span className="font-mono text-base text-foreground">
                           _acmeapp-challenge.acme.co
                         </span>
                       </div>
                     </CardRow>
                     <CardRow>
                       <div className="flex flex-wrap items-center gap-4">
-                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-text-faint uppercase">
+                        <span className="w-20 shrink-0 font-mono text-2xs tracking-label text-faint-foreground uppercase">
                           Value
                         </span>
-                        <span className="font-mono text-base text-text">
+                        <span className="font-mono text-base text-foreground">
                           acmeapp-verify=8f2c9e1a4b7d3f60
                         </span>
                       </div>
@@ -578,7 +580,7 @@ export default function DesignSystemPage() {
                 <Example label="body only, no head">
                   <Card className="w-full max-w-xl">
                     <CardBody>
-                      <p className="text-text-muted">
+                      <p className="text-muted-foreground">
                         A panel that only needs the surface, border, and padding
                         — no head or rows.
                       </p>
@@ -597,19 +599,19 @@ export default function DesignSystemPage() {
                 >
                   <div className="flex flex-col divide-y divide-border">
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className="font-mono text-xs text-text-muted">
+                      <span className="font-mono text-xs text-muted-foreground">
                         domain.claimed
                       </span>
                       <Badge tone="accent">200</Badge>
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className="font-mono text-xs text-text-muted">
+                      <span className="font-mono text-xs text-muted-foreground">
                         domain.propagating
                       </span>
                       <Badge tone="warning">200</Badge>
                     </div>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className="font-mono text-xs text-text-muted">
+                      <span className="font-mono text-xs text-muted-foreground">
                         domain.verified
                       </span>
                       <Badge tone="success">200</Badge>
@@ -621,7 +623,7 @@ export default function DesignSystemPage() {
 
             <div>
               <ComponentGroupLabel>Icons</ComponentGroupLabel>
-              <p className="mb-4 text-xs text-text-faint">
+              <p className="mb-4 text-xs text-faint-foreground">
                 lucide-react — used for the copy button, theme toggle, and
                 chevrons throughout the system.
               </p>
@@ -635,10 +637,10 @@ export default function DesignSystemPage() {
                   { icon: Moon, label: 'Moon' },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex flex-col items-center gap-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-text-muted">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground">
                       <Icon size={16} />
                     </div>
-                    <span className="font-mono text-xs text-text-faint">
+                    <span className="font-mono text-xs text-faint-foreground">
                       {label}
                     </span>
                   </div>
@@ -718,7 +720,7 @@ export default function DesignSystemPage() {
 
             <div>
               <ComponentGroupLabel>Table</ComponentGroupLabel>
-              <p className="mb-4 text-xs text-text-faint">
+              <p className="mb-4 text-xs text-faint-foreground">
                 The generic primitive DomainTable is built on — bring your own
                 grid template via className and lay out cells however the data
                 calls for.
@@ -738,21 +740,27 @@ export default function DesignSystemPage() {
                       // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- same bespoke grid template as the header row above
                       className="grid-cols-[1fr_120px_80px]"
                     >
-                      <TableCell className="font-heading text-text">
+                      <TableCell className="font-heading text-foreground">
                         Acme Inc.
                       </TableCell>
-                      <TableCell className="text-text-muted">Owner</TableCell>
-                      <TableCell className="text-text-muted">12</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        Owner
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        12
+                      </TableCell>
                     </TableRow>
                     <TableRow
                       // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- same bespoke grid template as the header row above
                       className="grid-cols-[1fr_120px_80px]"
                     >
-                      <TableCell className="font-heading text-text">
+                      <TableCell className="font-heading text-foreground">
                         Globex Corp.
                       </TableCell>
-                      <TableCell className="text-text-muted">Member</TableCell>
-                      <TableCell className="text-text-muted">4</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        Member
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">4</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -761,7 +769,7 @@ export default function DesignSystemPage() {
 
             <div>
               <ComponentGroupLabel>Domain table</ComponentGroupLabel>
-              <p className="mb-4 text-xs text-text-faint">
+              <p className="mb-4 text-xs text-faint-foreground">
                 Header hides and rows stack into cards below 760px wide — see
                 the mobile screenshot capture for the collapsed layout.
               </p>
@@ -786,7 +794,7 @@ export default function DesignSystemPage() {
                       statusLabel="Propagating"
                       name="pending-then-verified.test"
                       provider={
-                        <ProviderBadge className="text-text-faint">
+                        <ProviderBadge className="text-faint-foreground">
                           Sandbox
                         </ProviderBadge>
                       }

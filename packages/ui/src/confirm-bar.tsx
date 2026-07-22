@@ -37,7 +37,7 @@ export function ConfirmBar({
         className,
       )}
     >
-      <div className="flex flex-1 items-start gap-3 text-text-muted">
+      <div className="flex flex-1 items-start gap-3 text-muted-foreground">
         <TriangleAlert
           aria-hidden="true"
           size={15}

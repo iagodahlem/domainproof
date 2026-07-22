@@ -24,14 +24,14 @@ export function UserMenu({ email }: UserMenuProps) {
           {initial}
         </span>
         {email ? (
-          <span className="max-w-40 truncate text-sm font-semibold text-text max-[640px]:hidden">
+          <span className="max-w-40 truncate text-sm font-semibold text-foreground max-[640px]:hidden">
             {email}
           </span>
         ) : null}
       </MenuTrigger>
       <MenuContent align="end" aria-label="Account">
         {email ? (
-          <div className="truncate px-3 py-2 text-xs text-text-faint">
+          <div className="truncate px-3 py-2 text-xs text-faint-foreground">
             {email}
           </div>
         ) : null}
