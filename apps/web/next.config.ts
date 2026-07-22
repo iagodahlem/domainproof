@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@domainproof/ui'],
+  transpilePackages: ['@domainproof/ui', '@domainproof/core'],
 }
 
 export default nextConfig

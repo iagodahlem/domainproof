@@ -92,6 +92,18 @@ To seed a demo account, a named project, and its test/live API keys for local te
 `docker compose up` starts the API (on port 3101) and Postgres. `pnpm dev`
 remains the primary dev loop.
 
+### Web
+
+`apps/web` (`pnpm --filter web dev`, default <http://localhost:3000>) hosts
+the hosted verification page at `/verify/[token]` — the unauthenticated,
+token-scoped page a domain owner lands on from a claim's `verificationUrl`.
+It reads and polls the Frontend API plane directly from the browser (see
+[Frontend API](#frontend-api) below), never through a Next.js route
+handler, and has no auth context of its own. Set `NEXT_PUBLIC_FRONTEND_API_URL`
+(`apps/web/.env.example`) to that plane's base URL — it defaults to
+`http://localhost:3001` for local dev and should be set to
+`https://frontend.api.domainproof.dev` in production.
+
 ## API
 
 Base URL: `api.domainproof.dev`. Every non-2xx response is
