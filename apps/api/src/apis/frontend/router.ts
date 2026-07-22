@@ -1,17 +1,23 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { DomainsService } from '@modules/domains/service'
+import type { ProviderForDomain } from '@modules/domains/ports'
 import type { EventsService } from '@modules/events/service'
 import type { ProjectsService } from '@modules/projects/service'
 import type { ComponentSessionsService } from '@modules/component-sessions/service'
+import type { CloudflareOAuthService } from '@modules/cloudflare/service'
 import { createVerificationsRoutes } from './routes/verifications'
 import { createComponentSessionsRoutes } from './routes/component-sessions'
+import { createCloudflareRoutes } from './routes/cloudflare'
 
 export interface FrontendRouterDeps {
   domainsService: DomainsService
   eventsService: EventsService
   projectsService: ProjectsService
   componentSessionsService: ComponentSessionsService
+  providerForDomain: ProviderForDomain
+  /** `undefined` when `CLOUDFLARE_OAUTH_CLIENT_ID`/`CLOUDFLARE_OAUTH_CLIENT_SECRET` aren't configured — see `env.ts`. */
+  cloudflareOAuthService: CloudflareOAuthService | undefined
 }
 
 /**
@@ -31,7 +37,12 @@ export interface FrontendRouterDeps {
  * `/component-sessions` is the second: it spends the single-use tokens
  * minted by `POST /v1/component-sessions`, letting a drop-in component
  * claim a domain with no api key of its own — see
- * `routes/component-sessions.ts`.
+ * `routes/component-sessions.ts`. `/cloudflare` is the third: the
+ * one-click DNS setup flow's callback (`GET /cloudflare/callback`) — its
+ * sibling authorize route lives under `/verifications/:token/cloudflare/authorize`
+ * instead, since it's scoped to one claim the same way every other route
+ * under `/verifications` is (see `routes/cloudflare.ts`'s doc comment for
+ * why the callback itself can't be nested the same way).
  *
  * This is the one plane that answers `fetch` calls from a browser on a
  * third-party origin — the hosted verification page (from its own origin)
@@ -70,6 +81,8 @@ export function createFrontendRouter(deps: FrontendRouterDeps) {
       deps.domainsService,
       deps.eventsService,
       deps.projectsService,
+      deps.providerForDomain,
+      deps.cloudflareOAuthService,
     ),
   )
 
@@ -78,7 +91,13 @@ export function createFrontendRouter(deps: FrontendRouterDeps) {
     createComponentSessionsRoutes(
       deps.componentSessionsService,
       deps.projectsService,
+      deps.providerForDomain,
     ),
+  )
+
+  router.route(
+    '/cloudflare',
+    createCloudflareRoutes(deps.cloudflareOAuthService),
   )
 
   return router

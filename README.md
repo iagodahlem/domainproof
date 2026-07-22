@@ -22,14 +22,14 @@ rules.
 
 ## Environments
 
-|                            | URL                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| Web (production)           | <https://domainproof.dev>                                                                     |
-| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
-| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
-| Frontend API (production)  | `verify.domainproof.dev` — serves `/frontend/*` only; pending DNS — being provisioned         |
-| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
-| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
+|                            | URL                                                                 |
+| -------------------------- | ------------------------------------------------------------------- |
+| Web (production)           | <https://domainproof.dev>                                           |
+| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                 |
+| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only (live) |
+| Frontend API (production)  | `frontend.api.domainproof.dev` — serves `/frontend/*` only (live)   |
+| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app         |
+| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app         |
 
 |          | Local (`pnpm dev`)      | Local (`docker compose up`)   |
 | -------- | ----------------------- | ----------------------------- |
@@ -59,19 +59,20 @@ following the pattern `https://<instance-domain>/.well-known/jwks.json`.
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
 nothing breaks if the file doesn't exist):
 
-| Var                                                          | Required? | For                                                                                                                                                         |
-| ------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                               |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER`                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot. |
-| `WEB_ORIGIN`                                                 | No        | The dashboard web app's origin, for the dashboard plane's CORS policy — the only plane a browser calls directly. Unset allows any origin.                   |
-| `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST` | No        | Production-only host restriction, one per plane (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.  |
-| `PORT`                                                       | No        | Defaults to `3001`.                                                                                                                                         |
-| `RESEND_API_KEY`                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.   |
-| `EMAIL_FROM`                                                 | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                  |
-| `WEBHOOK_MAX_ATTEMPTS`                                       | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                       |
-| `RECHECK_ENABLED`                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
-| `RECHECK_INTERVAL_MS`                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
-| `RECHECK_BATCH_SIZE`                                         | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
+| Var                                                            | Required? | For                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                 | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                                                                                                                             |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER`                               | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot.                                                                                               |
+| `WEB_ORIGIN`                                                   | No        | The dashboard web app's origin, for the dashboard plane's CORS policy — the only plane a browser calls directly. Unset allows any origin.                                                                                                                 |
+| `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST`   | No        | Production-only host restriction, one per plane (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.                                                                                                |
+| `PORT`                                                         | No        | Defaults to `3001`.                                                                                                                                                                                                                                       |
+| `RESEND_API_KEY`                                               | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.                                                                                                 |
+| `EMAIL_FROM`                                                   | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                                                                                                                |
+| `WEBHOOK_MAX_ATTEMPTS`                                         | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                                                                                                                     |
+| `RECHECK_ENABLED`                                              | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                                                                                                                   |
+| `RECHECK_INTERVAL_MS`                                          | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                                                                                                                    |
+| `RECHECK_BATCH_SIZE`                                           | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                                                                                                                        |
+| `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` | No        | Private OAuth client credentials for the Cloudflare one-click DNS setup flow (see [Cloudflare one-click DNS setup](#cloudflare-one-click-dns-setup) below). Both unset means the routes respond `404 not_configured` instead of the app refusing to boot. |
 
 ```bash
 docker compose up -d db
@@ -99,7 +100,7 @@ The API has three authentication planes, split by path prefix (see
 [ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
 plane is also confined to its own host — `api.domainproof.dev` serves
 `/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
-only, `verify.domainproof.dev` serves `/frontend/*` only — but locally
+only, `frontend.api.domainproof.dev` serves `/frontend/*` only — but locally
 and in the Railway service domain all three stay reachable on one origin,
 so the split below is what matters for local development:
 
@@ -156,9 +157,11 @@ so the split below is what matters for local development:
 | POST   | `/v1/domains/:id/regenerate`                                                           | Public    | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                            |
 | GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                                       |
 | POST   | `/v1/component-sessions`                                                               | Public    | Mints a short-lived, single-use session token for a drop-in component to claim one domain.                                       |
-| GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, and last check outcome by its `frontendToken`.                                      |
+| GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, detected DNS provider, and last check outcome by its `frontendToken`.               |
 | POST   | `/frontend/verifications/:token/check`                                                 | Frontend  | Runs the DNS check for a claim (rate limited) and returns the same shape as the `GET` above.                                     |
 | GET    | `/frontend/verifications/:token/events`                                                | Frontend  | Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.                          |
+| GET    | `/frontend/verifications/:token/cloudflare/authorize`                                  | Frontend  | Redirects to Cloudflare's OAuth consent screen to set up the claim's DNS record automatically (see below).                       |
+| GET    | `/frontend/cloudflare/callback`                                                        | Frontend  | The Cloudflare OAuth callback; redirects back to the hosted verification page with an outcome (see below).                       |
 | POST   | `/frontend/component-sessions/:sessionToken/claim`                                     | Frontend  | Spends a component session to claim a domain (rate limited); returns the claim plus its own `frontendToken`.                     |
 | GET    | `/v1/openapi.json`                                                                     | none      | This api's OpenAPI 3.1 document, generated from the same route schemas — covers the Public and Frontend planes only (see below). |
 
@@ -366,14 +369,91 @@ anti-enumeration stance as a `frontendToken` lookup miss. The claim itself
 is rate limited per session token (10 attempts per hour) — generous for a
 component retrying after a mistyped domain, not tuned for a bot.
 
+### Cloudflare one-click DNS setup
+
+`GET /frontend/verifications/:token`'s `provider` field (`'cloudflare'` or
+`'unknown'`) is detected from the claim domain's nameservers — `'unknown'`
+for every domain that isn't Cloudflare-hosted, including every `.test`
+sandbox domain (which has no real DNS to inspect at all). The hosted page
+uses it to gate an "Add this record for me" button next to the manual
+instructions.
+
+Clicking it starts a PKCE OAuth flow against a private Cloudflare OAuth
+client (self-managed OAuth, authorizable only by the Cloudflare account
+that created it — see setup below):
+
+1. `GET /frontend/verifications/:token/cloudflare/authorize` redirects to
+   Cloudflare's consent screen, with a PKCE `code_challenge` and a signed
+   `state` binding the request to this one claim (the code verifier travels
+   inside `state` itself — nothing is persisted server-side between this
+   redirect and the callback).
+2. The domain owner grants (or denies) Zone Read + DNS Edit access on
+   Cloudflare.
+3. Cloudflare redirects to `GET /frontend/cloudflare/callback`, which
+   verifies `state`, exchanges the code for an access token, finds the zone
+   matching the claim's domain, creates the exact TXT record the claim's
+   manual instructions already show, publishes a `domain.dns_autoconfigured`
+   event, and triggers the standard verify path — then redirects back to
+   the hosted verification page (`?cloudflare=<outcome>`), where the
+   existing status polling picks up the result.
+
+`outcome` is one of `success`, `denied` (declined on Cloudflare's consent
+screen), `no_matching_zone` (the authorizing account has no zone for the
+domain), `record_create_failed`, `exchange_failed`, or `not_found` (the
+claim was released mid-flow). A `state` that's missing, expired, or fails
+signature verification has no safe redirect target and gets a plain
+`400 invalid_request` instead of a redirect.
+
+The Cloudflare access token is used once and discarded: it lives only in
+the callback request's own local scope, is never persisted, and never
+appears in a response, an event payload, or a log line. `domain.dns_autoconfigured`
+fans out through the timeline and webhooks exactly like every other
+`DomainEventMap` entry, always published ahead of the `domain.check_passed`/
+`domain.verified` pair the triggered verify produces.
+
+#### One-time Cloudflare setup
+
+The private OAuth client itself is created once, by hand, in the Cloudflare
+dashboard that owns the zones this flow should write to:
+
+1. Log in to that Cloudflare account and go to **Manage Account → OAuth
+   clients**.
+2. Create a new client, left as **Private** (the default — authorizable
+   only by this account; never switch it to Public, which starts an
+   irreversible, ~2-day domain-ownership verification for a client URL this
+   flow doesn't need).
+3. Fill the form: **Client Name** `DomainProof`; **Response Type** `Code`;
+   **Grant type** `Authorization Code`; **Token Authentication Method**
+   `client_secret_post` (the exchange sends `client_secret` in the POST
+   body — see `infra/cloudflare/oauth-client.ts`); **Client URL** is
+   optional; skip every Advanced option.
+4. Add BOTH **Redirect (Callback) URLs** — one client serves production and
+   staging, same credentials on both services:
+   `https://frontend.api.domainproof.dev/frontend/cloudflare/callback` and
+   the staging api's Railway domain plus the same
+   `/frontend/cloudflare/callback` path. These must match the runtime's
+   redirect URI exactly, or Cloudflare rejects the exchange.
+5. On the permissions screen, check exactly two boxes under **DNS &
+   Zones**: **DNS → Edit** and **Zone → Read** (2/11 selected). Nothing
+   else.
+6. Cloudflare also offers a `cloudflare_oauth_client_publisher=...` DNS TXT
+   record for "domain verification" at creation time — do **NOT** add it.
+   That record is the first step of the public-client verification path
+   (the irreversible one from step 2); the private client works fully
+   without it.
+7. Copy the generated **client ID** and **client secret** into
+   `CLOUDFLARE_OAUTH_CLIENT_ID` / `CLOUDFLARE_OAUTH_CLIENT_SECRET` (see the
+   env var table above) wherever the api runs.
+
 ### Webhooks
 
 A project's webhook endpoints (`POST /dashboard/projects/:projectId/webhooks`)
 subscribe to a non-empty subset of the project-scoped event types:
 `domain.claimed`, `domain.check_passed`, `domain.check_failed`,
-`domain.verified`, `domain.temporarily_failed`, `domain.failed` (every
-`DomainEventMap` entry except `account.created`, which isn't scoped to a
-project). Creating an endpoint returns its signing secret (`whsec_...`)
+`domain.verified`, `domain.temporarily_failed`, `domain.failed`,
+`domain.dns_autoconfigured` (every `DomainEventMap` entry except
+`account.created`, which isn't scoped to a project). Creating an endpoint
+returns its signing secret (`whsec_...`)
 exactly once — every later response only shows a masked form
 (`whsec_...ab12`). `:projectId` follows the same anti-enumeration 404 as
 elsewhere on this plane — a project belonging to another account reads as

@@ -3,14 +3,17 @@ import { z } from 'zod'
 import { describeRoute, resolver } from 'hono-openapi'
 import type { OpenAPIV3_1 } from 'openapi-types'
 import { DOMAIN_STATUSES } from '@domainproof/core'
+import type { Provider } from '@domainproof/core'
 import type {
   DomainsService,
   DomainSummary,
   LastCheckSummary,
   VerifyDomainCheck,
 } from '@modules/domains/service'
+import type { ProviderForDomain } from '@modules/domains/ports'
 import type { EventSummary, EventsService } from '@modules/events/service'
 import type { ProjectsService } from '@modules/projects/service'
+import type { CloudflareOAuthService } from '@modules/cloudflare/service'
 import type { RateLimitVariables } from '@shared/middlewares/rate-limit'
 import { apiError } from '@shared/http-errors'
 import {
@@ -60,6 +63,24 @@ function invalidRequest(message: string) {
 }
 
 /**
+ * The Cloudflare one-click routes 404 identically to an unknown token when
+ * the flow isn't configured (see `env.ts`'s `CLOUDFLARE_OAUTH_CLIENT_ID`/
+ * `CLOUDFLARE_OAUTH_CLIENT_SECRET`) — a distinct `not_configured` code in
+ * the body still lets a caller tell the two apart, but the 404 status
+ * itself never reveals whether this environment even has the feature
+ * wired up.
+ */
+function cloudflareNotConfigured() {
+  return {
+    body: apiError(
+      'not_configured',
+      'Cloudflare one-click DNS setup is not configured.',
+    ),
+    status: 404 as const,
+  }
+}
+
+/**
  * Shared by the GET read and the POST check response — see
  * `serializeVerification`'s doc comment for why the two must return
  * identical shapes.
@@ -81,7 +102,11 @@ function serializeCheck(check: LastCheckSummary | VerifyDomainCheck | null) {
  * The Frontend API's hosted-verification-page view of a domain claim: only
  * what the page renders — never an account id, project id, or key
  * material. `projectName` is the one project fact the page needs ("who
- * this belongs to"), not the project's internal id. Exported for reuse by
+ * this belongs to"), not the project's internal id. `provider` is the
+ * NS-detected DNS provider (see `modules/domains/ports.ts`'s
+ * `ProviderForDomain`) the hosted page gates its Cloudflare one-click
+ * button on — `'unknown'` for everything that isn't Cloudflare, including
+ * every `.test` sandbox domain. Exported for reuse by
  * `routes/component-sessions.ts`'s claim response, which returns this
  * exact shape plus the claim's `frontendToken`.
  */
@@ -89,12 +114,14 @@ export function serializeVerification(
   domain: DomainSummary,
   projectName: string,
   check: LastCheckSummary | VerifyDomainCheck | null,
+  provider: Provider,
 ) {
   return {
     domain: domain.domain,
     mode: domain.mode,
     status: domain.status,
     projectName,
+    provider,
     records: domain.challenges.map((challenge) => ({
       label: challenge.recordHost,
       type: RECORD_TYPE_BY_METHOD[challenge.method] ?? challenge.method,
@@ -177,6 +204,7 @@ export const verificationResponseDoc = z
     mode: z.enum(['test', 'live']),
     status: z.enum(DOMAIN_STATUSES),
     projectName: z.string(),
+    provider: z.enum(['cloudflare', 'unknown']),
     records: z.array(frontendRecordDoc),
     check: frontendCheckDoc,
     updatedAt: z.iso.datetime(),
@@ -224,6 +252,16 @@ const notFoundResponse = errorResponse(
 )
 
 /**
+ * Same anti-enumeration 404 as `notFoundResponse`, plus the flow being
+ * unconfigured entirely (see `cloudflareNotConfigured`'s doc comment) —
+ * both collapse to the same status and shared error shape, distinguished
+ * only by the body's `code`.
+ */
+const authorizeNotFoundResponse = errorResponse(
+  'Unknown token, a released domain’s now-defunct token, or the Cloudflare one-click flow is not configured in this environment',
+)
+
+/**
  * The Frontend API plane's routes, mounted at `/verifications` under
  * `apis/frontend/router.ts` (giving `/frontend/verifications`) —
  * token-scoped read + bounded re-check access to exactly one domain claim,
@@ -241,6 +279,8 @@ export function createVerificationsRoutes(
   domainsService: DomainsService,
   eventsService: EventsService,
   projectsService: ProjectsService,
+  providerForDomain: ProviderForDomain,
+  cloudflareOAuthService: CloudflareOAuthService | undefined,
 ) {
   const router = new Hono<{ Variables: RateLimitVariables }>()
 
@@ -250,7 +290,7 @@ export function createVerificationsRoutes(
       tags: ['Verifications'],
       summary: 'Read a domain claim’s verification status',
       description:
-        'Reads a claim’s status, record instructions, and last check outcome by its frontendToken.',
+        'Reads a claim’s status, record instructions, detected DNS provider, and last check outcome by its frontendToken.',
       // No formal security scheme: the unguessable `:token` path parameter
       // (documented above) is the entire credential — see this file's route
       // factory doc comment.
@@ -275,9 +315,12 @@ export function createVerificationsRoutes(
         return c.json(body, status)
       }
 
-      const projectName = await resolveProjectName(projectsService, domain)
+      const [projectName, provider] = await Promise.all([
+        resolveProjectName(projectsService, domain),
+        providerForDomain(domain.domain),
+      ])
       return c.json(
-        serializeVerification(domain, projectName, domain.lastCheck),
+        serializeVerification(domain, projectName, domain.lastCheck, provider),
       )
     },
   )
@@ -317,12 +360,54 @@ export function createVerificationsRoutes(
         return c.json(body, status)
       }
 
-      const projectName = await resolveProjectName(
-        projectsService,
-        result.domain,
-      )
+      const [projectName, provider] = await Promise.all([
+        resolveProjectName(projectsService, result.domain),
+        providerForDomain(result.domain.domain),
+      ])
       return c.json(
-        serializeVerification(result.domain, projectName, result.check),
+        serializeVerification(
+          result.domain,
+          projectName,
+          result.check,
+          provider,
+        ),
+      )
+    },
+  )
+
+  router.get(
+    '/:token/cloudflare/authorize',
+    describeRoute({
+      tags: ['Verifications'],
+      summary: 'Start the Cloudflare one-click DNS setup flow',
+      description:
+        'Redirects to Cloudflare’s OAuth consent screen with a PKCE code_challenge and a signed state binding the request to this one claim — see README.md’s "Cloudflare one-click DNS setup" section for the full flow. 404s (not_configured) when CLOUDFLARE_OAUTH_CLIENT_ID/CLOUDFLARE_OAUTH_CLIENT_SECRET aren’t set.',
+      security: [],
+      parameters: tokenPathParameter,
+      responses: {
+        302: {
+          description: 'Redirect to Cloudflare’s OAuth consent screen',
+        },
+        404: authorizeNotFoundResponse,
+      },
+    }),
+    async (c) => {
+      if (!cloudflareOAuthService) {
+        const { body, status } = cloudflareNotConfigured()
+        return c.json(body, status)
+      }
+
+      const domain = await domainsService.getDomainByFrontendToken(
+        c.req.param('token'),
+      )
+      if (!domain) {
+        const { body, status } = verificationNotFound()
+        return c.json(body, status)
+      }
+
+      return c.redirect(
+        cloudflareOAuthService.buildAuthorizeUrl(domain.frontendToken),
+        302,
       )
     },
   )

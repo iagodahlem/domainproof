@@ -3,6 +3,8 @@ import { Resolver } from 'node:dns/promises'
 import {
   registrableDomain,
   type DnsResolver,
+  type NsResolution,
+  type NsResolver,
   type TxtResolution,
   type TxtResolutionFailureReason,
 } from '@domainproof/core'
@@ -376,6 +378,39 @@ export function createNodeDnsResolver(
         timeoutMs,
         hostname,
       )
+    },
+  }
+}
+
+/**
+ * Creates the production {@link NsResolver}, over the same
+ * {@link discoverAuthoritativeNameservers} a `DnsResolver`'s authoritative
+ * query path uses internally — this is the "planned DNS-provider detection
+ * feature" that function's own doc comment anticipated. Queries `domain` as
+ * given; callers that want a hostname's *registrable* domain's nameservers
+ * (the usual case — see `detectProvider` in `@domainproof/core`) resolve
+ * that themselves first, same division of responsibility as
+ * `discoverAuthoritativeNameservers` itself. Never throws — a discovery
+ * failure maps onto `NsResolution`'s `ok: false` branch.
+ */
+export function createNodeNsResolver(
+  options: NodeDnsResolverOptions = {},
+): NsResolver {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const publicResolvers = options.publicResolvers ?? DEFAULT_PUBLIC_RESOLVERS
+  const createClient = options.dns ?? createRealNodeDnsClient
+
+  return {
+    async resolveNs(domain: string): Promise<NsResolution> {
+      const discovery = await discoverAuthoritativeNameservers(domain, {
+        timeoutMs,
+        publicResolvers,
+        dns: createClient,
+      })
+
+      return discovery.ok
+        ? { ok: true, nameservers: discovery.nameservers }
+        : { ok: false, reason: discovery.reason }
     },
   }
 }

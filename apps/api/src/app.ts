@@ -21,7 +21,15 @@ import {
   createDomainsService,
   type DomainsService,
 } from '@modules/domains/service'
-import type { ResolverForChallenge } from '@modules/domains/ports'
+import type {
+  ProviderForDomain,
+  ResolverForChallenge,
+} from '@modules/domains/ports'
+import {
+  createCloudflareOAuthService,
+  type CloudflareOAuthService,
+} from '@modules/cloudflare/service'
+import type { CloudflareClient } from '@modules/cloudflare/ports'
 import { createComponentSessionsRepository } from '@modules/component-sessions/repository'
 import {
   createComponentSessionsService,
@@ -46,13 +54,17 @@ import { createV1Router } from '@apis/v1/router'
 import { createFrontendRouter } from '@apis/frontend/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
 import { createDb, type Database } from '@infra/db/client'
-import { createNodeDnsResolver } from '@infra/dns/node-dns'
+import {
+  createNodeDnsResolver,
+  createNodeNsResolver,
+} from '@infra/dns/node-dns'
 import { createSandboxResolver } from '@infra/dns/sandbox'
 import { createInProcessEventBus } from '@infra/events/in-process-bus'
 import { createResendEmailSender } from '@infra/email/resend'
 import { createChildLogger, logger } from '@infra/logging/logger'
 import { createNodeFetchWebhookSender } from '@infra/http/webhook-sender'
-import { isSandboxDomain } from '@domainproof/core'
+import { createCloudflareOAuthClient } from '@infra/cloudflare/oauth-client'
+import { detectProvider, isSandboxDomain } from '@domainproof/core'
 import { DOMAIN_EVENT_TYPES } from '@shared/events'
 import { env } from './env'
 import { apiError } from '@shared/http-errors'
@@ -90,6 +102,40 @@ function createResolverForChallenge(): ResolverForChallenge {
     return nodeDnsResolver
   }
 }
+
+/**
+ * Builds the Frontend API's provider-detection port: `.test` sandbox
+ * domains short-circuit to `'unknown'` (they have no real DNS to inspect —
+ * same reasoning as `createResolverForChallenge`'s sandbox branch), every
+ * other domain goes through a real NS lookup plus core's `detectProvider`.
+ * This is the one place `isSandboxDomain`/`createNodeNsResolver`/
+ * `detectProvider` get composed together — `modules/domains` only ever
+ * sees the `ProviderForDomain` port (see `modules/domains/ports.ts`).
+ */
+function createProviderForDomain(): ProviderForDomain {
+  const nsResolver = createNodeNsResolver()
+
+  return async (domain) => {
+    if (isSandboxDomain(domain)) {
+      return 'unknown'
+    }
+
+    const resolution = await nsResolver.resolveNs(domain)
+    return resolution.ok ? detectProvider(resolution.nameservers) : 'unknown'
+  }
+}
+
+/**
+ * The Cloudflare one-click DNS setup flow's fixed redirect URI — must
+ * exactly match what's registered on the Cloudflare OAuth client (see
+ * README's Cloudflare setup section). Hardcoded rather than derived from
+ * `env.FRONTEND_API_HOST` (unset outside production, same as
+ * `VERIFICATION_BASE_URL` in `apis/v1/routes/domains.ts`/`apis/dashboard/routes/domains.ts`)
+ * — this is a display/redirect-only value, never dereferenced by this
+ * process itself, so there's no local/staging variant to wire up here.
+ */
+const CLOUDFLARE_OAUTH_REDIRECT_URI =
+  'https://frontend.api.domainproof.dev/frontend/cloudflare/callback'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -156,6 +202,23 @@ export interface AppDependencies {
    * case to skip.
    */
   webhookSender?: WebhookSender
+  /**
+   * Injected for tests (a fake HTTP-port implementing `CloudflareClient` —
+   * never make real requests to Cloudflare from a test); defaults to a
+   * fetch-backed adapter built from the resolved client id/secret below.
+   * Only ever constructed/used when the Cloudflare OAuth flow is
+   * configured (see `cloudflareOAuthClientId`/`cloudflareOAuthClientSecret`).
+   */
+  cloudflareClient?: CloudflareClient
+  /**
+   * Injected for tests; defaults to `env.CLOUDFLARE_OAUTH_CLIENT_ID` /
+   * `env.CLOUDFLARE_OAUTH_CLIENT_SECRET`. Both unset (the default) means
+   * the Cloudflare one-click routes respond `404 not_configured` instead
+   * of the app refusing to boot — same pattern as `sessionVerifier`/
+   * `emailSender` above.
+   */
+  cloudflareOAuthClientId?: string
+  cloudflareOAuthClientSecret?: string
 }
 
 export interface AppServices {
@@ -169,6 +232,8 @@ export interface AppServices {
   webhooksService: WebhooksService
   componentSessionsService: ComponentSessionsService
   sessionVerifier: SessionVerifier | undefined
+  providerForDomain: ProviderForDomain
+  cloudflareOAuthService: CloudflareOAuthService | undefined
 }
 
 /**
@@ -300,6 +365,38 @@ export function createServices(deps: AppDependencies = {}): AppServices {
         })
       : undefined)
 
+  const providerForDomain = createProviderForDomain()
+
+  // Only registered when both credentials are configured — same
+  // unconfigured-vendor-is-a-clean-no-op pattern as `sessionVerifier`/
+  // `emailSender` above. `deps.cloudflareClient` lets tests exercise the
+  // real service/state-signing/event-publishing logic against a fake HTTP
+  // port instead of real Cloudflare requests.
+  const cloudflareOAuthClientId =
+    deps.cloudflareOAuthClientId ?? env.CLOUDFLARE_OAUTH_CLIENT_ID
+  const cloudflareOAuthClientSecret =
+    deps.cloudflareOAuthClientSecret ?? env.CLOUDFLARE_OAUTH_CLIENT_SECRET
+
+  const cloudflareOAuthService =
+    cloudflareOAuthClientId && cloudflareOAuthClientSecret
+      ? createCloudflareOAuthService(
+          {
+            clientId: cloudflareOAuthClientId,
+            clientSecret: cloudflareOAuthClientSecret,
+            redirectUri: CLOUDFLARE_OAUTH_REDIRECT_URI,
+          },
+          deps.cloudflareClient ??
+            createCloudflareOAuthClient({
+              clientId: cloudflareOAuthClientId,
+              clientSecret: cloudflareOAuthClientSecret,
+              redirectUri: CLOUDFLARE_OAUTH_REDIRECT_URI,
+            }),
+          domainsService,
+          eventBus,
+          deps.now ?? (() => new Date()),
+        )
+      : undefined
+
   return {
     db,
     accountsService,
@@ -311,6 +408,8 @@ export function createServices(deps: AppDependencies = {}): AppServices {
     webhooksService,
     componentSessionsService,
     sessionVerifier,
+    providerForDomain,
+    cloudflareOAuthService,
   }
 }
 
@@ -341,6 +440,8 @@ export function createApp(
     webhooksService,
     componentSessionsService,
     sessionVerifier,
+    providerForDomain,
+    cloudflareOAuthService,
   } = services
 
   // Logs every request, on both planes, before anything else runs — see
@@ -412,6 +513,8 @@ export function createApp(
       eventsService,
       projectsService,
       componentSessionsService,
+      providerForDomain,
+      cloudflareOAuthService,
     }),
   )
 

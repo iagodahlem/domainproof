@@ -51,6 +51,17 @@ export interface DomainEventMap {
   'domain.temporarily_failed': DomainEventPayload
   /** The domain transitioned to `failed` (verification window elapsed, or the grace window expired). */
   'domain.failed': DomainEventPayload
+  /**
+   * A one-click provider integration (see `modules/cloudflare/service.ts`)
+   * wrote the challenge's DNS record on the domain owner's behalf, ahead
+   * of the standard verify path it then triggers — always precedes a
+   * `domain.check_passed`/`domain.verified` pair for the same domain, not
+   * a replacement for either.
+   */
+  'domain.dns_autoconfigured': DomainEventPayload & {
+    provider: 'cloudflare'
+    recordType: 'TXT'
+  }
 }
 
 export type DomainEventType = keyof DomainEventMap
@@ -65,6 +76,7 @@ export const DOMAIN_EVENT_TYPES: DomainEventType[] = [
   'domain.verified',
   'domain.temporarily_failed',
   'domain.failed',
+  'domain.dns_autoconfigured',
 ]
 
 export type DomainEventSubscriber<T extends DomainEventType> = (

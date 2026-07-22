@@ -4,6 +4,7 @@ import { describeRoute, resolver } from 'hono-openapi'
 import type { OpenAPIV3_1 } from 'openapi-types'
 import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import type { ProjectsService } from '@modules/projects/service'
+import type { ProviderForDomain } from '@modules/domains/ports'
 import type { RateLimitVariables } from '@shared/middlewares/rate-limit'
 import { apiError } from '@shared/http-errors'
 import {
@@ -108,6 +109,7 @@ const sessionTokenPathParameter: OpenAPIV3_1.ParameterObject[] = [
 export function createComponentSessionsRoutes(
   componentSessionsService: ComponentSessionsService,
   projectsService: ProjectsService,
+  providerForDomain: ProviderForDomain,
 ) {
   const router = new Hono<{ Variables: RateLimitVariables }>()
 
@@ -183,16 +185,17 @@ export function createComponentSessionsRoutes(
         return c.json(body, status)
       }
 
-      const projectName = await resolveProjectName(
-        projectsService,
-        result.domain,
-      )
+      const [projectName, provider] = await Promise.all([
+        resolveProjectName(projectsService, result.domain),
+        providerForDomain(result.domain.domain),
+      ])
       return c.json(
         {
           ...serializeVerification(
             result.domain,
             projectName,
             result.domain.lastCheck,
+            provider,
           ),
           frontendToken: result.domain.frontendToken,
         },

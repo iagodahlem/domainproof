@@ -5,6 +5,7 @@ import type { TxtResolutionFailureReason } from '@domainproof/core'
 import type { CreateNodeDnsClient, NodeDnsClient } from './node-dns'
 import {
   createNodeDnsResolver,
+  createNodeNsResolver,
   discoverAuthoritativeNameservers,
 } from './node-dns'
 
@@ -378,5 +379,38 @@ describe('discoverAuthoritativeNameservers', () => {
       nameservers: ['ns1.example.com', 'ns2.example.com'],
       ips: ['203.0.113.2'],
     })
+  })
+})
+
+describe('createNodeNsResolver', () => {
+  it('resolves the nameserver hostnames for a domain', async () => {
+    const { factory } = createFakeDns({
+      '1.1.1.1': {
+        resolveNs: async () => [
+          'aida.ns.cloudflare.com',
+          'bob.ns.cloudflare.com',
+        ],
+        resolve4: async () => ['203.0.113.1'],
+      },
+    })
+
+    const resolver = createNodeNsResolver({ dns: factory })
+    const result = await resolver.resolveNs('example.com')
+
+    expect(result).toEqual({
+      ok: true,
+      nameservers: ['aida.ns.cloudflare.com', 'bob.ns.cloudflare.com'],
+    })
+  })
+
+  it('maps a discovery failure onto its failure reason', async () => {
+    const { factory } = createFakeDns({
+      '1.1.1.1': { resolveNs: async () => [] },
+    })
+
+    const resolver = createNodeNsResolver({ dns: factory })
+    const result = await resolver.resolveNs('example.com')
+
+    expect(result).toEqual({ ok: false, reason: 'no_records' })
   })
 })

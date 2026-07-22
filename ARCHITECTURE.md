@@ -369,8 +369,9 @@ explicitly rather than papered over:
 - **`shared/events.ts`** defines the typed event map (`DomainEventMap`, one
   entry per namespaced event type — `account.created`, `domain.claimed`,
   `domain.check_passed`, `domain.check_failed`, `domain.verified`,
-  `domain.temporarily_failed`, `domain.failed`) and the `EventBus` interface
-  (`publish`, `subscribe`) that modules code against.
+  `domain.temporarily_failed`, `domain.failed`, `domain.dns_autoconfigured`)
+  and the `EventBus` interface (`publish`, `subscribe`) that modules code
+  against.
 - **`infra/events/in-process-bus.ts`** holds the concrete implementation — an
   in-process `EventBus` (a `Map` of subscribers, dispatched in registration
   order and awaited from `publish`). Swapping to a queue (SQS, a

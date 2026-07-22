@@ -123,6 +123,7 @@ describe('/frontend/verifications', () => {
         mode: string
         status: string
         projectName: string
+        provider: string
         records: Array<{ label: string; type: string; value: string }>
         check: unknown
         updatedAt: string
@@ -133,6 +134,12 @@ describe('/frontend/verifications', () => {
       expect(body.projectName).toBe('Frontend Plane Test')
       expect(body.check).toBeNull()
       expect(typeof body.updatedAt).toBe('string')
+
+      // `.test` sandbox domains have no real DNS to inspect — the provider
+      // detector short-circuits them to 'unknown' rather than attempting
+      // a real (and pointless) NS lookup. See `app.ts`'s
+      // `createProviderForDomain`.
+      expect(body.provider).toBe('unknown')
 
       expect(body.records).toHaveLength(1)
       const [record] = body.records
