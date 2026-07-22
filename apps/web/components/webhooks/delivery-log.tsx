@@ -1,7 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query'
 import { RotateCw } from 'lucide-react'
 import {
   Badge,
@@ -16,7 +22,11 @@ import {
   type Tone,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
-import { dashboardApi, type WebhookDeliverySummary } from '@/lib/api/dashboard'
+import {
+  dashboardApi,
+  type ListDeliveriesResult,
+  type WebhookDeliverySummary,
+} from '@/lib/api/dashboard'
 
 export interface DeliveryLogProps {
   projectId: string
@@ -45,86 +55,41 @@ function formatTime(iso: string): string {
   })
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof ApiError
+    ? error.message
+    : 'Something went wrong. Please try again.'
+}
+
 /**
  * A single endpoint's delivery log — lazily loaded the first time a
- * `EndpointRow` expands, cursor-paginated via "Load more". `redeliver`
- * fires a fresh delivery (attempt 1 of a new row, not a mutation of the
- * original) and prepends it, matching the API's own semantics.
+ * `EndpointRow` expands, cursor-paginated via "Load more" (`useInfiniteQuery`,
+ * one page per cursor). `redeliver` fires a fresh delivery (attempt 1 of a
+ * new row, not a mutation of the original) and prepends it to the first
+ * cached page, matching the API's own semantics.
  */
 export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
   const { getToken } = useAuth()
-  const [deliveries, setDeliveries] = useState<WebhookDeliverySummary[] | null>(
-    null,
-  )
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string>()
+  const queryClient = useQueryClient()
   const [redeliveringId, setRedeliveringId] = useState<string | null>(null)
+  const [redeliverError, setRedeliverError] = useState<string>()
 
-  useEffect(() => {
-    let cancelled = false
+  const queryKey = ['webhook-deliveries', projectId, endpointId] as const
 
-    async function load() {
-      setLoading(true)
-      setError(undefined)
-      try {
-        const token = await getToken()
-        const result = await dashboardApi.listWebhookDeliveries(
-          token,
-          projectId,
-          endpointId,
-        )
-        if (cancelled) return
-        setDeliveries(result.deliveries)
-        setCursor(result.nextCursor)
-      } catch (err) {
-        if (cancelled) return
-        console.error('Failed to load webhook deliveries', err)
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : 'Something went wrong. Please try again.',
-        )
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [getToken, projectId, endpointId])
-
-  async function loadMore() {
-    if (!cursor) return
-    setLoadingMore(true)
-    try {
+  const deliveriesQuery = useInfiniteQuery({
+    queryKey,
+    queryFn: async ({ pageParam }) => {
       const token = await getToken()
-      const result = await dashboardApi.listWebhookDeliveries(
-        token,
-        projectId,
-        endpointId,
-        { cursor },
-      )
-      setDeliveries((prev) => [...(prev ?? []), ...result.deliveries])
-      setCursor(result.nextCursor)
-    } catch (err) {
-      console.error('Failed to load more webhook deliveries', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+      return dashboardApi.listWebhookDeliveries(token, projectId, endpointId, {
+        cursor: pageParam ?? undefined,
+      })
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  })
 
-  async function handleRedeliver(deliveryId: string) {
-    setRedeliveringId(deliveryId)
-    try {
+  const redeliver = useMutation({
+    mutationFn: async (deliveryId: string) => {
       const token = await getToken()
       const { delivery } = await dashboardApi.redeliverWebhookDelivery(
         token,
@@ -132,33 +97,66 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
         endpointId,
         deliveryId,
       )
-      setDeliveries((prev) => [delivery, ...(prev ?? [])])
-    } catch (err) {
+      return delivery
+    },
+    onSuccess: (delivery) => {
+      queryClient.setQueryData<
+        InfiniteData<ListDeliveriesResult, string | null>
+      >(queryKey, (old) => {
+        const [firstPage, ...restPages] = old?.pages ?? []
+        if (!old || !firstPage) return old
+        return {
+          ...old,
+          pages: [
+            { ...firstPage, deliveries: [delivery, ...firstPage.deliveries] },
+            ...restPages,
+          ],
+        }
+      })
+    },
+    onError: (err) => {
       console.error('Failed to redeliver webhook delivery', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setRedeliveringId(null)
-    }
+      setRedeliverError(errorMessage(err))
+    },
+    onSettled: () => setRedeliveringId(null),
+  })
+
+  function handleRedeliver(deliveryId: string) {
+    setRedeliverError(undefined)
+    setRedeliveringId(deliveryId)
+    redeliver.mutate(deliveryId)
   }
 
-  if (loading) {
+  if (deliveriesQuery.isLoading) {
     return <p className="text-sm text-text-faint">Loading deliveries…</p>
   }
 
-  if (error) {
-    return <Callout tone="warning">{error}</Callout>
+  if (deliveriesQuery.isError && !deliveriesQuery.data) {
+    return (
+      <Callout tone="warning">{errorMessage(deliveriesQuery.error)}</Callout>
+    )
   }
+
+  const deliveries = deliveriesQuery.data?.pages.flatMap(
+    (page) => page.deliveries,
+  )
 
   if (!deliveries || deliveries.length === 0) {
     return <p className="text-sm text-text-faint">No deliveries yet.</p>
   }
 
+  // A "Load more" failure keeps the already-loaded pages (`deliveriesQuery.data`
+  // stays populated), so the initial-load guard above never catches it —
+  // surface it here instead, without hiding the list already on screen.
+  const loadMoreError = deliveriesQuery.isError
+    ? errorMessage(deliveriesQuery.error)
+    : undefined
+
   return (
     <div className="flex flex-col gap-3">
+      {redeliverError || loadMoreError ? (
+        <Callout tone="warning">{redeliverError ?? loadMoreError}</Callout>
+      ) : null}
       <Table>
         <TableBody>
           <TableHeader className={cn(GRID_COLS, 'max-[760px]:hidden')}>
@@ -204,11 +202,11 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
           ))}
         </TableBody>
       </Table>
-      {cursor ? (
+      {deliveriesQuery.hasNextPage ? (
         <Button
           size="sm"
-          onClick={loadMore}
-          loading={loadingMore}
+          onClick={() => deliveriesQuery.fetchNextPage()}
+          loading={deliveriesQuery.isFetchingNextPage}
           className="self-start"
         >
           Load more

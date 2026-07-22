@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useMutation } from '@tanstack/react-query'
 import {
   Badge,
   Button,
@@ -65,43 +66,47 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
   const { getToken } = useAuth()
   const [keys, setKeys] = useState(initialKeys)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
-  const [busyKeyId, setBusyKeyId] = useState<string | null>(null)
   const [errorByKey, setErrorByKey] = useState<Record<string, string>>({})
   const [revealedKey, setRevealedKey] = useState<CreateKeyResult | null>(null)
 
-  async function refreshKeys(token: string | null) {
-    const { apiKeys } = await dashboardApi.listKeys(token, projectId)
-    setKeys(apiKeys)
-  }
-
-  async function runAction(keyId: string, kind: PendingAction['kind']) {
-    setBusyKeyId(keyId)
-    setErrorByKey((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([id]) => id !== keyId)),
-    )
-    try {
+  const rotateOrRevoke = useMutation({
+    mutationFn: async ({ keyId, kind }: PendingAction) => {
       const token = await getToken()
       if (kind === 'rotate') {
         const result = await dashboardApi.rotateKey(token, projectId, keyId)
-        await refreshKeys(token)
-        setRevealedKey(result)
-      } else {
-        await dashboardApi.revokeKey(token, projectId, keyId)
-        await refreshKeys(token)
+        const { apiKeys } = await dashboardApi.listKeys(token, projectId)
+        return { kind, result, apiKeys }
       }
+      await dashboardApi.revokeKey(token, projectId, keyId)
+      const { apiKeys } = await dashboardApi.listKeys(token, projectId)
+      return { kind, apiKeys }
+    },
+    onSuccess: (data) => {
+      setKeys(data.apiKeys)
+      if (data.kind === 'rotate') setRevealedKey(data.result)
       setPendingAction(null)
-    } catch (err) {
+    },
+    onError: (err, variables) => {
       console.error('Failed to rotate/revoke API key', err)
       setErrorByKey((prev) => ({
         ...prev,
-        [keyId]:
+        [variables.keyId]:
           err instanceof ApiError
             ? err.message
             : 'Something went wrong. Please try again.',
       }))
-    } finally {
-      setBusyKeyId(null)
-    }
+    },
+  })
+
+  const busyKeyId = rotateOrRevoke.isPending
+    ? (rotateOrRevoke.variables?.keyId ?? null)
+    : null
+
+  function runAction(keyId: string, kind: PendingAction['kind']) {
+    setErrorByKey((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => id !== keyId)),
+    )
+    rotateOrRevoke.mutate({ keyId, kind })
   }
 
   return (

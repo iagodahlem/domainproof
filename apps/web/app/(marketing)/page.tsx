@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Logo } from '@domainproof/ui'
+import { Header, Logo } from '@domainproof/ui'
 import { AuthCta } from '@/components/auth-cta'
 
 export const metadata: Metadata = {
@@ -10,12 +10,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]">
-        <div className="mx-auto flex min-h-15 max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <Logo />
-          <AuthCta size="sm" iconSize={13} />
-        </div>
-      </header>
+      <Header left={<Logo />} right={<AuthCta size="sm" iconSize={13} />} />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
         <div className="flex max-w-[62ch] flex-col gap-4">
@@ -32,9 +27,6 @@ export default function LandingPage() {
               it&rsquo;s true.
             </p>
             <AuthCta className="self-start" iconSize={15} />
-            {/* Clerk's Smart CAPTCHA widget — must be in the DOM before
-                authenticateWithRedirect() runs for either CTA above. */}
-            <div id="clerk-captcha" />
           </div>
         </div>
       </main>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useMutation } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import {
   Badge,
@@ -62,7 +63,6 @@ export function EndpointRow({
 }: EndpointRowProps) {
   const { getToken } = useAuth()
   const [expanded, setExpanded] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState<string>()
 
@@ -73,10 +73,8 @@ export function EndpointRow({
     }
   }
 
-  async function handleToggleDisabled() {
-    setBusy(true)
-    setError(undefined)
-    try {
+  const toggleDisabled = useMutation({
+    mutationFn: async () => {
       const token = await getToken()
       const { endpoint: updated } = endpoint.disabled
         ? await dashboardApi.enableWebhookEndpoint(
@@ -89,35 +87,45 @@ export function EndpointRow({
             projectId,
             endpoint.id,
           )
-      onUpdated(updated)
-    } catch (err) {
+      return updated
+    },
+    onSuccess: onUpdated,
+    onError: (err) => {
       console.error('Failed to toggle webhook endpoint', err)
       setError(
         err instanceof ApiError
           ? err.message
           : 'Something went wrong. Please try again.',
       )
-    } finally {
-      setBusy(false)
-    }
-  }
+    },
+  })
 
-  async function handleDelete() {
-    setBusy(true)
-    setError(undefined)
-    try {
+  const deleteEndpoint = useMutation({
+    mutationFn: async () => {
       const token = await getToken()
       await dashboardApi.deleteWebhookEndpoint(token, projectId, endpoint.id)
-      onDeleted(endpoint.id)
-    } catch (err) {
+    },
+    onSuccess: () => onDeleted(endpoint.id),
+    onError: (err) => {
       console.error('Failed to delete webhook endpoint', err)
       setError(
         err instanceof ApiError
           ? err.message
           : 'Something went wrong. Please try again.',
       )
-      setBusy(false)
-    }
+    },
+  })
+
+  const busy = toggleDisabled.isPending || deleteEndpoint.isPending
+
+  function handleToggleDisabled() {
+    setError(undefined)
+    toggleDisabled.mutate()
+  }
+
+  function handleDelete() {
+    setError(undefined)
+    deleteEndpoint.mutate()
   }
 
   const summary = eventsSummary(endpoint.eventTypes)

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useMutation } from '@tanstack/react-query'
 import { Button, Callout, Checkbox, Select, TextField } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import {
@@ -41,7 +42,26 @@ export function CreateEndpointForm({
   const [eventTypes, setEventTypes] = useState<Set<WebhookEventType>>(new Set())
   const [urlError, setUrlError] = useState<string>()
   const [formError, setFormError] = useState<string>()
-  const [submitting, setSubmitting] = useState(false)
+
+  const createEndpoint = useMutation({
+    mutationFn: async (input: {
+      url: string
+      mode: Mode
+      eventTypes: WebhookEventType[]
+    }) => {
+      const token = await getToken()
+      return dashboardApi.createWebhookEndpoint(token, projectId, input)
+    },
+    onSuccess: onCreated,
+    onError: (err) => {
+      console.error('Failed to create webhook endpoint', err)
+      setFormError(
+        err instanceof ApiError
+          ? err.message
+          : 'Something went wrong. Please try again.',
+      )
+    },
+  })
 
   function toggleEventType(type: WebhookEventType) {
     setEventTypes((prev) => {
@@ -55,7 +75,7 @@ export function CreateEndpointForm({
     })
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmedUrl = url.trim()
@@ -71,29 +91,11 @@ export function CreateEndpointForm({
     }
     setFormError(undefined)
 
-    setSubmitting(true)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.createWebhookEndpoint(
-        token,
-        projectId,
-        {
-          url: trimmedUrl,
-          mode,
-          eventTypes: [...eventTypes],
-        },
-      )
-      onCreated(result)
-    } catch (err) {
-      console.error('Failed to create webhook endpoint', err)
-      setFormError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setSubmitting(false)
-    }
+    createEndpoint.mutate({
+      url: trimmedUrl,
+      mode,
+      eventTypes: [...eventTypes],
+    })
   }
 
   return (
@@ -143,14 +145,19 @@ export function CreateEndpointForm({
       {formError ? <Callout tone="warning">{formError}</Callout> : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary" size="sm" loading={submitting}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="sm"
+          loading={createEndpoint.isPending}
+        >
           Add endpoint
         </Button>
         <Button
           type="button"
           size="sm"
           onClick={onCancel}
-          disabled={submitting}
+          disabled={createEndpoint.isPending}
         >
           Cancel
         </Button>
