@@ -58,6 +58,7 @@ import { env } from './env'
 import { apiError } from '@shared/http-errors'
 import { createHostRestrictionMiddleware } from '@shared/middlewares/host-restriction'
 import { createRequestLoggerMiddleware } from '@shared/middlewares/request-logger'
+import { createOpenApiRouteHandler } from './openapi'
 
 /**
  * Builds the `verifyDomain` use case's resolver-selection port: `.test`
@@ -368,6 +369,16 @@ export function createApp(
   app.get('/health', (c) => {
     return c.json({ status: 'ok', version: pkg.version })
   })
+
+  // Built from the `app` reference before every plane below is mounted, but
+  // that's fine: `openAPIRouteHandler` only walks `app.routes` (and caches
+  // the result) the first time this endpoint is actually hit, by which
+  // point every route below has been registered. Unauthenticated and
+  // outside every plane's path prefix on purpose — the SDK, docs site, and
+  // MCP server this spec feeds all need to fetch it without an api key, the
+  // same reason it's excluded from the v1 plane's own api-key middleware
+  // (see `openapi.ts`'s doc comment for what it covers/excludes).
+  app.get('/v1/openapi.json', createOpenApiRouteHandler(app))
 
   // /dashboard/* is the session-authenticated backend of the dashboard app
   // (unversioned — we control its only consumer). /v1/* is the public,

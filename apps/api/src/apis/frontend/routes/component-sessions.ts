@@ -1,11 +1,22 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { describeRoute, resolver } from 'hono-openapi'
+import type { OpenAPIV3_1 } from 'openapi-types'
 import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import type { ProjectsService } from '@modules/projects/service'
 import type { RateLimitVariables } from '@shared/middlewares/rate-limit'
 import { apiError } from '@shared/http-errors'
+import {
+  errorResponse,
+  rateLimitedResponse,
+  toJsonSchema,
+} from '@shared/openapi'
 import { createClaimRateLimitMiddlewares } from '../middlewares/component-session-rate-limit'
-import { resolveProjectName, serializeVerification } from './verifications'
+import {
+  resolveProjectName,
+  serializeVerification,
+  verificationResponseDoc,
+} from './verifications'
 
 // Matches apis/v1/routes/domains.ts's MAX_DOMAIN_LENGTH — the maximum
 // length of a fully-qualified DNS domain name.
@@ -63,6 +74,24 @@ function sandboxRequiresTestMode() {
   }
 }
 
+const claimResponseDoc = verificationResponseDoc
+  .extend({
+    frontendToken: z.string(),
+  })
+  .meta({ ref: 'ClaimResult' })
+
+/** Same anti-enumeration stance as `verifications.ts`'s `tokenPathParameter`. */
+const sessionTokenPathParameter: OpenAPIV3_1.ParameterObject[] = [
+  {
+    name: 'sessionToken',
+    in: 'path',
+    required: true,
+    description:
+      'The single-use session token minted by POST /v1/component-sessions.',
+    schema: { type: 'string' },
+  },
+]
+
 /**
  * Spends a component session, mounted at `/component-sessions` under the
  * frontend plane's router (giving `/frontend/component-sessions`) —
@@ -84,6 +113,40 @@ export function createComponentSessionsRoutes(
 
   router.post(
     '/:sessionToken/claim',
+    describeRoute({
+      tags: ['Component Sessions'],
+      summary: 'Spend a component session to claim a domain',
+      description:
+        'Claims a domain through the exact same path POST /v1/domains uses (same validation, same conflict/sandbox rules), with the project/mode and external_id carried over from the session. Rate limited: 10 attempts per hour, per session token.',
+      // No formal security scheme: the single-use `:sessionToken` path
+      // parameter is the entire credential — see `verifications.ts`'s
+      // identical note.
+      security: [],
+      parameters: sessionTokenPathParameter,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: toJsonSchema(claimBodySchema) },
+        },
+      },
+      responses: {
+        201: {
+          description:
+            'The claimed domain’s verification, plus its frontendToken',
+          content: {
+            'application/json': { schema: resolver(claimResponseDoc) },
+          },
+        },
+        400: errorResponse(
+          'Invalid request body, invalid domain, or a sandbox domain claimed with a live-mode session',
+        ),
+        404: errorResponse(
+          'Unknown, expired, or already-consumed session token',
+        ),
+        409: errorResponse('Domain already claimed for this project and mode'),
+        429: rateLimitedResponse,
+      },
+    }),
     ...createClaimRateLimitMiddlewares(),
     async (c) => {
       const json = await c.req.json().catch(() => undefined)

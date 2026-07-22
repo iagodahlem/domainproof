@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { DEFAULT_TOKEN_TTL_MS } from '@domainproof/core'
+import { describeRoute, resolver } from 'hono-openapi'
+import { DEFAULT_TOKEN_TTL_MS, DOMAIN_STATUSES } from '@domainproof/core'
 import type { ApiKeyAuthVariables } from '../middlewares/api-key'
 import type {
   DomainsService,
@@ -9,6 +10,14 @@ import type {
 } from '@modules/domains/service'
 import type { EventSummary, EventsService } from '@modules/events/service'
 import { apiError } from '@shared/http-errors'
+import {
+  apiKeySecurity,
+  apiKeyUnauthorizedResponse,
+  errorResponse,
+  rateLimitedResponse,
+  toJsonSchema,
+  toParameters,
+} from '@shared/openapi'
 
 // 253 is the maximum length of a fully-qualified DNS domain name (RFC
 // 1035/1123: 255 octets on the wire, minus 2 for the root label and
@@ -237,6 +246,90 @@ function serializeEvent(event: EventSummary) {
 }
 
 /**
+ * OpenAPI response schemas mirroring this file's `serialize*` functions —
+ * documentation only (nothing here is `.parse()`d against a real
+ * response), kept next to the functions they describe so the two stay easy
+ * to compare by eye. Shared across this file's `describeRoute(...)` calls
+ * via `resolver()`, which promotes each `.meta({ ref })`'d schema to a
+ * single named `components.schemas` entry instead of inlining a copy per
+ * route.
+ */
+const recordDoc = z.object({
+  type: z.string(),
+  name: z.string(),
+  value: z.string(),
+  purpose: z.literal('ownership'),
+  description: z.string(),
+  status: z.enum(DOMAIN_STATUSES),
+})
+
+const domainDoc = z
+  .object({
+    id: z.string(),
+    domain: z.string(),
+    mode: z.enum(['test', 'live']),
+    status: z.enum(DOMAIN_STATUSES),
+    external_id: z.string().nullable(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+    verifiedAt: z.iso.datetime().nullable(),
+    verificationUrl: z.string(),
+    records: z.array(recordDoc),
+  })
+  .meta({ ref: 'Domain' })
+
+const domainEnvelopeDoc = z.object({ domain: domainDoc }).meta({
+  ref: 'DomainEnvelope',
+})
+
+const domainListDoc = z
+  .object({
+    domains: z.array(domainDoc),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ ref: 'DomainList' })
+
+const checkDoc = z
+  .object({
+    outcome: z.enum([
+      'found',
+      'wrong_value',
+      'not_found',
+      'unreachable',
+      'expired',
+    ]),
+    checkedAt: z.iso.datetime(),
+    expected: z.string().optional(),
+    detected: z.array(z.string()).optional(),
+    explanation: z.string().optional(),
+  })
+  .meta({ ref: 'Check' })
+
+const verifyResultDoc = z
+  .object({ domain: domainDoc, check: checkDoc })
+  .meta({ ref: 'VerifyResult' })
+
+const eventDoc = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    mode: z.enum(['test', 'live']),
+    payload: z.unknown(),
+    createdAt: z.iso.datetime(),
+  })
+  .meta({ ref: 'Event' })
+
+const eventListDoc = z
+  .object({
+    events: z.array(eventDoc),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ ref: 'EventList' })
+
+/** Every route in this file is scoped to a `:id` path segment identifying the domain claim. */
+const idPathParameter = toParameters(z.object({ id: z.string() }), 'path')
+
+/**
  * Public-API domain claiming routes, mounted at `/domains` under the v1
  * plane's router (giving `/v1/domains`). `projectId` and `mode` come from
  * the api-key auth context set by `apis/v1/middlewares/api-key.ts` — every
@@ -252,153 +345,317 @@ export function createDomainsRoutes(
 ) {
   const router = new Hono<{ Variables: ApiKeyAuthVariables }>()
 
-  router.post('/', async (c) => {
-    const json = await c.req.json().catch(() => undefined)
-    const parsed = claimDomainBodySchema.safeParse(json)
+  router.post(
+    '/',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'Claim a domain',
+      description:
+        'Claims a domain for the authenticated key’s project and mode, issuing a fresh verification challenge. Accepts an optional `external_id` to correlate the claim with the calling project’s own end user.',
+      security: apiKeySecurity,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: toJsonSchema(claimDomainBodySchema) },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Domain claimed',
+          content: {
+            'application/json': { schema: resolver(domainEnvelopeDoc) },
+          },
+        },
+        400: errorResponse(
+          'Invalid request body, invalid domain, or a sandbox domain claimed with a live-mode key',
+        ),
+        401: apiKeyUnauthorizedResponse,
+        409: errorResponse('Domain already claimed for this project and mode'),
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      const json = await c.req.json().catch(() => undefined)
+      const parsed = claimDomainBodySchema.safeParse(json)
 
-    if (!parsed.success) {
-      const { body, status } = invalidRequest('Invalid request body')
-      return c.json(body, status)
-    }
-
-    const result = await domainsService.claimDomain({
-      projectId: c.get('projectId'),
-      mode: c.get('mode'),
-      domain: parsed.data.domain,
-      externalId: parsed.data.external_id,
-    })
-
-    if (!result.ok) {
-      if (result.error === 'invalid_domain') {
-        const { body, status } = invalidRequest(
-          INVALID_DOMAIN_MESSAGES[result.reason] ?? 'Domain is invalid.',
-        )
+      if (!parsed.success) {
+        const { body, status } = invalidRequest('Invalid request body')
         return c.json(body, status)
       }
 
-      if (result.error === 'sandbox_requires_test_mode') {
-        const { body, status } = sandboxRequiresTestMode()
-        return c.json(body, status)
-      }
-
-      const { body, status } = conflict()
-      return c.json(body, status)
-    }
-
-    return c.json({ domain: serializeDomain(result.domain) }, 201)
-  })
-
-  router.get('/', async (c) => {
-    const parsed = listDomainsQuerySchema.safeParse(c.req.query())
-    if (!parsed.success) {
-      const { body, status } = invalidRequest('Invalid query parameters')
-      return c.json(body, status)
-    }
-
-    const { domains, nextCursor } = await domainsService.listDomains(
-      c.get('projectId'),
-      c.get('mode'),
-      {
-        limit: parsed.data.limit ?? DEFAULT_DOMAINS_PAGE_LIMIT,
-        cursor: parsed.data.cursor,
-        externalId: parsed.data.external_id,
+      const result = await domainsService.claimDomain({
+        projectId: c.get('projectId'),
+        mode: c.get('mode'),
         domain: parsed.data.domain,
+        externalId: parsed.data.external_id,
+      })
+
+      if (!result.ok) {
+        if (result.error === 'invalid_domain') {
+          const { body, status } = invalidRequest(
+            INVALID_DOMAIN_MESSAGES[result.reason] ?? 'Domain is invalid.',
+          )
+          return c.json(body, status)
+        }
+
+        if (result.error === 'sandbox_requires_test_mode') {
+          const { body, status } = sandboxRequiresTestMode()
+          return c.json(body, status)
+        }
+
+        const { body, status } = conflict()
+        return c.json(body, status)
+      }
+
+      return c.json({ domain: serializeDomain(result.domain) }, 201)
+    },
+  )
+
+  router.get(
+    '/',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'List claimed domains',
+      description:
+        'Cursor-paginated list of domains claimed by the key’s project and mode. Filterable by `external_id` and/or `domain`.',
+      security: apiKeySecurity,
+      parameters: toParameters(listDomainsQuerySchema, 'query'),
+      responses: {
+        200: {
+          description: 'A page of domains',
+          content: { 'application/json': { schema: resolver(domainListDoc) } },
+        },
+        400: errorResponse('Invalid query parameters'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
       },
-    )
-    return c.json({ domains: domains.map(serializeDomain), nextCursor })
-  })
+    }),
+    async (c) => {
+      const parsed = listDomainsQuerySchema.safeParse(c.req.query())
+      if (!parsed.success) {
+        const { body, status } = invalidRequest('Invalid query parameters')
+        return c.json(body, status)
+      }
 
-  router.get('/:id', async (c) => {
-    const domain = await domainsService.getDomain(
-      c.get('projectId'),
-      c.get('mode'),
-      c.req.param('id'),
-    )
-    if (!domain) {
-      const { body, status } = notFound()
-      return c.json(body, status)
-    }
-    return c.json({ domain: serializeDomain(domain) })
-  })
+      const { domains, nextCursor } = await domainsService.listDomains(
+        c.get('projectId'),
+        c.get('mode'),
+        {
+          limit: parsed.data.limit ?? DEFAULT_DOMAINS_PAGE_LIMIT,
+          cursor: parsed.data.cursor,
+          externalId: parsed.data.external_id,
+          domain: parsed.data.domain,
+        },
+      )
+      return c.json({ domains: domains.map(serializeDomain), nextCursor })
+    },
+  )
 
-  router.get('/:id/events', async (c) => {
-    // Reuses getDomain purely for its (projectId, mode) authorization —
-    // a `keyId` from another project (or the wrong mode) 404s here the
-    // same way it does on every other domain-scoped route.
-    const domain = await domainsService.getDomain(
-      c.get('projectId'),
-      c.get('mode'),
-      c.req.param('id'),
-    )
-    if (!domain) {
-      const { body, status } = notFound()
-      return c.json(body, status)
-    }
-
-    const parsed = listEventsQuerySchema.safeParse(c.req.query())
-    if (!parsed.success) {
-      const { body, status } = invalidRequest('Invalid query parameters')
-      return c.json(body, status)
-    }
-
-    const { events, nextCursor } = await eventsService.listDomainEvents(
-      domain.id,
-      {
-        limit: parsed.data.limit ?? DEFAULT_EVENTS_PAGE_LIMIT,
-        cursor: parsed.data.cursor,
+  router.get(
+    '/:id',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'Get a claimed domain',
+      description:
+        'Gets a claimed domain and its current verification record instructions.',
+      security: apiKeySecurity,
+      parameters: idPathParameter,
+      responses: {
+        200: {
+          description: 'The domain',
+          content: {
+            'application/json': { schema: resolver(domainEnvelopeDoc) },
+          },
+        },
+        404: errorResponse('Domain not found'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
       },
-    )
+    }),
+    async (c) => {
+      const domain = await domainsService.getDomain(
+        c.get('projectId'),
+        c.get('mode'),
+        c.req.param('id'),
+      )
+      if (!domain) {
+        const { body, status } = notFound()
+        return c.json(body, status)
+      }
+      return c.json({ domain: serializeDomain(domain) })
+    },
+  )
 
-    return c.json({ events: events.map(serializeEvent), nextCursor })
-  })
-
-  router.delete('/:id', async (c) => {
-    const domain = await domainsService.releaseDomain(
-      c.get('projectId'),
-      c.get('mode'),
-      c.req.param('id'),
-    )
-    if (!domain) {
-      const { body, status } = notFound()
-      return c.json(body, status)
-    }
-    return c.json({ domain: serializeDomain(domain) })
-  })
-
-  router.post('/:id/verify', async (c) => {
-    const result = await domainsService.verifyDomain(
-      c.get('projectId'),
-      c.get('mode'),
-      c.req.param('id'),
-    )
-    if (!result.ok) {
-      const { body, status } = notFound()
-      return c.json(body, status)
-    }
-    return c.json({
-      domain: serializeDomain(result.domain),
-      check: serializeCheck(result.check, result.domain.domain),
-    })
-  })
-
-  router.post('/:id/regenerate', async (c) => {
-    const result = await domainsService.regenerateChallenge(
-      c.get('projectId'),
-      c.get('mode'),
-      c.req.param('id'),
-    )
-    if (!result.ok) {
-      if (result.error === 'not_found') {
+  router.get(
+    '/:id/events',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'List a domain’s event timeline',
+      description:
+        'Cursor-paginated timeline of events published for a domain (claimed, checks, transitions), oldest first.',
+      security: apiKeySecurity,
+      parameters: [
+        ...idPathParameter,
+        ...toParameters(listEventsQuerySchema, 'query'),
+      ],
+      responses: {
+        200: {
+          description: 'A page of events',
+          content: { 'application/json': { schema: resolver(eventListDoc) } },
+        },
+        404: errorResponse('Domain not found'),
+        400: errorResponse('Invalid query parameters'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      // Reuses getDomain purely for its (projectId, mode) authorization —
+      // a `keyId` from another project (or the wrong mode) 404s here the
+      // same way it does on every other domain-scoped route.
+      const domain = await domainsService.getDomain(
+        c.get('projectId'),
+        c.get('mode'),
+        c.req.param('id'),
+      )
+      if (!domain) {
         const { body, status } = notFound()
         return c.json(body, status)
       }
 
-      const { body, status } = invalidStatus()
-      return c.json(body, status)
-    }
+      const parsed = listEventsQuerySchema.safeParse(c.req.query())
+      if (!parsed.success) {
+        const { body, status } = invalidRequest('Invalid query parameters')
+        return c.json(body, status)
+      }
 
-    return c.json({ domain: serializeDomain(result.domain) })
-  })
+      const { events, nextCursor } = await eventsService.listDomainEvents(
+        domain.id,
+        {
+          limit: parsed.data.limit ?? DEFAULT_EVENTS_PAGE_LIMIT,
+          cursor: parsed.data.cursor,
+        },
+      )
+
+      return c.json({ events: events.map(serializeEvent), nextCursor })
+    },
+  )
+
+  router.delete(
+    '/:id',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'Release a domain claim',
+      description: 'Releases a domain claim.',
+      security: apiKeySecurity,
+      parameters: idPathParameter,
+      responses: {
+        200: {
+          description: 'The released domain',
+          content: {
+            'application/json': { schema: resolver(domainEnvelopeDoc) },
+          },
+        },
+        404: errorResponse('Domain not found'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      const domain = await domainsService.releaseDomain(
+        c.get('projectId'),
+        c.get('mode'),
+        c.req.param('id'),
+      )
+      if (!domain) {
+        const { body, status } = notFound()
+        return c.json(body, status)
+      }
+      return c.json({ domain: serializeDomain(domain) })
+    },
+  )
+
+  router.post(
+    '/:id/verify',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'Run the verification check for a domain',
+      description:
+        'Runs the DNS check for a claim and returns the updated domain plus the check’s outcome. Safe to poll — re-runs the check every time it’s called.',
+      security: apiKeySecurity,
+      parameters: idPathParameter,
+      responses: {
+        200: {
+          description: 'The check result and updated domain',
+          content: {
+            'application/json': { schema: resolver(verifyResultDoc) },
+          },
+        },
+        404: errorResponse('Domain not found'),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      const result = await domainsService.verifyDomain(
+        c.get('projectId'),
+        c.get('mode'),
+        c.req.param('id'),
+      )
+      if (!result.ok) {
+        const { body, status } = notFound()
+        return c.json(body, status)
+      }
+      return c.json({
+        domain: serializeDomain(result.domain),
+        check: serializeCheck(result.check, result.domain.domain),
+      })
+    },
+  )
+
+  router.post(
+    '/:id/regenerate',
+    describeRoute({
+      tags: ['Domains'],
+      summary: 'Regenerate a domain’s verification challenge',
+      description:
+        'Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.',
+      security: apiKeySecurity,
+      parameters: idPathParameter,
+      responses: {
+        200: {
+          description: 'The domain with its fresh challenge',
+          content: {
+            'application/json': { schema: resolver(domainEnvelopeDoc) },
+          },
+        },
+        404: errorResponse('Domain not found'),
+        409: errorResponse(
+          'Only pending or failed domains can have their challenge regenerated',
+        ),
+        401: apiKeyUnauthorizedResponse,
+        429: rateLimitedResponse,
+      },
+    }),
+    async (c) => {
+      const result = await domainsService.regenerateChallenge(
+        c.get('projectId'),
+        c.get('mode'),
+        c.req.param('id'),
+      )
+      if (!result.ok) {
+        if (result.error === 'not_found') {
+          const { body, status } = notFound()
+          return c.json(body, status)
+        }
+
+        const { body, status } = invalidStatus()
+        return c.json(body, status)
+      }
+
+      return c.json({ domain: serializeDomain(result.domain) })
+    },
+  )
 
   return router
 }

@@ -109,8 +109,11 @@ These are enforced by eslint (`no-restricted-imports`, see
 Standing rules for every PR, regardless of size:
 
 - **Any PR that adds or changes API endpoints must update the endpoints
-  table in `README.md`** — there's no OpenAPI spec yet, so that table is
-  the source of truth for what the API exposes.
+  table in `README.md`.** The v1 + Frontend planes are also documented by a
+  generated OpenAPI 3.1 document (`GET /v1/openapi.json`, built from the
+  same route schemas — see `apps/api/src/openapi.ts`), but the
+  session-authenticated dashboard plane isn't part of that document, so the
+  README table stays the one place covering all three planes.
 - **PR titles follow conventional commits** (`feat:`, `fix:`, `refactor:`,
   ...), same as commit messages.
 - **PR descriptions are written in the author's own voice, addressed to a
