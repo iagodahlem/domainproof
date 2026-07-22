@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import { dashboardApi } from '@/lib/api/dashboard'
-import { EventsView } from '@/components/events/events-view'
+import { EventsView } from './_components/events-view'
 
 export const metadata: Metadata = {
   title: 'Events — DomainProof',

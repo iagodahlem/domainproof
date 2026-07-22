@@ -5,8 +5,8 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { Callout, CenteredMain, Header, Logo } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
-import { DashboardShell } from '@/components/dashboard/shell'
-import { ReloadButton } from '@/components/dashboard/reload-button'
+import { DashboardShell } from '@/components/dashboard-shell/shell'
+import { ReloadButton } from '@/components/dashboard-shell/reload-button'
 
 export const metadata: Metadata = {
   title: 'Dashboard — DomainProof',

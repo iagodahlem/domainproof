@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import { Button, Callout, Card, CardBody, TextField, cn } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { ApiError } from '@/lib/query/errors'
+import { useCreateProject } from '@/lib/query/projects'
 import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
@@ -30,19 +28,10 @@ export function CreateProjectFlow({
   namePrefill,
 }: CreateProjectFlowProps) {
   const router = useRouter()
-  const { getToken } = useAuth()
   const [name, setName] = useState(namePrefill ?? '')
   const [fieldError, setFieldError] = useState<string | undefined>()
 
-  const createProject = useMutation({
-    mutationFn: async (projectName: string) => {
-      const token = await getToken()
-      return dashboardApi.createProject(token, projectName)
-    },
-    onError: (error) => {
-      console.error('Failed to create project', error)
-    },
-  })
+  const createProject = useCreateProject()
 
   if (createProject.data) {
     const result = createProject.data

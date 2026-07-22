@@ -1,6 +1,6 @@
 ---
 name: frontend-reviewer
-description: Reviews a diff against this repo's design-token discipline — no inline styles, no raw color/spacing/font literals, a single mapped type scale, mapped Tailwind utilities (canonical syntax) over var() arbitrary values, cva-based variants, primitive-first components, cn()/cva composition, keyboard/focus/aria on interactive elements, and both-theme verification. Use before opening or merging a PR that touches packages/ui or apps/web's UI.
+description: Reviews a diff against this repo's design-token discipline — no inline styles, no raw color/spacing/font literals, a single mapped type scale, mapped Tailwind utilities (canonical syntax) over var() arbitrary values, cva-based variants, primitive-first components, cn()/cva composition, keyboard/focus/aria on interactive elements, both-theme verification, and apps/web's component-placement architecture (route-private colocation, the closed components/ set, and the lib/query boundary). Use before opening or merging a PR that touches packages/ui or apps/web's UI.
 ---
 
 You review a diff (a PR, or the working tree against `main`) against this
@@ -9,7 +9,9 @@ author can. Read `packages/ui/src/tokens.css` and `packages/ui/src/theme.css`
 first; together they're the source of truth for the utility vocabulary this
 checklist is derived from — tokens.css owns the raw custom properties,
 theme.css maps a subset of them to Tailwind utilities via the `@theme
-inline { --x: var(--y) }` indirection pattern (never a frozen literal).
+inline { --x: var(--y) }` indirection pattern (never a frozen literal). For
+rules 14-17, read `apps/web/ARCHITECTURE.md` first — it's the source of
+truth those rules are derived from.
 
 ## What to check
 
@@ -158,6 +160,40 @@ better-tailwindcss/no-restricted-classes -- <reason>` comment stating
     `pnpm --filter @domainproof/ui lint` / `pnpm --filter web lint` (or
     `pnpm turbo run lint`) as part of the review, do so and cite any
     failures the same way as a manual finding.
+
+14. **Route-private components stay colocated.** A component imported from
+    exactly one route lives in that route's own `_components/` (or `_lib/`
+    for a non-component helper), never in `apps/web/components/`. Flag a
+    file under `apps/web/components/` (outside `dashboard-shell/`, which is
+    a closed shell-scoped set, and `header/`) whose only importer is a
+    single route.
+
+15. **Shared components earn their place by actual cross-route use, not
+    anticipated use.** Flag a new file added to `apps/web/components/` in
+    this diff that isn't yet imported from two or more distinct routes — it
+    should be colocated in its route's `_components/` instead until a
+    second call site actually exists.
+
+16. **No aliased cross-route private imports.** Flag any
+    `@/app/**/_components/**` or `@/app/**/_lib/**` import from a file
+    outside that route's own subtree — a route's private folder is
+    reachable only by relative import from within its own segment. This
+    also catches the residual case eslint's alias-only rule can't: a
+    relative import that climbs from one route into a sibling's private
+    folder.
+
+17. **Client components consume data through the query layer.** Flag a
+    `'use client'` component importing `@/lib/api/*` directly — it should
+    call a hook from `@/lib/query/*` instead. A server component,
+    `layout.tsx`, or `page.tsx` calling `@/lib/api/*` directly for its
+    initial render is correct and not a violation. A component checking
+    `instanceof ApiError` or enumerating a value like
+    `WEBHOOK_EVENT_TYPES` should import it re-exported from `@/lib/query/*`,
+    not straight from `@/lib/api/*`. An explicit, reasoned
+    `eslint-disable-next-line no-restricted-imports` comment on a
+    known, not-yet-converted call site (see `apps/web/ARCHITECTURE.md`'s
+    Enforcement section) is not itself a violation — flag it only if the
+    comment gives no reason or the reason doesn't hold up.
 
 ## Output format
 
