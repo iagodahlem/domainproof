@@ -15,17 +15,20 @@ const headerVariants = cva('border-b border-border', {
   },
 })
 
-const headerContainerVariants = cva('flex items-center justify-between', {
-  variants: {
-    variant: {
-      glass: 'mx-auto max-w-5xl gap-4 px-6 py-3',
-      solid: 'flex-wrap gap-3 px-5 py-4 max-[640px]:px-4',
+const headerContainerVariants = cva(
+  'flex min-h-16 items-center justify-between',
+  {
+    variants: {
+      variant: {
+        glass: 'mx-auto max-w-5xl gap-4 px-6',
+        solid: 'flex-wrap gap-3 px-5 max-[640px]:px-4',
+      },
+    },
+    defaultVariants: {
+      variant: 'glass',
     },
   },
-  defaultVariants: {
-    variant: 'glass',
-  },
-})
+)
 
 export interface HeaderProps extends VariantProps<typeof headerVariants> {
   left: ReactNode
