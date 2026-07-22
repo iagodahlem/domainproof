@@ -153,7 +153,7 @@ export function EndpointRow({
         <TableCell className="truncate font-mono text-sm max-[760px]:order-2 max-[760px]:min-w-0 max-[760px]:flex-1">
           {endpoint.url}
         </TableCell>
-        <TableCell className="flex items-center gap-1.5 text-xs text-text-muted max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-5">
+        <TableCell className="flex items-center gap-1.5 text-xs text-muted-foreground max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-5">
           <span className="truncate font-mono">{summary.label}</span>
           {summary.extra > 0 ? (
             <Badge tone="neutral">+{summary.extra}</Badge>
@@ -169,7 +169,7 @@ export function EndpointRow({
             aria-hidden="true"
             size={16}
             className={cn(
-              'text-text-faint transition-transform duration-150',
+              'text-faint-foreground transition-transform duration-150',
               expanded && 'rotate-90',
             )}
           />
@@ -178,7 +178,7 @@ export function EndpointRow({
 
       {expanded ? (
         <div className="border-b border-border bg-surface-2 px-4 py-5 last:border-b-0">
-          <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-text-faint">
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-faint-foreground">
             <Badge tone={endpoint.mode === 'live' ? 'success' : 'warning'} mode>
               {endpoint.mode === 'live' ? 'Live' : 'Test'}
             </Badge>
@@ -217,7 +217,9 @@ export function EndpointRow({
             </Callout>
           ) : null}
 
-          <h4 className="mb-3 text-sm font-heading text-text">Delivery log</h4>
+          <h4 className="mb-3 text-sm font-heading text-foreground">
+            Delivery log
+          </h4>
           <DeliveryLog projectId={projectId} endpointId={endpoint.id} />
         </div>
       ) : null}

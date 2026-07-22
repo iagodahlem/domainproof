@@ -75,7 +75,7 @@ export function AddDomainForm({
 
   return (
     <div className="mb-6 rounded-lg border border-border p-6">
-      <div className="mb-4 font-mono text-xs font-semibold tracking-label text-text-muted uppercase">
+      <div className="mb-4 font-mono text-xs font-semibold tracking-label text-muted-foreground uppercase">
         Add a domain
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -107,7 +107,7 @@ export function AddDomainForm({
           </Button>
         </div>
         {formError ? <Callout tone="warning">{formError}</Callout> : null}
-        <p className="text-sm text-text-muted">
+        <p className="text-sm text-muted-foreground">
           We&rsquo;ll generate a unique TXT record and a hosted verification
           link right after this — same record shown on the domain&rsquo;s detail
           page.

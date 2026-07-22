@@ -47,7 +47,7 @@ export function Sidebar({ projects, activeProject }: SidebarProps) {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-text',
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground',
                   active && 'bg-accent-soft text-accent hover:bg-accent-soft',
                 )}
               >
@@ -55,7 +55,7 @@ export function Sidebar({ projects, activeProject }: SidebarProps) {
                   aria-hidden="true"
                   size={15}
                   className={cn(
-                    'shrink-0 text-text-faint',
+                    'shrink-0 text-faint-foreground',
                     active && 'text-accent',
                   )}
                 />

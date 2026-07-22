@@ -11,11 +11,11 @@ export function DomainEmptyState({
 }: DomainEmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border-strong px-6 py-16 text-center">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-text-faint">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-faint-foreground">
         <Globe aria-hidden="true" size={20} />
       </span>
-      <h3 className="text-lg font-heading text-text">No domains yet</h3>
-      <p className="max-w-[46ch] text-sm leading-body text-text-muted">
+      <h3 className="text-lg font-heading text-foreground">No domains yet</h3>
+      <p className="max-w-[46ch] text-sm leading-body text-muted-foreground">
         Claim your first domain to get a DNS record and a hosted verification
         link — or try it with a sandbox domain, no real DNS required.
       </p>

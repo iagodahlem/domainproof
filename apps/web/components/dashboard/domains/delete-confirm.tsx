@@ -62,10 +62,10 @@ export function DeleteConfirm({
             className="mt-0.5 shrink-0 text-danger"
           />
           <span>
-            Deleting <strong className="text-text">{domainName}</strong> stops
-            all checks and revokes its hosted verification link immediately. Any
-            product feature gated on this domain&rsquo;s verified status will
-            see it disappear, not just go unverified.
+            Deleting <strong className="text-foreground">{domainName}</strong>{' '}
+            stops all checks and revokes its hosted verification link
+            immediately. Any product feature gated on this domain&rsquo;s
+            verified status will see it disappear, not just go unverified.
           </span>
         </div>
         <div className="flex shrink-0 gap-2">

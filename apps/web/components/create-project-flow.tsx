@@ -78,10 +78,10 @@ export function CreateProjectFlow({
         <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
           Before you continue
         </p>
-        <h3 className="mt-1 text-xl font-heading text-text">
+        <h3 className="mt-1 text-xl font-heading text-foreground">
           Name your project
         </h3>
-        <p className="mt-2 text-sm leading-body text-text-muted">
+        <p className="mt-2 text-sm leading-body text-muted-foreground">
           {hasExistingProjects ? (
             <>
               Projects group your API keys, domains, and webhooks — add another
@@ -105,9 +105,9 @@ export function CreateProjectFlow({
             autoComplete="off"
             autoFocus
           />
-          <p className="flex flex-wrap items-center gap-1 font-mono text-xs text-text-faint">
+          <p className="flex flex-wrap items-center gap-1 font-mono text-xs text-faint-foreground">
             Derived DNS record:
-            <strong className="font-medium text-text-muted">
+            <strong className="font-medium text-muted-foreground">
               _{slugPreview(name)}-challenge.example.com
             </strong>
           </p>

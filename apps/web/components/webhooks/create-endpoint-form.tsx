@@ -103,7 +103,7 @@ export function CreateEndpointForm({
       onSubmit={handleSubmit}
       className="mb-6 flex flex-col gap-4 rounded-lg border border-dashed border-border-strong bg-surface p-6"
     >
-      <h3 className="text-sm font-heading text-text">Add an endpoint</h3>
+      <h3 className="text-sm font-heading text-foreground">Add an endpoint</h3>
 
       <TextField
         label="Endpoint URL"
@@ -126,7 +126,7 @@ export function CreateEndpointForm({
       />
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-text-muted">
+        <span className="text-sm font-medium text-muted-foreground">
           Events to send
         </span>
         <div className="flex flex-col gap-1">

@@ -154,11 +154,11 @@ export function DomainDetailClient({
         <Link
           href={`/dashboard/${projectId}/domains`}
           aria-label="Back to domains"
-          className="text-text-faint transition-colors duration-150 hover:text-text"
+          className="text-faint-foreground transition-colors duration-150 hover:text-foreground"
         >
           <ChevronLeft aria-hidden="true" size={16} />
         </Link>
-        <h1 className="font-mono text-xl font-heading text-text">
+        <h1 className="font-mono text-xl font-heading text-foreground">
           {domain.domain}
         </h1>
         <Badge tone={presentation.tone}>{presentation.label}</Badge>
@@ -297,12 +297,12 @@ function OutcomeBody({
       {check?.expected ? (
         <dl className="mt-2 flex flex-col gap-1 font-mono text-xs">
           <div>
-            <dt className="inline text-text-faint">expected:</dt>{' '}
+            <dt className="inline text-faint-foreground">expected:</dt>{' '}
             <dd className="inline">{check.expected}</dd>
           </div>
           {check.detected?.map((value, index) => (
             <div key={index}>
-              <dt className="inline text-text-faint">detected:</dt>{' '}
+              <dt className="inline text-faint-foreground">detected:</dt>{' '}
               <dd className="inline">{value}</dd>
             </div>
           ))}

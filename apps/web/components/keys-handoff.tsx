@@ -30,10 +30,10 @@ export function KeysHandoff({ result, onContinue }: KeysHandoffProps) {
         <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
           Project created
         </p>
-        <h3 className="mt-1 text-xl font-heading text-text">
+        <h3 className="mt-1 text-xl font-heading text-foreground">
           {result.project.name} is ready
         </h3>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-2 text-sm text-muted-foreground">
           Use the test key while you build — switch to the live key when
           you&rsquo;re ready to verify real domains.
         </p>

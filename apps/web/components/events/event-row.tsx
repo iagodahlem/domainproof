@@ -65,7 +65,7 @@ export function EventRow({ event }: EventRowProps) {
             {event.mode === 'live' ? 'Live' : 'Test'}
           </Badge>
         </TableCell>
-        <TableCell className="text-xs text-text-faint max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-1">
+        <TableCell className="text-xs text-faint-foreground max-[760px]:order-4 max-[760px]:basis-full max-[760px]:pl-1">
           {formatTime(event.createdAt)}
         </TableCell>
         <TableCell className="justify-self-end max-[760px]:hidden">
@@ -73,7 +73,7 @@ export function EventRow({ event }: EventRowProps) {
             aria-hidden="true"
             size={16}
             className={cn(
-              'text-text-faint transition-transform duration-150',
+              'text-faint-foreground transition-transform duration-150',
               expanded && 'rotate-90',
             )}
           />
@@ -88,7 +88,7 @@ export function EventRow({ event }: EventRowProps) {
               Copy
             </CopyButton>
           </div>
-          <pre className="overflow-x-auto font-mono text-xs leading-code whitespace-pre-wrap break-words text-text-muted">
+          <pre className="overflow-x-auto font-mono text-xs leading-code whitespace-pre-wrap break-words text-muted-foreground">
             {payloadText}
           </pre>
         </div>

@@ -5,7 +5,7 @@ import { cn } from './cn'
 export type CalloutTone = 'warning' | 'accent' | 'neutral' | 'danger'
 export type CalloutEmphasis = 'solid' | 'dashed'
 
-const calloutVariants = cva('text-sm text-text-muted', {
+const calloutVariants = cva('text-sm text-muted-foreground', {
   variants: {
     emphasis: {
       solid: 'rounded-lg border border-transparent p-5',
@@ -23,22 +23,22 @@ const calloutVariants = cva('text-sm text-text-muted', {
       emphasis: 'solid',
       tone: 'warning',
       class:
-        'bg-warning-soft border-warning-border [&_strong]:text-warning-strong',
+        'bg-warning-soft border-warning-tint [&_strong]:text-warning-strong',
     },
     {
       emphasis: 'solid',
       tone: 'accent',
-      class: 'bg-accent-soft border-accent-border-soft [&_strong]:text-accent',
+      class: 'bg-accent-soft border-accent-tint-soft [&_strong]:text-accent',
     },
     {
       emphasis: 'solid',
       tone: 'neutral',
-      class: 'bg-surface-2 [&_strong]:text-text',
+      class: 'bg-surface-2 [&_strong]:text-foreground',
     },
     {
       emphasis: 'solid',
       tone: 'danger',
-      class: 'bg-danger-soft border-danger-border [&_strong]:text-danger',
+      class: 'bg-danger-soft border-danger-tint [&_strong]:text-danger',
     },
   ],
   defaultVariants: {

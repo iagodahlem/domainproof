@@ -18,7 +18,7 @@ describe('Header', () => {
     render(<Header left={<span>Logo</span>} />)
     const header = screen.getByText('Logo').closest('header')
     expect(header?.className).toContain('sticky')
-    expect(header?.className).toContain('bg-bg-glass')
+    expect(header?.className).toContain('bg-background-glass')
   })
 
   it('applies the solid variant classes', () => {

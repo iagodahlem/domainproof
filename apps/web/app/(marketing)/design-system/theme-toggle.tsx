@@ -30,7 +30,7 @@ export function ThemeToggle() {
       onClick={() =>
         setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
       }
-      className="focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-2"
+      className="focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-2"
     >
       {theme === 'dark' ? (
         <Moon aria-hidden="true" size={14} />

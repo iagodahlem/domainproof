@@ -22,7 +22,7 @@ export function BrowserChrome({ url, children, ...props }: BrowserChromeProps) {
             size={12}
             className="shrink-0 text-success"
           />
-          <span className="truncate font-mono text-xs text-text-faint">
+          <span className="truncate font-mono text-xs text-faint-foreground">
             {url}
           </span>
         </div>

@@ -111,10 +111,10 @@ export function WebhooksView({
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Zap aria-hidden="true" size={18} />
           </div>
-          <h3 className="mb-2 text-lg font-heading text-text">
+          <h3 className="mb-2 text-lg font-heading text-foreground">
             No endpoints yet
           </h3>
-          <p className="mx-auto mb-5 max-w-[44ch] text-sm text-text-muted">
+          <p className="mx-auto mb-5 max-w-[44ch] text-sm text-muted-foreground">
             Add an endpoint to start receiving domain.verified and other
             state-change events.
           </p>

@@ -29,12 +29,12 @@ export function RecordField({
   return (
     <CardRow className={cn(compact && 'px-4 py-3', className)} {...props}>
       <div className="flex flex-wrap items-center gap-4">
-        <span className="w-23 flex-shrink-0 font-mono text-2xs tracking-label text-text-faint uppercase max-[560px]:w-auto">
+        <span className="w-23 flex-shrink-0 font-mono text-2xs tracking-label text-faint-foreground uppercase max-[560px]:w-auto">
           {label}
         </span>
         <span
           className={cn(
-            'min-w-45 flex-1 font-mono break-all text-text',
+            'min-w-45 flex-1 font-mono break-all text-foreground',
             compact ? 'text-sm' : 'text-base',
           )}
         >
@@ -48,7 +48,7 @@ export function RecordField({
           ) : null)}
       </div>
       {explain ? (
-        <div className="mt-2 max-w-[58ch] pl-27 text-sm text-text-muted max-[560px]:pl-0">
+        <div className="mt-2 max-w-[58ch] pl-27 text-sm text-muted-foreground max-[560px]:pl-0">
           {explain}
         </div>
       ) : null}
