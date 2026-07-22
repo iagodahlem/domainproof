@@ -19,7 +19,7 @@ apps/web/
       sso-callback/page.tsx
       design-system/
         page.tsx                          #   internal-only showcase route
-        _components/                      #   path-chooser-demo.tsx, theme-toggle.tsx
+        _components/                      #   path-chooser-demo.tsx
       layout.tsx
     (dashboard)/                      # authenticated routes — route group, mounts the QueryProvider once
       new/
@@ -39,7 +39,7 @@ apps/web/
     layout.tsx                        # root layout — <html>, Clerk provider only, no visible chrome of its own
 
   components/                       # APP-LEVEL SHARED — used by 2+ routes; a closed set, not a dumping ground
-    header/                            #   auth-cta.tsx, google-icon.tsx — the marketing Header's right-slot content
+    header/                            #   auth-cta.tsx, google-icon.tsx, marketing-actions.tsx — the marketing Header's right-slot content
     dashboard-shell/                   #   every dashboard route's chrome
       shell.tsx, sidebar.tsx, topbar.tsx, user-menu.tsx, project-switcher.tsx,
       sign-out-button.tsx, reload-button.tsx, shell-skeleton.tsx, nav-items.ts
@@ -57,11 +57,12 @@ apps/web/
 
 `Header` itself is a generic primitive in `packages/ui` (it takes arbitrary
 `left`/`right` slots) — there's no app-level Header wrapper to maintain in
-`apps/web`. `components/header/` holds the marketing landing page's own
-slot content (`AuthCta`, and the `GoogleIcon` it renders), promoted out of
-route-private status because it's the natural companion to every route's
-own `<Header left=... right=... />` composition, not because it has two
-call sites today.
+`apps/web`. `components/header/` holds the marketing pages' own slot
+content (`AuthCta`, the `GoogleIcon` it renders, and `MarketingActions`,
+the theme-toggle + CTA cluster shared by the landing and design-system
+headers), promoted out of route-private status because it's the natural
+companion to every route's own `<Header left=... right=... />`
+composition.
 
 ## Where does X go?
 

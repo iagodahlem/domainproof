@@ -37,7 +37,7 @@ import {
   Select,
   Checkbox,
 } from '@domainproof/ui'
-import { ThemeToggle } from './_components/theme-toggle'
+import { MarketingActions } from '@/components/header/marketing-actions'
 import { PathChooserDemo } from './_components/path-chooser-demo'
 
 export const metadata: Metadata = {
@@ -288,15 +288,7 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-background font-sans text-foreground"
     >
-      <Header
-        left={
-          <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
-            <Logo />
-            design system
-          </span>
-        }
-        right={<ThemeToggle />}
-      />
+      <Header left={<Logo />} right={<MarketingActions />} />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
         <section id="tokens">
