@@ -20,7 +20,7 @@ const CLOUDFLARE_AUTHORIZE_URL = 'https://dash.cloudflare.com/oauth2/auth'
  * section), since Cloudflare's dashboard UI picks permissions by
  * checkbox, not by typing this literal string.
  */
-const CLOUDFLARE_OAUTH_SCOPES = ['zone.read', 'dns_records.edit']
+const CLOUDFLARE_OAUTH_SCOPES = ['zone.read', 'dns.write']
 
 export interface CloudflareOAuthServiceConfig {
   clientId: string
