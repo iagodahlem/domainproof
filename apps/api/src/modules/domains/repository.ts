@@ -40,7 +40,7 @@ export interface DomainWithChallenge {
 export interface ListByProjectPaginatedOptions {
   limit: number
   cursor?: DomainsCursor
-  /** Narrows to one mode — omitted by the dashboard's cross-mode list, provided by v1's mode-scoped list. */
+  /** Narrows to one mode — required by v1's mode-scoped list, optional on the dashboard's cross-mode list (its test/live toggle). */
   mode?: DomainMode
   /** Exact match against `domains.external_id`. */
   externalId?: string

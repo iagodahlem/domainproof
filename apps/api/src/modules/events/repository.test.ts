@@ -234,6 +234,36 @@ describe('listByProject', () => {
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0]?.domainId).toBe(domainA)
   })
+
+  it('filters by mode, narrowing to one mode', async () => {
+    const projectId = await createTestProject()
+    const liveDomain = await createTestDomainForProject(projectId, {
+      mode: 'live',
+    })
+    const testDomain = await createTestDomainForProject(projectId, {
+      mode: 'test',
+    })
+
+    await repository.insert({
+      type: 'domain.claimed',
+      domainId: liveDomain,
+      mode: 'live',
+      payload: { domainId: liveDomain },
+    })
+    await repository.insert({
+      type: 'domain.claimed',
+      domainId: testDomain,
+      mode: 'test',
+      payload: { domainId: testDomain },
+    })
+
+    const result = await repository.listByProject(projectId, {
+      limit: 10,
+      mode: 'test',
+    })
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]?.domainId).toBe(testDomain)
+  })
 })
 
 describe('migration replaced verification_events with the generic events table', () => {

@@ -140,6 +140,8 @@ export interface ListProjectDomainsOptions {
   cursor?: string
   /** Exact match against the domain's `external_id`. */
   externalId?: string
+  /** Narrows to one mode — the dashboard's mode toggle. Omitted shows both modes together, `mode` as a per-row field rather than a filter. */
+  mode?: DomainMode
 }
 
 export interface ListProjectDomainsResult {
@@ -214,13 +216,14 @@ export interface DomainsService {
   ): Promise<ListDomainsResult>
 
   /**
-   * A project's domains across both modes, newest first, cursor-paginated
-   * — the dashboard's domains table. Plane-agnostic unlike `listDomains`:
-   * a dashboard caller resolves `projectId` via `resolveOwnedProject` and
-   * has no api-key `mode` to scope by, since the dashboard shows a
-   * project's test and live claims together (with `mode` as a per-row
-   * field, not a filter). `options.externalId` narrows the same way it
-   * does for `listDomains`.
+   * A project's domains, newest first, cursor-paginated — the dashboard's
+   * domains table. Plane-agnostic unlike `listDomains`: a dashboard caller
+   * resolves `projectId` via `resolveOwnedProject` and has no api-key
+   * `mode` to scope the request by, so `options.mode` is an optional filter
+   * a caller opts into instead (the dashboard's test/live toggle) — by
+   * default the table shows a project's test and live claims together,
+   * with `mode` as a per-row field. `options.externalId` narrows the same
+   * way it does for `listDomains`, combinable with `mode`.
    */
   listProjectDomains(
     projectId: string,
@@ -870,11 +873,11 @@ export function createDomainsService(
       return { domains: summaries, nextCursor }
     },
 
-    async listProjectDomains(projectId, { limit, cursor, externalId }) {
+    async listProjectDomains(projectId, { limit, cursor, externalId, mode }) {
       const decodedCursor = cursor ? decodeDomainsCursor(cursor) : undefined
       const { rows, hasMore } = await repository.listByProjectPaginated(
         projectId,
-        { limit, cursor: decodedCursor, externalId },
+        { limit, cursor: decodedCursor, externalId, mode },
       )
 
       const summaries = await Promise.all(

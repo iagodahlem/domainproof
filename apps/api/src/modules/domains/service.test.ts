@@ -967,6 +967,28 @@ describe('listProjectDomains', () => {
     expect(nextCursor).toBeNull()
   })
 
+  it('filters by mode, narrowing to one mode', async () => {
+    const repository = fakeRepository()
+    const service = createDomainsService(repository, fakeProjectsService())
+
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'a.com',
+    })
+    await service.claimDomain({
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'a-test.com',
+    })
+
+    const { domains } = await service.listProjectDomains('project_1', {
+      limit: 10,
+      mode: 'test',
+    })
+    expect(domains.map((d) => d.domain)).toEqual(['a-test.com'])
+  })
+
   it('includes each domain’s current record', async () => {
     const service = createDomainsService(
       fakeRepository(),

@@ -37,6 +37,8 @@ export interface ListDomainEventsResult {
 export interface ListProjectEventsOptions {
   limit: number
   cursor?: EventsCursor
+  /** Narrows to one mode — the dashboard's test/live toggle. Omitted returns both modes mixed. */
+  mode?: Mode
 }
 
 export interface ListProjectEventsResult {
@@ -69,13 +71,13 @@ export interface EventsRepository {
   ): Promise<ListDomainEventsResult>
 
   /**
-   * A project's events across all its domains and both modes, newest
-   * first, cursor-paginated on `(created_at, id)` — the dashboard's
-   * project-wide events table, beside `listByDomain`'s single-domain
-   * timeline. Inner-joins `domains` (scoped to `projectId`) to pull in
-   * each row's domain name, which is not itself a column on `events`.
-   * Fetches `limit + 1` rows to decide `hasMore` without a second
-   * round-trip, then trims back to `limit`, same as `listByDomain`.
+   * A project's events across all its domains, newest first,
+   * cursor-paginated on `(created_at, id)`, optionally narrowed by `mode`
+   * — the dashboard's project-wide events table, beside `listByDomain`'s
+   * single-domain timeline. Inner-joins `domains` (scoped to `projectId`)
+   * to pull in each row's domain name, which is not itself a column on
+   * `events`. Fetches `limit + 1` rows to decide `hasMore` without a
+   * second round-trip, then trims back to `limit`, same as `listByDomain`.
    */
   listByProject(
     projectId: string,
@@ -134,7 +136,7 @@ export function createEventsRepository(db: Database): EventsRepository {
       return { rows: hasMore ? rows.slice(0, limit) : rows, hasMore }
     },
 
-    async listByProject(projectId, { limit, cursor }) {
+    async listByProject(projectId, { limit, cursor, mode }) {
       // Same anchoring approach as `listByDomain` (see its comment): the
       // cursor row's own stored `(created_at, id)` is looked up server-
       // side, scoped to this project's domains so a cursor id from
@@ -152,6 +154,14 @@ export function createEventsRepository(db: Database): EventsRepository {
           )`
         : undefined
 
+      const conditions = [eq(domains.projectId, projectId)]
+      if (mode) {
+        conditions.push(eq(events.mode, mode))
+      }
+      if (cursorCondition) {
+        conditions.push(cursorCondition)
+      }
+
       const rows = await db
         .select({
           id: events.id,
@@ -164,11 +174,7 @@ export function createEventsRepository(db: Database): EventsRepository {
         })
         .from(events)
         .innerJoin(domains, eq(events.domainId, domains.id))
-        .where(
-          cursorCondition
-            ? and(eq(domains.projectId, projectId), cursorCondition)
-            : eq(domains.projectId, projectId),
-        )
+        .where(and(...conditions))
         .orderBy(desc(events.createdAt), desc(events.id))
         .limit(limit + 1)
 
