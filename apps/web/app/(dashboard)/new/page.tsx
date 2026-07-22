@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { Logo } from '@domainproof/ui'
+import { Header, Logo } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
 import { CreateProjectFlow } from '@/components/create-project-flow'
 import { ApiErrorState } from '@/components/api-error-state'
@@ -37,17 +37,17 @@ export default async function NewProjectPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]">
-        <div className="mx-auto flex min-h-15 max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <Logo />
+      <Header
+        left={<Logo />}
+        right={
           <div className="flex items-center gap-3">
             {email ? (
               <span className="text-sm text-text-faint">{email}</span>
             ) : null}
             <SignOutButton size="sm" />
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         {loadFailed ? (

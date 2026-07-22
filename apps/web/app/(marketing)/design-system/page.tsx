@@ -10,6 +10,7 @@ import {
   CardHead,
   CardRow,
   CopyButton,
+  Header,
   Logo,
   ProviderBadge,
   StatusPill,
@@ -285,15 +286,15 @@ export default function DesignSystemPage() {
       data-design-system-root
       className="min-h-screen bg-bg font-sans text-text"
     >
-      <header className="sticky top-0 z-10 border-b border-border bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
+      <Header
+        left={
           <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
             <Logo />
             design system
           </span>
-          <ThemeToggle />
-        </div>
-      </header>
+        }
+        right={<ThemeToggle />}
+      />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
         <section id="tokens">
@@ -388,6 +389,42 @@ export default function DesignSystemPage() {
               <div className="flex flex-col gap-6">
                 <Example label="default">
                   <Logo />
+                </Example>
+              </div>
+            </div>
+
+            <div>
+              <ComponentGroupLabel>Header</ComponentGroupLabel>
+              <p className="mb-4 text-xs text-text-faint">
+                Empty chrome shell — height, background, border, and container.
+                Each surface composes its own left/right content; this
+                page&rsquo;s own header above is a glass-variant instance.
+              </p>
+              <div className="flex flex-col gap-6">
+                <Example label="variant=glass — marketing pages, locked create-project screen">
+                  <div className="w-full overflow-hidden rounded-lg border border-border">
+                    <Header
+                      left={<Logo />}
+                      right={
+                        <Button size="sm" variant="primary">
+                          Continue with Google
+                        </Button>
+                      }
+                    />
+                  </div>
+                </Example>
+                <Example label="variant=solid — dashboard topbar, next to the sidebar">
+                  <div className="w-full overflow-hidden rounded-lg border border-border">
+                    <Header
+                      variant="solid"
+                      left={
+                        <strong className="text-base font-heading text-text">
+                          Domains
+                        </strong>
+                      }
+                      right={<Badge tone="accent">Preview</Badge>}
+                    />
+                  </div>
                 </Example>
               </div>
             </div>
