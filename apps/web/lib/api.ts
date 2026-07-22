@@ -26,6 +26,57 @@ export interface ProjectSummary {
 
 export type ApiKeyMode = 'test' | 'live'
 
+/** Same `test`/`live` split as `ApiKeyMode`, named for the domain-claim call sites that don't otherwise involve a key. */
+export type DomainMode = ApiKeyMode
+
+export type DomainStatus =
+  'not_started' | 'pending' | 'verified' | 'temporarily_failed' | 'failed'
+
+export interface DomainSummary {
+  id: string
+  domain: string
+  mode: DomainMode
+  status: DomainStatus
+  /** The current challenge's verification method (e.g. `dns_txt`), `null` if a domain somehow has none. */
+  method: string | null
+  createdAt: string
+  updatedAt: string
+  verifiedAt: string | null
+}
+
+export interface DomainRecord {
+  type: string
+  name: string
+  value: string
+  status: string
+}
+
+export interface DomainDetail extends DomainSummary {
+  verificationUrl: string
+  records: DomainRecord[]
+}
+
+export interface DomainCheck {
+  outcome: string
+  checkedAt: string
+  /** Only present when `outcome === 'wrong_value'`. */
+  expected?: string
+  detected?: string[]
+}
+
+export interface DomainEvent {
+  id: string
+  type: string
+  mode: DomainMode
+  payload: unknown
+  createdAt: string
+}
+
+export interface ListPageOptions {
+  limit?: number
+  cursor?: string
+}
+
 export interface ApiKeyListItem {
   keyId: string
   mode: ApiKeyMode
@@ -50,6 +101,14 @@ export interface CreateProjectResult {
     test: CreateKeyResult
     live: CreateKeyResult
   }
+}
+
+function withQuery(path: string, options?: ListPageOptions): string {
+  const params = new URLSearchParams()
+  if (options?.limit) params.set('limit', String(options.limit))
+  if (options?.cursor) params.set('cursor', options.cursor)
+  const query = params.toString()
+  return query ? `${path}?${query}` : path
 }
 
 function apiBaseUrl(): string {
@@ -107,5 +166,74 @@ export const dashboardApi = {
       method: 'POST',
       body: JSON.stringify({ name }),
     })
+  },
+
+  listDomains(
+    token: string | null,
+    projectId: string,
+    options?: ListPageOptions,
+  ) {
+    return request<{ domains: DomainSummary[]; nextCursor: string | null }>(
+      withQuery(`/dashboard/projects/${projectId}/domains`, options),
+      token,
+    )
+  },
+
+  createDomain(
+    token: string | null,
+    projectId: string,
+    input: { domain: string; mode: DomainMode },
+  ) {
+    return request<{ domain: DomainDetail }>(
+      `/dashboard/projects/${projectId}/domains`,
+      token,
+      { method: 'POST', body: JSON.stringify(input) },
+    )
+  },
+
+  getDomain(token: string | null, projectId: string, domainId: string) {
+    return request<{ domain: DomainDetail }>(
+      `/dashboard/projects/${projectId}/domains/${domainId}`,
+      token,
+    )
+  },
+
+  listDomainEvents(
+    token: string | null,
+    projectId: string,
+    domainId: string,
+    options?: ListPageOptions,
+  ) {
+    return request<{ events: DomainEvent[]; nextCursor: string | null }>(
+      withQuery(
+        `/dashboard/projects/${projectId}/domains/${domainId}/events`,
+        options,
+      ),
+      token,
+    )
+  },
+
+  verifyDomain(token: string | null, projectId: string, domainId: string) {
+    return request<{ domain: DomainDetail; check: DomainCheck }>(
+      `/dashboard/projects/${projectId}/domains/${domainId}/verify`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  regenerateDomain(token: string | null, projectId: string, domainId: string) {
+    return request<{ domain: DomainDetail }>(
+      `/dashboard/projects/${projectId}/domains/${domainId}/regenerate`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  deleteDomain(token: string | null, projectId: string, domainId: string) {
+    return request<{ domain: DomainDetail }>(
+      `/dashboard/projects/${projectId}/domains/${domainId}`,
+      token,
+      { method: 'DELETE' },
+    )
   },
 }
