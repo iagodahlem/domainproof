@@ -8,7 +8,6 @@ import {
   ConfirmBar,
   RecordCard,
   RecordField,
-  cn,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { ApiKeyListItem, CreateKeyResult } from '@/lib/api/dashboard'
@@ -16,7 +15,6 @@ import {
   useRotateOrRevokeApiKey,
   type RotateOrRevokeKeyInput,
 } from '@/lib/query/keys'
-import { useMode } from '@/lib/mode'
 
 export interface ApiKeysCardProps {
   projectId: string
@@ -66,7 +64,6 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
   const [revealedKey, setRevealedKey] = useState<CreateKeyResult | null>(null)
 
   const rotateOrRevoke = useRotateOrRevokeApiKey(projectId)
-  const { mode: activeMode } = useMode()
 
   const busyKeyId = rotateOrRevoke.isPending
     ? (rotateOrRevoke.variables?.keyId ?? null)
@@ -137,18 +134,22 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
           </div>
         ) : (
           keys.flatMap((key) => {
-            const isActiveMode = key.mode === activeMode
             const nodes = [
               <RecordField
                 key={`${key.keyId}-field`}
-                label={keyLabel(key)}
+                label={
+                  <span className="inline-flex items-center gap-1.5">
+                    {keyLabel(key)}
+                    <Badge
+                      tone={key.mode === 'live' ? 'success' : 'warning'}
+                      mode
+                    >
+                      {key.mode === 'live' ? 'Live' : 'Test'}
+                    </Badge>
+                  </span>
+                }
+                labelWidth="content"
                 value={key.maskedKey}
-                className={cn(
-                  isActiveMode &&
-                    (key.mode === 'live'
-                      ? 'bg-success-soft'
-                      : 'bg-warning-soft'),
-                )}
                 explain={
                   <>
                     Created {formatDate(key.createdAt)} · Last used{' '}
@@ -157,12 +158,6 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
                 }
                 action={
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      tone={key.mode === 'live' ? 'success' : 'warning'}
-                      mode
-                    >
-                      {key.mode === 'live' ? 'Live' : 'Test'}
-                    </Badge>
                     {key.revokedAt ? (
                       <Badge tone="neutral">Revoked</Badge>
                     ) : (
