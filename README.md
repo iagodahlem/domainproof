@@ -73,7 +73,7 @@ nothing breaks if the file doesn't exist):
 | `RECHECK_INTERVAL_MS`                                          | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                                                                                                                    |
 | `RECHECK_BATCH_SIZE`                                           | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                                                                                                                        |
 | `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` | No        | Private OAuth client credentials for the Cloudflare one-click DNS setup flow (see [Cloudflare one-click DNS setup](#cloudflare-one-click-dns-setup) below). Both unset means the routes respond `404 not_configured` instead of the app refusing to boot. |
-| `CLOUDFLARE_OAUTH_REDIRECT_URI`                                | No        | Overrides the redirect URI the api sends Cloudflare during the one-click DNS setup flow, for staging/preview environments running under their own host. Unset defaults to the production frontend-API callback URL.                                     |
+| `CLOUDFLARE_OAUTH_REDIRECT_URI`                                | No        | Overrides the redirect URI the api sends Cloudflare during the one-click DNS setup flow, for staging/preview environments running under their own host. Unset defaults to the production frontend-API callback URL.                                       |
 
 ```bash
 docker compose up -d db
