@@ -1,0 +1,588 @@
+- generic [ref=f7e2]:
+  - banner [ref=f7e3]:
+    - generic [ref=f7e4]:
+      - generic [ref=f7e5]:
+        - generic [ref=f7e6]: DomainProof
+        - text: design system
+      - button "Dark theme" [ref=f7e10]
+  - main [ref=f7e13]:
+    - generic [ref=f7e14]:
+      - generic [ref=f7e15]:
+        - generic [ref=f7e16]: Foundations
+        - heading "Tokens" [level=2] [ref=f7e17]
+      - generic [ref=f7e18]:
+        - generic [ref=f7e19]:
+          - heading "Color" [level=3] [ref=f7e20]
+          - generic [ref=f7e21]:
+            - generic [ref=f7e22]:
+              - generic [ref=f7e23]: Surfaces
+              - generic [ref=f7e24]:
+                - generic [ref=f7e25]: "--bg"
+                - generic [ref=f7e28]: "--surface"
+                - generic [ref=f7e31]: "--surface-2"
+                - generic [ref=f7e34]: "--surface-3"
+                - generic [ref=f7e37]: "--border"
+                - generic [ref=f7e40]: "--border-strong"
+            - generic [ref=f7e43]:
+              - generic [ref=f7e44]: Text
+              - generic [ref=f7e45]:
+                - generic [ref=f7e46]: "--text"
+                - generic [ref=f7e49]: "--text-muted"
+                - generic [ref=f7e52]: "--text-faint"
+            - generic [ref=f7e55]:
+              - generic [ref=f7e56]: Accent
+              - generic [ref=f7e57]:
+                - generic [ref=f7e58]: "--accent"
+                - generic [ref=f7e61]: "--accent-strong"
+                - generic [ref=f7e64]: "--accent-soft"
+                - generic [ref=f7e67]: "--accent-foreground"
+            - generic [ref=f7e70]:
+              - generic [ref=f7e71]: Status
+              - generic [ref=f7e72]:
+                - generic [ref=f7e73]: "--success"
+                - generic [ref=f7e76]: "--success-soft"
+                - generic [ref=f7e79]: "--warning"
+                - generic [ref=f7e82]: "--warning-strong"
+                - generic [ref=f7e85]: "--warning-soft"
+                - generic [ref=f7e88]: "--danger"
+                - generic [ref=f7e91]: "--danger-soft"
+        - generic [ref=f7e94]:
+          - heading "Spacing" [level=3] [ref=f7e95]
+          - generic [ref=f7e96]:
+            - generic [ref=f7e97]: space-1
+            - generic [ref=f7e100]: space-2
+            - generic [ref=f7e103]: space-3
+            - generic [ref=f7e106]: space-4
+            - generic [ref=f7e109]: space-5
+            - generic [ref=f7e112]: space-6
+            - generic [ref=f7e115]: space-8
+            - generic [ref=f7e118]: space-10
+            - generic [ref=f7e121]: space-12
+            - generic [ref=f7e124]: space-16
+            - generic [ref=f7e127]: space-20
+            - generic [ref=f7e130]: space-24
+        - generic [ref=f7e133]:
+          - heading "Type" [level=3] [ref=f7e134]
+          - generic [ref=f7e135]:
+            - generic [ref=f7e136]:
+              - generic [ref=f7e137]: "--text-3xs"
+              - generic [ref=f7e138]: The quick brown fox
+            - generic [ref=f7e139]:
+              - generic [ref=f7e140]: "--text-2xs"
+              - generic [ref=f7e141]: The quick brown fox
+            - generic [ref=f7e142]:
+              - generic [ref=f7e143]: "--text-xs"
+              - generic [ref=f7e144]: The quick brown fox
+            - generic [ref=f7e145]:
+              - generic [ref=f7e146]: "--text-sm"
+              - generic [ref=f7e147]: The quick brown fox
+            - generic [ref=f7e148]:
+              - generic [ref=f7e149]: "--text-md"
+              - generic [ref=f7e150]: The quick brown fox
+            - generic [ref=f7e151]:
+              - generic [ref=f7e152]: "--text-base"
+              - generic [ref=f7e153]: The quick brown fox
+            - generic [ref=f7e154]:
+              - generic [ref=f7e155]: "--text-xl"
+              - generic [ref=f7e156]: The quick brown fox
+            - generic [ref=f7e157]:
+              - generic [ref=f7e158]: "--text-2xl"
+              - generic [ref=f7e159]: The quick brown fox
+            - generic [ref=f7e160]:
+              - generic [ref=f7e161]: "--text-3xl"
+              - generic [ref=f7e162]: The quick brown fox
+            - generic [ref=f7e163]:
+              - generic [ref=f7e164]: "--text-4xl"
+              - generic [ref=f7e165]: The quick brown fox
+        - generic [ref=f7e166]:
+          - heading "Radius" [level=3] [ref=f7e167]
+          - generic [ref=f7e168]:
+            - generic [ref=f7e169]: "--radius-sm"
+            - generic [ref=f7e172]: "--radius-md"
+            - generic [ref=f7e175]: "--radius-lg"
+            - generic [ref=f7e178]: "--radius-xl"
+            - generic [ref=f7e181]: "--radius-full"
+    - generic [ref=f7e184]:
+      - generic [ref=f7e185]:
+        - generic [ref=f7e186]: Primitives
+        - heading "Components" [level=2] [ref=f7e187]
+      - generic [ref=f7e188]:
+        - generic [ref=f7e189]:
+          - heading "Logo" [level=3] [ref=f7e190]
+          - generic [ref=f7e192]:
+            - generic [ref=f7e193]: default
+            - generic [ref=f7e194]: DomainProof
+        - generic [ref=f7e199]:
+          - heading "Header" [level=3] [ref=f7e200]
+          - paragraph [ref=f7e201]: Empty chrome shell — height, background, border, and container. Each surface composes its own left/right content; this page’s own header above is a glass-variant instance.
+          - generic [ref=f7e202]:
+            - generic [ref=f7e203]:
+              - generic [ref=f7e204]: variant=glass — marketing pages, locked create-project screen
+              - generic [ref=f7e208]:
+                - generic [ref=f7e209]: DomainProof
+                - button "Continue with Google" [ref=f7e213]
+            - generic [ref=f7e214]:
+              - generic [ref=f7e215]: variant=solid — dashboard topbar, next to the sidebar
+              - generic [ref=f7e219]:
+                - strong [ref=f7e220]: Domains
+                - generic [ref=f7e221]: Preview
+        - generic [ref=f7e222]:
+          - heading "Buttons" [level=3] [ref=f7e223]
+          - generic [ref=f7e224]:
+            - generic [ref=f7e225]:
+              - generic [ref=f7e226]: variant
+              - generic [ref=f7e227]:
+                - button "Open Cloudflare DNS" [ref=f7e228]
+                - button "Recheck now" [ref=f7e229]
+                - button "Load more" [ref=f7e230]
+                - button "Remove domain" [ref=f7e231]
+            - generic [ref=f7e232]:
+              - generic [ref=f7e233]: size=sm
+              - generic [ref=f7e234]:
+                - button "Open Cloudflare DNS" [ref=f7e235]
+                - button "Recheck now" [ref=f7e236]
+            - generic [ref=f7e237]:
+              - generic [ref=f7e238]: shape=pill
+              - generic [ref=f7e239]:
+                - button "Open Cloudflare DNS" [ref=f7e240]
+                - button "Recheck now" [ref=f7e241]
+                - button "Load more" [ref=f7e242]
+            - generic [ref=f7e243]:
+              - generic [ref=f7e244]: copy / copied
+              - generic [ref=f7e245]:
+                - button "Copy" [ref=f7e246]
+                - button "Copy value" [ref=f7e250]
+            - generic [ref=f7e254]:
+              - generic [ref=f7e255]: disabled
+              - generic [ref=f7e256]:
+                - button "Open Cloudflare DNS" [disabled]
+                - button "Recheck now" [disabled]
+            - generic [ref=f7e257]:
+              - generic [ref=f7e258]: loading
+              - generic [ref=f7e259]:
+                - button "Recheck now" [disabled]
+                - button "Recheck now" [disabled]
+        - generic [ref=f7e260]:
+          - heading "Badges & pills" [level=3] [ref=f7e261]
+          - generic [ref=f7e262]:
+            - generic [ref=f7e263]:
+              - generic [ref=f7e264]: tone
+              - generic [ref=f7e265]:
+                - generic [ref=f7e266]: TXT
+                - generic [ref=f7e267]: Verified
+                - generic [ref=f7e268]: Propagating
+                - generic [ref=f7e269]: Needs attention
+                - generic [ref=f7e270]: Not found
+            - generic [ref=f7e271]:
+              - generic [ref=f7e272]: provider badge
+              - generic [ref=f7e273]:
+                - generic [ref=f7e274]: Cloudflare
+                - generic [ref=f7e279]: GoDaddy
+            - generic [ref=f7e280]:
+              - generic [ref=f7e281]: status pill
+              - generic [ref=f7e282]:
+                - generic [ref=f7e283]: Verified
+                - generic [ref=f7e285]: Propagating
+                - generic [ref=f7e287]: Not started
+            - generic [ref=f7e289]:
+              - generic [ref=f7e290]: mode pill (badge variant)
+              - generic [ref=f7e291]: TEST MODE
+        - generic [ref=f7e293]:
+          - heading "Callouts" [level=3] [ref=f7e294]
+          - generic [ref=f7e295]:
+            - generic [ref=f7e296]:
+              - generic [ref=f7e297]: tone=warning
+              - generic [ref=f7e298]: Using Cloudflare, GoDaddy, or Route 53? Field names differ slightly — some call this "Name," some "Host."
+            - generic [ref=f7e300]:
+              - generic [ref=f7e301]: tone=accent
+              - generic [ref=f7e303]:
+                - text: Your nameservers look like
+                - strong [ref=f7e304]: Cloudflare
+                - text: — we can open the record form pre-filled.
+            - generic [ref=f7e305]:
+              - generic [ref=f7e306]: tone=neutral
+              - generic [ref=f7e308]:
+                - strong [ref=f7e309]: "What likely happened:"
+                - text: the value got truncated or edited when it was pasted.
+            - generic [ref=f7e310]:
+              - generic [ref=f7e311]: emphasis=dashed
+              - generic [ref=f7e313]:
+                - generic [ref=f7e314]: What's happening under the hood
+                - paragraph [ref=f7e315]: Your DNS provider published the record. We queried three regions — two saw it immediately, one still has the old cached answer.
+        - generic [ref=f7e316]:
+          - heading "Card" [level=3] [ref=f7e317]
+          - generic [ref=f7e318]:
+            - generic [ref=f7e319]:
+              - generic [ref=f7e320]: head + body + row composition
+              - generic [ref=f7e322]:
+                - generic [ref=f7e323]:
+                  - generic [ref=f7e324]: Ownership record
+                  - generic [ref=f7e325]: TXT
+                - generic [ref=f7e327]:
+                  - generic [ref=f7e328]: Host
+                  - generic [ref=f7e329]: _acmeapp-challenge.acme.co
+                - generic [ref=f7e331]:
+                  - generic [ref=f7e332]: Value
+                  - generic [ref=f7e333]: acmeapp-verify=8f2c9e1a4b7d3f60
+            - generic [ref=f7e334]:
+              - generic [ref=f7e335]: body only, no head
+              - paragraph [ref=f7e339]: A panel that only needs the surface, border, and padding — no head or rows.
+        - generic [ref=f7e340]:
+          - heading "Browser chrome" [level=3] [ref=f7e341]
+          - generic [ref=f7e342]:
+            - generic [ref=f7e343]: mock window card, composable content
+            - generic [ref=f7e345]:
+              - generic [ref=f7e346]: app.domainproof.dev/acme-app/events
+              - generic [ref=f7e356]:
+                - generic [ref=f7e357]:
+                  - generic [ref=f7e358]: domain.claimed
+                  - generic [ref=f7e359]: "200"
+                - generic [ref=f7e360]:
+                  - generic [ref=f7e361]: domain.propagating
+                  - generic [ref=f7e362]: "200"
+                - generic [ref=f7e363]:
+                  - generic [ref=f7e364]: domain.verified
+                  - generic [ref=f7e365]: "200"
+        - generic [ref=f7e366]:
+          - heading "Icons" [level=3] [ref=f7e367]
+          - paragraph [ref=f7e368]: lucide-react — used for the copy button, theme toggle, and chevrons throughout the system.
+          - generic [ref=f7e369]:
+            - generic [ref=f7e370]: Copy
+            - generic [ref=f7e376]: Check
+            - generic [ref=f7e381]: ChevronDown
+            - generic [ref=f7e386]: ChevronRight
+            - generic [ref=f7e391]: Sun
+            - generic [ref=f7e400]: Moon
+    - generic [ref=f7e405]:
+      - generic [ref=f7e406]:
+        - generic [ref=f7e407]: Composed
+        - heading "Data & flow" [level=2] [ref=f7e408]
+      - generic [ref=f7e409]:
+        - generic [ref=f7e410]:
+          - heading "Record card & field" [level=3] [ref=f7e411]
+          - generic [ref=f7e412]:
+            - generic [ref=f7e413]:
+              - generic [ref=f7e414]: full — step chip, explain text, copy buttons
+              - generic [ref=f7e416]:
+                - generic [ref=f7e417]:
+                  - generic [ref=f7e418]:
+                    - generic [ref=f7e419]: "1"
+                    - generic [ref=f7e420]:
+                      - generic [ref=f7e421]: Add this DNS record
+                      - generic [ref=f7e422]: Log in to where you manage acme.co's DNS.
+                  - generic [ref=f7e423]: TXT
+                - generic [ref=f7e424]:
+                  - generic [ref=f7e425]:
+                    - generic [ref=f7e426]: Host / Name
+                    - generic [ref=f7e427]: _acmeapp-challenge.acme.co
+                    - button "Copy" [ref=f7e428]
+                  - generic [ref=f7e432]: This subdomain is unique to this request. It doesn't touch your existing DNS, mail, or website.
+                - generic [ref=f7e433]:
+                  - generic [ref=f7e434]:
+                    - generic [ref=f7e435]: Value
+                    - generic [ref=f7e436]: acmeapp-verify=8f2c9e1a4b7d3f60
+                    - button "Copy" [ref=f7e437]
+                  - generic [ref=f7e441]: A one-time token, generated for this request only. Paste it exactly.
+            - generic [ref=f7e442]:
+              - generic [ref=f7e443]: compact — dashboard detail, success step, no copy/explain
+              - generic [ref=f7e445]:
+                - generic [ref=f7e446]:
+                  - generic [ref=f7e447]: Ownership record
+                  - generic [ref=f7e453]: TXT
+                - generic [ref=f7e455]:
+                  - generic [ref=f7e456]: Host / Name
+                  - generic [ref=f7e457]: _acmeapp-challenge.acme.co
+                - generic [ref=f7e459]:
+                  - generic [ref=f7e460]: Value
+                  - generic [ref=f7e461]: acmeapp-verify=8f2c9e1a4b7d3f60
+            - generic [ref=f7e462]:
+              - generic [ref=f7e463]: headless — onboarding inline, compact + copy, no head
+              - generic [ref=f7e465]:
+                - generic [ref=f7e467]:
+                  - generic [ref=f7e468]: Host
+                  - generic [ref=f7e469]: _acmeapp-challenge.acme.co
+                  - button "Copy" [ref=f7e470]
+                - generic [ref=f7e475]:
+                  - generic [ref=f7e476]: Value
+                  - generic [ref=f7e477]: acmeapp-verify=8f2c9e1a4b7d3f60
+                  - button "Copy" [ref=f7e478]
+        - generic [ref=f7e482]:
+          - heading "Table" [level=3] [ref=f7e483]
+          - paragraph [ref=f7e484]: The generic primitive DomainTable is built on — bring your own grid template via className and lay out cells however the data calls for.
+          - generic [ref=f7e485]:
+            - generic [ref=f7e486]: generic 3-column layout
+            - generic [ref=f7e488]:
+              - generic [ref=f7e489]:
+                - generic [ref=f7e490]: Name
+                - generic [ref=f7e491]: Role
+                - generic [ref=f7e492]: Seats
+              - generic [ref=f7e493]:
+                - generic [ref=f7e494]:
+                  - generic [ref=f7e495]: Acme Inc.
+                  - generic [ref=f7e496]: Owner
+                  - generic [ref=f7e497]: "12"
+                - generic [ref=f7e498]:
+                  - generic [ref=f7e499]: Globex Corp.
+                  - generic [ref=f7e500]: Member
+                  - generic [ref=f7e501]: "4"
+        - generic [ref=f7e502]:
+          - heading "Domain table" [level=3] [ref=f7e503]
+          - paragraph [ref=f7e504]: Header hides and rows stack into cards below 760px wide — see the mobile screenshot capture for the collapsed layout.
+          - generic [ref=f7e505]:
+            - generic [ref=f7e506]:
+              - generic [ref=f7e507]: all six status combinations
+              - generic [ref=f7e510]:
+                - generic [ref=f7e511]:
+                  - generic [ref=f7e512]: Domain
+                  - generic [ref=f7e513]: Provider
+                  - generic [ref=f7e514]: Status
+                  - generic [ref=f7e515]: Last checked
+                - button "acme.co Cloudflare Verified 2 min ago" [ref=f7e516]:
+                  - generic [ref=f7e519]: acme.co
+                  - generic [ref=f7e521]: Cloudflare
+                  - generic [ref=f7e526]: Verified
+                  - generic [ref=f7e528]: 2 min ago
+                - button "pending-then-verified.test Sandbox Propagating just now" [ref=f7e532]:
+                  - generic [ref=f7e535]: pending-then-verified.test
+                  - generic [ref=f7e537]: Sandbox
+                  - generic [ref=f7e539]: Propagating
+                  - generic [ref=f7e541]: just now
+                - button "wrong-value.test GoDaddy Needs attention 4 min ago" [ref=f7e545]:
+                  - generic [ref=f7e548]: wrong-value.test
+                  - generic [ref=f7e550]: GoDaddy
+                  - generic [ref=f7e556]: Needs attention
+                  - generic [ref=f7e558]: 4 min ago
+                - button "flaky.test Route 53 Recovering 6 min ago" [ref=f7e562]:
+                  - generic [ref=f7e565]: flaky.test
+                  - generic [ref=f7e567]: Route 53
+                  - generic [ref=f7e573]: Recovering
+                  - generic [ref=f7e575]: 6 min ago
+                - button "updates.acme.co Cloudflare Verified 1 hour ago" [ref=f7e579]:
+                  - generic [ref=f7e582]: updates.acme.co
+                  - generic [ref=f7e584]: Cloudflare
+                  - generic [ref=f7e589]: Verified
+                  - generic [ref=f7e591]: 1 hour ago
+                - button "nxdomain.test — Not found 1 hour ago" [ref=f7e595]:
+                  - generic [ref=f7e598]: nxdomain.test
+                  - generic [ref=f7e600]: —
+                  - generic [ref=f7e601]: Not found
+                  - generic [ref=f7e603]: 1 hour ago
+            - generic [ref=f7e607]:
+              - generic [ref=f7e608]: loading
+              - generic [ref=f7e612]:
+                - generic [ref=f7e613]: Domain
+                - generic [ref=f7e614]: Provider
+                - generic [ref=f7e615]: Status
+                - generic [ref=f7e616]: Last checked
+        - generic [ref=f7e635]:
+          - heading "Vertical timeline" [level=3] [ref=f7e636]
+          - generic [ref=f7e637]:
+            - generic [ref=f7e638]: claimed → record added → propagating (current) → verified
+            - generic [ref=f7e642]:
+              - generic [ref=f7e649]:
+                - generic [ref=f7e650]: Claimed
+                - generic [ref=f7e651]: 14:02:11
+                - generic [ref=f7e652]: Acme App asked us to verify acme.co on your behalf. We generated a one-time record.
+              - generic [ref=f7e659]:
+                - generic [ref=f7e660]: Record added
+                - generic [ref=f7e661]: 14:22:44
+                - generic [ref=f7e662]: We saw your TXT record for the first time and confirmed the value matches.
+              - generic [ref=f7e663]:
+                - generic [ref=f7e664]: "3"
+                - generic [ref=f7e667]:
+                  - generic [ref=f7e668]: Propagating
+                  - generic [ref=f7e669]: now
+                  - generic [ref=f7e670]: Your DNS provider is telling the rest of the internet about the change. Usually minutes.
+              - generic [ref=f7e671]:
+                - generic [ref=f7e672]: "4"
+                - generic [ref=f7e674]:
+                  - generic [ref=f7e675]: Verified
+                  - generic [ref=f7e676]: —
+                  - generic [ref=f7e677]: We'll notify Acme App the moment every region agrees. No action needed from you.
+        - generic [ref=f7e678]:
+          - heading "Status summary & stepper" [level=3] [ref=f7e679]
+          - generic [ref=f7e680]:
+            - generic [ref=f7e681]:
+              - generic [ref=f7e682]: status summary — all steps done
+              - generic [ref=f7e686]:
+                - generic [ref=f7e687]:
+                  - generic [ref=f7e688]: Verified
+                  - generic [ref=f7e689]:
+                    - generic [ref=f7e690]:
+                      - strong [ref=f7e691]: Last checked
+                      - text: 2 min ago
+                    - generic [ref=f7e692]:
+                      - strong [ref=f7e693]: Next check
+                      - text: in ~3 min
+                - generic [ref=f7e694]:
+                  - generic [ref=f7e699]:
+                    - text: Claimed
+                    - generic [ref=f7e700]: 09:41
+                  - generic [ref=f7e706]:
+                    - text: Record added
+                    - generic [ref=f7e707]: 09:52
+                  - generic [ref=f7e713]:
+                    - text: Propagated
+                    - generic [ref=f7e714]: 09:58
+                  - generic [ref=f7e720]:
+                    - text: Verified
+                    - generic [ref=f7e721]: 09:58
+            - generic [ref=f7e722]:
+              - generic [ref=f7e723]: stepper — in progress, scrolls horizontally when narrow
+              - generic [ref=f7e727]:
+                - generic [ref=f7e732]:
+                  - text: Claimed
+                  - generic [ref=f7e733]: 09:41
+                - generic [ref=f7e735]:
+                  - generic [ref=f7e736]: "2"
+                  - generic [ref=f7e737]: Record added
+                - generic [ref=f7e739]:
+                  - generic [ref=f7e740]: "3"
+                  - generic [ref=f7e741]: Propagated
+                - generic [ref=f7e743]:
+                  - generic [ref=f7e744]: "4"
+                  - generic [ref=f7e745]: Verified
+        - generic [ref=f7e746]:
+          - heading "Code panel" [level=3] [ref=f7e747]
+          - generic [ref=f7e748]:
+            - generic [ref=f7e749]: tabs + syntax tokens + copy
+            - generic [ref=f7e751]:
+              - generic [ref=f7e752]:
+                - tab "cURL" [selected] [ref=f7e753]
+                - tab "Node.js" [ref=f7e754]
+              - generic [ref=f7e755]:
+                - generic [ref=f7e756]:
+                  - text: "# claim a domain, sandbox mode curl -X POST https://api.domainproof.dev/v1/domains \\ -H \"Authorization: Bearer dp_test_51H8...\" \\ -H \"Content-Type: application/json\" \\ -d"
+                  - generic [ref=f7e757]: "'{\"domain\":\"acme.co\"}'"
+                - button "Copy" [ref=f7e758]
+        - generic [ref=f7e763]:
+          - heading "Path chooser" [level=3] [ref=f7e764]
+          - generic [ref=f7e765]:
+            - generic [ref=f7e766]: 4 integration paths, keyboard + click selectable
+            - tablist "Integration path" [ref=f7e768]:
+              - tab "API Full control, your UI" [selected] [ref=f7e769]:
+                - generic [ref=f7e773]:
+                  - generic [ref=f7e774]: API
+                  - generic [ref=f7e775]: Full control, your UI
+              - tab "Hosted page We host the UI" [ref=f7e776]:
+                - generic [ref=f7e781]:
+                  - generic [ref=f7e782]: Hosted page
+                  - generic [ref=f7e783]: We host the UI
+              - tab "React components Drop into your app" [ref=f7e784]:
+                - generic [ref=f7e789]:
+                  - generic [ref=f7e790]: React components
+                  - generic [ref=f7e791]: Drop into your app
+              - tab "Agents & CLI Hand it off" [ref=f7e792]:
+                - generic [ref=f7e796]:
+                  - generic [ref=f7e797]: Agents & CLI
+                  - generic [ref=f7e798]: Hand it off
+        - generic [ref=f7e799]:
+          - heading "Verification log" [level=3] [ref=f7e800]
+          - generic [ref=f7e801]:
+            - generic [ref=f7e802]:
+              - generic [ref=f7e803]: entries with a native details/summary technical toggle
+              - generic [ref=f7e805]:
+                - generic [ref=f7e806]:
+                  - generic [ref=f7e807]: What we've checked so far
+                  - generic [ref=f7e808]: 3 entries
+                - generic [ref=f7e809]:
+                  - generic [ref=f7e810]:
+                    - generic [ref=f7e811]: 14:02
+                    - generic [ref=f7e812]:
+                      - text: Looked for your TXT record — nothing there yet. Totally normal, DNS can take a few minutes to update.
+                      - group [ref=f7e813]:
+                        - generic "▸ Technical detail" [ref=f7e814]
+                  - generic [ref=f7e815]:
+                    - generic [ref=f7e816]: 14:22
+                    - generic [ref=f7e817]:
+                      - text: Found your TXT record and the value matches exactly.
+                      - group [ref=f7e818]:
+                        - generic "▸ Technical detail" [ref=f7e819]
+                  - generic [ref=f7e820]:
+                    - generic [ref=f7e821]: 14:24
+                    - generic [ref=f7e822]:
+                      - text: Checked from three regions — two confirm it, one still has the old answer cached for about 3 more minutes.
+                      - group [ref=f7e823]:
+                        - generic "▸ Technical detail" [ref=f7e824]
+            - generic [ref=f7e825]:
+              - generic [ref=f7e826]: empty
+              - generic [ref=f7e828]:
+                - generic [ref=f7e829]: What we've checked so far
+                - paragraph [ref=f7e832]: No checks yet.
+    - generic [ref=f7e833]:
+      - generic [ref=f7e834]:
+        - generic [ref=f7e835]: Inputs
+        - heading "Form controls" [level=2] [ref=f7e836]
+      - generic [ref=f7e837]:
+        - generic [ref=f7e838]:
+          - heading "Text field" [level=3] [ref=f7e839]
+          - generic [ref=f7e840]:
+            - generic [ref=f7e841]:
+              - generic [ref=f7e842]: label + placeholder
+              - generic [ref=f7e844]:
+                - generic [ref=f7e845]: Domain
+                - textbox "Domain" [ref=f7e847]:
+                  - /placeholder: acme.co
+            - generic [ref=f7e848]:
+              - generic [ref=f7e849]: filled
+              - generic [ref=f7e851]:
+                - generic [ref=f7e852]: Domain
+                - textbox "Domain" [ref=f7e854]: acme.co
+            - generic [ref=f7e855]:
+              - generic [ref=f7e856]: disabled
+              - generic [ref=f7e858]:
+                - generic [ref=f7e859]: Domain
+                - textbox "Domain" [disabled] [ref=f7e861]: acme.co
+            - generic [ref=f7e862]:
+              - generic [ref=f7e863]: invalid + inline error
+              - generic [ref=f7e865]:
+                - generic [ref=f7e866]: Webhook URL
+                - textbox "Webhook URL" [invalid] [ref=f7e868]: ftp://acme.co/hook
+                - paragraph [ref=f7e869]: Must be a valid https:// URL
+        - generic [ref=f7e870]:
+          - heading "Select" [level=3] [ref=f7e871]
+          - generic [ref=f7e872]:
+            - generic [ref=f7e873]:
+              - generic [ref=f7e874]: label + options
+              - generic [ref=f7e876]:
+                - generic [ref=f7e877]: Verification method
+                - combobox "Verification method" [ref=f7e879]:
+                  - option "DNS TXT record" [selected]
+                  - option "HTTP well-known file"
+            - generic [ref=f7e880]:
+              - generic [ref=f7e881]: disabled
+              - generic [ref=f7e883]:
+                - generic [ref=f7e884]: Verification method
+                - combobox "Verification method" [disabled] [ref=f7e886]:
+                  - option "DNS TXT record" [selected]
+                  - option "HTTP well-known file"
+            - generic [ref=f7e887]:
+              - generic [ref=f7e888]: invalid + inline error
+              - generic [ref=f7e890]:
+                - generic [ref=f7e891]: Retry backoff
+                - combobox "Retry backoff" [invalid] [ref=f7e893]:
+                  - option "Choose a backoff strategy" [selected]
+                  - option "Linear"
+                  - option "Exponential"
+                - paragraph [ref=f7e894]: Choose a backoff strategy
+        - generic [ref=f7e895]:
+          - heading "Checkbox" [level=3] [ref=f7e896]
+          - generic [ref=f7e897]:
+            - generic [ref=f7e898]:
+              - generic [ref=f7e899]: unchecked / checked
+              - generic [ref=f7e900]:
+                - generic [ref=f7e901] [cursor=pointer]:
+                  - checkbox "Send me webhook retries" [ref=f7e903]
+                  - text: Send me webhook retries
+                - generic [ref=f7e904] [cursor=pointer]:
+                  - checkbox "Include test-mode events" [checked] [ref=f7e906]
+                  - text: Include test-mode events
+            - generic [ref=f7e907]:
+              - generic [ref=f7e908]: disabled
+              - generic [ref=f7e909]:
+                - generic [ref=f7e910]:
+                  - checkbox "Send me webhook retries" [disabled] [ref=f7e912]
+                  - text: Send me webhook retries
+                - generic [ref=f7e913]:
+                  - checkbox "Include test-mode events" [checked] [disabled] [ref=f7e915]
+                  - text: Include test-mode events

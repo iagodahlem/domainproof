@@ -1,0 +1,29 @@
+- generic [active] [ref=f11e1]:
+  - button "Open Next.js Dev Tools" [ref=f11e7] [cursor=pointer]
+  - alert [ref=f11e11]
+  - generic [ref=f11e12]:
+    - navigation "Dashboard" [ref=f11e13]:
+      - link [ref=f11e14] [cursor=pointer]:
+        - /url: /dashboard/ad1557bb-34ae-4080-9b5a-b89f326f2794/domains
+      - list [ref=f11e19]:
+        - listitem [ref=f11e20]:
+          - link "Domains" [ref=f11e21] [cursor=pointer]:
+            - /url: /dashboard/ad1557bb-34ae-4080-9b5a-b89f326f2794/domains
+        - listitem [ref=f11e26]:
+          - link "Webhooks" [ref=f11e27] [cursor=pointer]:
+            - /url: /dashboard/ad1557bb-34ae-4080-9b5a-b89f326f2794/webhooks
+        - listitem [ref=f11e31]:
+          - link "Events" [ref=f11e32] [cursor=pointer]:
+            - /url: /dashboard/ad1557bb-34ae-4080-9b5a-b89f326f2794/events
+        - listitem [ref=f11e36]:
+          - link "Settings" [ref=f11e37] [cursor=pointer]:
+            - /url: /dashboard/ad1557bb-34ae-4080-9b5a-b89f326f2794/settings
+      - button "Theme Rename Screenshot" [ref=f11e44]
+    - generic [ref=f11e53]:
+      - banner [ref=f11e54]:
+        - generic [ref=f11e55]:
+          - strong [ref=f11e56]: Domains
+          - button "Account menu" [ref=f11e57]:
+            - generic [ref=f11e58]: "?"
+      - main [ref=f11e59]:
+        - heading "Domains" [level=1] [ref=f11e60]
