@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Logo, cn } from '@domainproof/ui'
-import type { ProjectSummary } from '@/lib/api'
+import type { ProjectSummary } from '@/lib/api/dashboard'
 import { DASHBOARD_NAV_ITEMS } from './nav-items'
 import { ProjectSwitcher } from './project-switcher'
 

@@ -11,7 +11,8 @@ import {
   TableHeader,
   cn,
 } from '@domainproof/ui'
-import { ApiError, dashboardApi, type ProjectEventSummary } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi, type ProjectEventSummary } from '@/lib/api/dashboard'
 import { EventRow, EVENT_GRID_COLS } from './event-row'
 
 export interface EventsViewProps {
@@ -49,6 +50,7 @@ export function EventsView({
       setEvents((prev) => [...prev, ...result.events])
       setCursor(result.nextCursor)
     } catch (err) {
+      console.error('Failed to load more events', err)
       setError(
         err instanceof ApiError
           ? err.message

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Badge, CopyButton, TableCell, TableRow, cn } from '@domainproof/ui'
-import type { ProjectEventSummary } from '@/lib/api'
+import type { ProjectEventSummary } from '@/lib/api/dashboard'
 
 export interface EventRowProps {
   event: ProjectEventSummary

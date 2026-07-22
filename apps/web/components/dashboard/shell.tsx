@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { ProjectSummary } from '@/lib/api'
+import type { ProjectSummary } from '@/lib/api/dashboard'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 

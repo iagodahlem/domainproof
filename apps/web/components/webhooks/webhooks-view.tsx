@@ -16,7 +16,7 @@ import {
 import type {
   CreateWebhookEndpointResult,
   WebhookEndpointSummary,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 import { CreateEndpointForm } from './create-endpoint-form'
 import { EndpointRow, ENDPOINT_GRID_COLS } from './endpoint-row'
 

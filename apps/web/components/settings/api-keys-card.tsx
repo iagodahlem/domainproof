@@ -10,12 +10,12 @@ import {
   RecordCard,
   RecordField,
 } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   type ApiKeyListItem,
   type CreateKeyResult,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 
 export interface ApiKeysCardProps {
   projectId: string
@@ -91,6 +91,7 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
       }
       setPendingAction(null)
     } catch (err) {
+      console.error('Failed to rotate/revoke API key', err)
       setErrorByKey((prev) => ({
         ...prev,
         [keyId]:

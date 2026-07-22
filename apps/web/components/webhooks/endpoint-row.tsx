@@ -14,12 +14,12 @@ import {
   cn,
   dotVariants,
 } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   WEBHOOK_EVENT_TYPES,
   type WebhookEndpointSummary,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 import { DeliveryLog } from './delivery-log'
 
 export interface EndpointRowProps {
@@ -91,6 +91,7 @@ export function EndpointRow({
           )
       onUpdated(updated)
     } catch (err) {
+      console.error('Failed to toggle webhook endpoint', err)
       setError(
         err instanceof ApiError
           ? err.message
@@ -109,6 +110,7 @@ export function EndpointRow({
       await dashboardApi.deleteWebhookEndpoint(token, projectId, endpoint.id)
       onDeleted(endpoint.id)
     } catch (err) {
+      console.error('Failed to delete webhook endpoint', err)
       setError(
         err instanceof ApiError
           ? err.message

@@ -15,7 +15,8 @@ import {
   cn,
   type Tone,
 } from '@domainproof/ui'
-import { ApiError, dashboardApi, type WebhookDeliverySummary } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi, type WebhookDeliverySummary } from '@/lib/api/dashboard'
 
 export interface DeliveryLogProps {
   projectId: string
@@ -79,6 +80,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
         setCursor(result.nextCursor)
       } catch (err) {
         if (cancelled) return
+        console.error('Failed to load webhook deliveries', err)
         setError(
           err instanceof ApiError
             ? err.message
@@ -109,6 +111,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
       setDeliveries((prev) => [...(prev ?? []), ...result.deliveries])
       setCursor(result.nextCursor)
     } catch (err) {
+      console.error('Failed to load more webhook deliveries', err)
       setError(
         err instanceof ApiError
           ? err.message
@@ -131,6 +134,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
       )
       setDeliveries((prev) => [delivery, ...(prev ?? [])])
     } catch (err) {
+      console.error('Failed to redeliver webhook delivery', err)
       setError(
         err instanceof ApiError
           ? err.message
