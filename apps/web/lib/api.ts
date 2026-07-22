@@ -111,6 +111,64 @@ function withQuery(path: string, options?: ListPageOptions): string {
   return query ? `${path}?${query}` : path
 }
 
+export type Mode = 'test' | 'live'
+
+/** Every event type a webhook endpoint can subscribe to — mirrors `apps/api`'s `WEBHOOK_EVENT_TYPES` (every `DomainEventType` except the account-scoped `account.created`). */
+export const WEBHOOK_EVENT_TYPES = [
+  'domain.claimed',
+  'domain.challenge_regenerated',
+  'domain.check_passed',
+  'domain.check_failed',
+  'domain.verified',
+  'domain.temporarily_failed',
+  'domain.failed',
+] as const
+
+export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number]
+
+export interface WebhookEndpointSummary {
+  id: string
+  url: string
+  mode: Mode
+  eventTypes: WebhookEventType[]
+  /** `whsec_...<last4>` — enough to recognize the endpoint's secret, never the full value. */
+  maskedSecret: string
+  disabled: boolean
+  createdAt: string
+}
+
+export interface CreateWebhookEndpointResult {
+  endpoint: WebhookEndpointSummary
+  /** The full `whsec_...` signing secret. Shown in full only here, at creation. */
+  secret: string
+}
+
+export interface WebhookDeliverySummary {
+  id: string
+  endpointId: string
+  eventType: string
+  attempt: number
+  status: 'pending' | 'succeeded' | 'failed'
+  responseStatus: number | null
+  deliveredAt: string | null
+  nextRetryAt: string | null
+  createdAt: string
+}
+
+export interface ListDeliveriesResult {
+  deliveries: WebhookDeliverySummary[]
+  /** `null` once the last page has been reached. */
+  nextCursor: string | null
+}
+
+function toQueryString(params: Record<string, string | undefined>): string {
+  const entries = Object.entries(params).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  )
+  if (entries.length === 0) return ''
+  return `?${new URLSearchParams(entries).toString()}`
+}
+
 function apiBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_API_URL
   if (!url) {
@@ -265,6 +323,90 @@ export const dashboardApi = {
       `/dashboard/projects/${projectId}/domains/${domainId}`,
       token,
       { method: 'DELETE' },
+    )
+  },
+
+  listWebhookEndpoints(token: string | null, projectId: string) {
+    return request<{ endpoints: WebhookEndpointSummary[] }>(
+      `/dashboard/projects/${projectId}/webhooks`,
+      token,
+    )
+  },
+
+  createWebhookEndpoint(
+    token: string | null,
+    projectId: string,
+    input: { url: string; mode: Mode; eventTypes: WebhookEventType[] },
+  ) {
+    return request<CreateWebhookEndpointResult>(
+      `/dashboard/projects/${projectId}/webhooks`,
+      token,
+      { method: 'POST', body: JSON.stringify(input) },
+    )
+  },
+
+  deleteWebhookEndpoint(
+    token: string | null,
+    projectId: string,
+    endpointId: string,
+  ) {
+    return request<{ endpoint: WebhookEndpointSummary }>(
+      `/dashboard/projects/${projectId}/webhooks/${endpointId}`,
+      token,
+      { method: 'DELETE' },
+    )
+  },
+
+  enableWebhookEndpoint(
+    token: string | null,
+    projectId: string,
+    endpointId: string,
+  ) {
+    return request<{ endpoint: WebhookEndpointSummary }>(
+      `/dashboard/projects/${projectId}/webhooks/${endpointId}/enable`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  disableWebhookEndpoint(
+    token: string | null,
+    projectId: string,
+    endpointId: string,
+  ) {
+    return request<{ endpoint: WebhookEndpointSummary }>(
+      `/dashboard/projects/${projectId}/webhooks/${endpointId}/disable`,
+      token,
+      { method: 'POST' },
+    )
+  },
+
+  listWebhookDeliveries(
+    token: string | null,
+    projectId: string,
+    endpointId: string,
+    options: { limit?: number; cursor?: string } = {},
+  ) {
+    const query = toQueryString({
+      limit: options.limit?.toString(),
+      cursor: options.cursor,
+    })
+    return request<ListDeliveriesResult>(
+      `/dashboard/projects/${projectId}/webhooks/${endpointId}/deliveries${query}`,
+      token,
+    )
+  },
+
+  redeliverWebhookDelivery(
+    token: string | null,
+    projectId: string,
+    endpointId: string,
+    deliveryId: string,
+  ) {
+    return request<{ delivery: WebhookDeliverySummary }>(
+      `/dashboard/projects/${projectId}/webhooks/${endpointId}/deliveries/${deliveryId}/redeliver`,
+      token,
+      { method: 'POST' },
     )
   },
 }
