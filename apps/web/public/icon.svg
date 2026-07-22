@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- Favicon derived from the Logo mark in packages/ui/src/logo.tsx: a
+       7px-radius tile in the accent color with the same lucide "check"
+       glyph. Colors mirror tokens.css's accent / accent-foreground tokens
+       for each theme (a solid fill here, not the in-app translucent
+       accent-soft, since a favicon has no app background to sit on top
+       of); update both if those tokens change. prefers-color-scheme picks
+       the right pair automatically in browsers that support SVG favicons. -->
+  <style>
+    rect { fill: oklch(0.76 0.16 152); }
+    path { stroke: oklch(0.14 0.03 152); }
+    @media (prefers-color-scheme: light) {
+      rect { fill: oklch(0.52 0.15 152); }
+      path { stroke: oklch(0.99 0.005 152); }
+    }
+  </style>
+  <rect width="22" height="22" rx="7" />
+  <svg x="4.5" y="4.5" width="13" height="13" viewBox="0 0 24 24" fill="none">
+    <path
+      d="M20 6 9 17l-5-5"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+</svg>
