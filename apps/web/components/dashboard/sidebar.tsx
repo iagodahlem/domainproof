@@ -53,6 +53,7 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
       <div className="max-[760px]:hidden">
         <Header
           variant="solid"
+          contentClassName="px-3 max-[640px]:px-3"
           left={
             <ProjectSwitcher
               projects={projects}

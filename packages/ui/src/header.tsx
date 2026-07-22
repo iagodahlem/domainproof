@@ -34,6 +34,8 @@ export interface HeaderProps extends VariantProps<typeof headerVariants> {
   left: ReactNode
   right?: ReactNode
   className?: string
+  /** Overrides the inner container's own classes (e.g. its horizontal padding) — for a caller that needs to line its content up with a gutter defined outside this component, without duplicating the shared chrome to do it. */
+  contentClassName?: string
 }
 
 /**
@@ -46,10 +48,18 @@ export interface HeaderProps extends VariantProps<typeof headerVariants> {
  * because every current usage is already a two-cluster
  * justify-between layout.
  */
-export function Header({ variant, left, right, className }: HeaderProps) {
+export function Header({
+  variant,
+  left,
+  right,
+  className,
+  contentClassName,
+}: HeaderProps) {
   return (
     <header className={cn(headerVariants({ variant }), className)}>
-      <div className={headerContainerVariants({ variant })}>
+      <div
+        className={cn(headerContainerVariants({ variant }), contentClassName)}
+      >
         {left}
         {right}
       </div>

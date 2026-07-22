@@ -70,7 +70,11 @@ export function UserMenu({
           </span>
         ) : null}
       </MenuTrigger>
-      <MenuContent align="end" aria-label="Account" className="w-64">
+      <MenuContent
+        align={iconOnly ? 'end' : 'start'}
+        aria-label="Account"
+        className="w-64"
+      >
         {email ? (
           <div className="px-3 py-2 text-xs break-words text-faint-foreground">
             {email}
