@@ -27,7 +27,7 @@ rules.
 | Web (production)           | <https://domainproof.dev>                                                                     |
 | Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
 | Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
-| Frontend API (production)  | `frontend.api.domainproof.dev` — serves `/frontend/*` only (live)         |
+| Frontend API (production)  | `frontend.api.domainproof.dev` — serves `/frontend/*` only (live)                             |
 | Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
 | Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
 
