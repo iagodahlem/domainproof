@@ -39,3 +39,30 @@ export type TxtResolution =
 export interface DnsResolver {
   resolveTxt(hostname: string): Promise<TxtResolution>
 }
+
+/**
+ * Result of an NS lookup for a domain. Reuses {@link TxtResolutionFailureReason}
+ * rather than inventing a parallel closed set — an NS lookup is a DNS query
+ * like any other, and callers (see `detectProvider` in `provider.ts`) only
+ * ever care about the success case's nameserver hostnames, so the failure
+ * detail doesn't need its own vocabulary.
+ */
+export type NsResolution =
+  | { ok: true; nameservers: string[] }
+  | { ok: false; reason: TxtResolutionFailureReason }
+
+/**
+ * The injected NS-lookup boundary — the sibling of {@link DnsResolver} for
+ * the one other kind of DNS query this package's callers need: "which
+ * nameservers serve this domain", the fact `detectProvider` turns into a
+ * provider name. Kept as its own interface rather than a second method on
+ * `DnsResolver` because the two answer genuinely different questions (a
+ * TXT record's value vs. who operates the zone) and not every `DnsResolver`
+ * implementation necessarily wants to implement both — `infra/dns/sandbox.ts`'s
+ * per-challenge resolver, for one, has no meaningful nameservers to report.
+ *
+ * Implementations must never throw, same contract as `DnsResolver`.
+ */
+export interface NsResolver {
+  resolveNs(domain: string): Promise<NsResolution>
+}

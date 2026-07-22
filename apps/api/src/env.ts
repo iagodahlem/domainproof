@@ -71,6 +71,15 @@ const envSchema = z.object({
   // at most — see `workers/recheck-scheduler.ts`.
   RECHECK_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECHECK_BATCH_SIZE: z.coerce.number().int().positive().default(10),
+  // Both optional, and both required together: the Cloudflare one-click
+  // DNS setup flow's private OAuth client credentials (see
+  // `modules/cloudflare/service.ts` and README's Cloudflare setup
+  // section). Unset means the `/frontend/verifications/:token/cloudflare/authorize`
+  // and `/frontend/cloudflare/callback` routes respond `404 not_configured`
+  // instead of the app refusing to boot — same "unconfigured vendor is a
+  // clean no-op" pattern as `RESEND_API_KEY`/`CLERK_JWKS_URL` above.
+  CLOUDFLARE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  CLOUDFLARE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

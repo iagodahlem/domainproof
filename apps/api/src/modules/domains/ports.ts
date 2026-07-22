@@ -1,4 +1,4 @@
-import type { DnsResolver } from '@domainproof/core'
+import type { DnsResolver, Provider } from '@domainproof/core'
 
 /**
  * Everything `verifyDomain` needs to pick (or build) the `DnsResolver` for
@@ -35,3 +35,16 @@ export interface ResolverForChallengeInput {
 export type ResolverForChallenge = (
   input: ResolverForChallengeInput,
 ) => DnsResolver
+
+/**
+ * Module-owned port: detects which DNS provider (if any) hosts a claimed
+ * domain's zone, from its nameservers — the fact the Frontend API's
+ * `GET /frontend/verifications/:token` exposes so the hosted page can gate
+ * the Cloudflare one-click button (see `apis/frontend/routes/verifications.ts`).
+ * Composition-root wiring (`app.ts`) decides how: `.test` sandbox domains
+ * short-circuit to `'unknown'` (they have no real DNS to inspect), every
+ * other domain goes through a real `NsResolver` NS lookup plus
+ * `@domainproof/core`'s `detectProvider` — same "sandbox vs. real, decided
+ * in app.ts, never known by the module" split as `ResolverForChallenge`.
+ */
+export type ProviderForDomain = (domain: string) => Promise<Provider>

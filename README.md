@@ -72,6 +72,7 @@ nothing breaks if the file doesn't exist):
 | `RECHECK_ENABLED`                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                     |
 | `RECHECK_INTERVAL_MS`                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                      |
 | `RECHECK_BATCH_SIZE`                                         | No        | Defaults to `10`. How many domains each of a tick's two batches processes at most.                                                                          |
+| `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` | No        | Private OAuth client credentials for the Cloudflare one-click DNS setup flow (see [Cloudflare one-click DNS setup](#cloudflare-one-click-dns-setup) below). Both unset means the routes respond `404 not_configured` instead of the app refusing to boot. |
 
 ```bash
 docker compose up -d db
@@ -156,9 +157,11 @@ so the split below is what matters for local development:
 | POST   | `/v1/domains/:id/regenerate`                                                           | Public    | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                            |
 | GET    | `/v1/domains/:id/events`                                                               | Public    | Cursor-paginated timeline of events published for a domain (claimed, checks, transitions).                                       |
 | POST   | `/v1/component-sessions`                                                               | Public    | Mints a short-lived, single-use session token for a drop-in component to claim one domain.                                       |
-| GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, and last check outcome by its `frontendToken`.                                      |
+| GET    | `/frontend/verifications/:token`                                                       | Frontend  | Reads a claim's status, record instructions, detected DNS provider, and last check outcome by its `frontendToken`.      |
 | POST   | `/frontend/verifications/:token/check`                                                 | Frontend  | Runs the DNS check for a claim (rate limited) and returns the same shape as the `GET` above.                                     |
 | GET    | `/frontend/verifications/:token/events`                                                | Frontend  | Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.                          |
+| GET    | `/frontend/verifications/:token/cloudflare/authorize`                                  | Frontend  | Redirects to Cloudflare's OAuth consent screen to set up the claim's DNS record automatically (see below).              |
+| GET    | `/frontend/cloudflare/callback`                                                        | Frontend  | The Cloudflare OAuth callback; redirects back to the hosted verification page with an outcome (see below).              |
 | POST   | `/frontend/component-sessions/:sessionToken/claim`                                     | Frontend  | Spends a component session to claim a domain (rate limited); returns the claim plus its own `frontendToken`.                     |
 | GET    | `/v1/openapi.json`                                                                     | none      | This api's OpenAPI 3.1 document, generated from the same route schemas — covers the Public and Frontend planes only (see below). |
 
@@ -366,14 +369,80 @@ anti-enumeration stance as a `frontendToken` lookup miss. The claim itself
 is rate limited per session token (10 attempts per hour) — generous for a
 component retrying after a mistyped domain, not tuned for a bot.
 
+### Cloudflare one-click DNS setup
+
+`GET /frontend/verifications/:token`'s `provider` field (`'cloudflare'` or
+`'unknown'`) is detected from the claim domain's nameservers — `'unknown'`
+for every domain that isn't Cloudflare-hosted, including every `.test`
+sandbox domain (which has no real DNS to inspect at all). The hosted page
+uses it to gate an "Add this record for me" button next to the manual
+instructions.
+
+Clicking it starts a PKCE OAuth flow against a private Cloudflare OAuth
+client (self-managed OAuth, authorizable only by the Cloudflare account
+that created it — see setup below):
+
+1. `GET /frontend/verifications/:token/cloudflare/authorize` redirects to
+   Cloudflare's consent screen, with a PKCE `code_challenge` and a signed
+   `state` binding the request to this one claim (the code verifier travels
+   inside `state` itself — nothing is persisted server-side between this
+   redirect and the callback).
+2. The domain owner grants (or denies) Zone Read + DNS Edit access on
+   Cloudflare.
+3. Cloudflare redirects to `GET /frontend/cloudflare/callback`, which
+   verifies `state`, exchanges the code for an access token, finds the zone
+   matching the claim's domain, creates the exact TXT record the claim's
+   manual instructions already show, publishes a `domain.dns_autoconfigured`
+   event, and triggers the standard verify path — then redirects back to
+   the hosted verification page (`?cloudflare=<outcome>`), where the
+   existing status polling picks up the result.
+
+`outcome` is one of `success`, `denied` (declined on Cloudflare's consent
+screen), `no_matching_zone` (the authorizing account has no zone for the
+domain), `record_create_failed`, `exchange_failed`, or `not_found` (the
+claim was released mid-flow). A `state` that's missing, expired, or fails
+signature verification has no safe redirect target and gets a plain
+`400 invalid_request` instead of a redirect.
+
+The Cloudflare access token is used once and discarded: it lives only in
+the callback request's own local scope, is never persisted, and never
+appears in a response, an event payload, or a log line. `domain.dns_autoconfigured`
+fans out through the timeline and webhooks exactly like every other
+`DomainEventMap` entry, always published ahead of the `domain.check_passed`/
+`domain.verified` pair the triggered verify produces.
+
+#### One-time Cloudflare setup
+
+The private OAuth client itself is created once, by hand, in the Cloudflare
+dashboard that owns the zones this flow should write to:
+
+1. Log in to that Cloudflare account and go to **Manage Account → OAuth
+   clients**.
+2. Create a new client, left as **Private** (the default — authorizable
+   only by this account; never switch it to Public, which starts an
+   irreversible, ~2-day domain-ownership verification for a client URL this
+   flow doesn't need).
+3. Set the **redirect URI** to exactly
+   `https://verify.domainproof.dev/frontend/cloudflare/callback` — this is
+   hardcoded in `apps/api/src/app.ts`'s `CLOUDFLARE_OAUTH_REDIRECT_URI` and
+   must match exactly, or Cloudflare will reject the exchange.
+4. Grant it **Zone → Zone → Read** and **Zone → DNS → Edit** permissions
+   (confirm the exact scope strings against `GET /client/v4/oauth/scopes`
+   if asked for one — the dashboard picks permissions by checkbox, not by
+   typing a scope string).
+5. Copy the generated **client ID** and **client secret** into
+   `CLOUDFLARE_OAUTH_CLIENT_ID` / `CLOUDFLARE_OAUTH_CLIENT_SECRET` (see the
+   env var table above) wherever the api runs.
+
 ### Webhooks
 
 A project's webhook endpoints (`POST /dashboard/projects/:projectId/webhooks`)
 subscribe to a non-empty subset of the project-scoped event types:
 `domain.claimed`, `domain.check_passed`, `domain.check_failed`,
-`domain.verified`, `domain.temporarily_failed`, `domain.failed` (every
-`DomainEventMap` entry except `account.created`, which isn't scoped to a
-project). Creating an endpoint returns its signing secret (`whsec_...`)
+`domain.verified`, `domain.temporarily_failed`, `domain.failed`,
+`domain.dns_autoconfigured` (every `DomainEventMap` entry except
+`account.created`, which isn't scoped to a project). Creating an endpoint
+returns its signing secret (`whsec_...`)
 exactly once — every later response only shows a masked form
 (`whsec_...ab12`). `:projectId` follows the same anti-enumeration 404 as
 elsewhere on this plane — a project belonging to another account reads as

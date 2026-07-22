@@ -129,6 +129,7 @@ describe('POST /frontend/component-sessions/:sessionToken/claim', () => {
       mode: string
       status: string
       projectName: string
+      provider: string
       records: Array<{ label: string; type: string; value: string }>
       check: unknown
       updatedAt: string
@@ -139,6 +140,7 @@ describe('POST /frontend/component-sessions/:sessionToken/claim', () => {
     expect(body.status).toBe('pending')
     expect(body.projectName).toBe('Component Session Test')
     expect(body.check).toBeNull()
+    expect(body.provider).toBe('unknown')
     expect(typeof body.frontendToken).toBe('string')
     expect(body.records).toHaveLength(1)
 
