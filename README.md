@@ -134,13 +134,13 @@ so the split below is what matters for local development:
 | POST   | `/dashboard/projects/:projectId/keys/:keyId/revoke`                                    | Dashboard | Revokes an API key.                                                                                                              |
 | POST   | `/dashboard/projects/:projectId/keys/:keyId/rotate`                                    | Dashboard | Revokes an API key and issues its replacement.                                                                                   |
 | POST   | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Claims a domain for the given project and an explicit `mode`, issuing a challenge. Accepts an optional `external_id`.            |
-| GET    | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Cursor-paginated list of the project's domains across both modes, newest first. Filterable by `external_id`.                     |
+| GET    | `/dashboard/projects/:projectId/domains`                                               | Dashboard | Cursor-paginated list of the project's domains, newest first. Filterable by `external_id` and/or `mode`.                         |
 | GET    | `/dashboard/projects/:projectId/domains/:domainId`                                     | Dashboard | Gets a domain and its current verification record instructions.                                                                  |
 | POST   | `/dashboard/projects/:projectId/domains/:domainId/verify`                              | Dashboard | Runs the DNS check for a claim and returns the updated domain plus the check's outcome.                                          |
 | POST   | `/dashboard/projects/:projectId/domains/:domainId/regenerate`                          | Dashboard | Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.                                            |
 | DELETE | `/dashboard/projects/:projectId/domains/:domainId`                                     | Dashboard | Releases a domain claim.                                                                                                         |
 | GET    | `/dashboard/projects/:projectId/domains/:domainId/events`                              | Dashboard | Cursor-paginated timeline of events published for a domain.                                                                      |
-| GET    | `/dashboard/projects/:projectId/events`                                                | Dashboard | Cursor-paginated events across all of the project's domains and both modes, newest first.                                        |
+| GET    | `/dashboard/projects/:projectId/events`                                                | Dashboard | Cursor-paginated events across all of the project's domains, newest first. Filterable by `mode`.                                 |
 | POST   | `/dashboard/projects/:projectId/webhooks`                                              | Dashboard | Creates a webhook endpoint for the given project; returns the signing secret once.                                               |
 | GET    | `/dashboard/projects/:projectId/webhooks`                                              | Dashboard | Lists the given project's webhook endpoints.                                                                                     |
 | DELETE | `/dashboard/projects/:projectId/webhooks/:endpointId`                                  | Dashboard | Deletes a webhook endpoint.                                                                                                      |
@@ -252,13 +252,19 @@ The dashboard's own `POST`/`GET /dashboard/projects/:projectId/domains`
 share the same `modules/domains` use cases `/v1/domains` calls — claiming
 accepts the same optional `external_id`, and the list accepts the same
 `?external_id=` filter (no `?domain=` filter on this plane yet — that's a
-dashboard UI addition for later). The list spans both `test` and `live`
-claims for the project (`mode` is a field on each row, not something to
-filter by), newest first, cursor-paginated the same way as
-`/v1/domains/:id/events` above (`?limit=`/`?cursor=`, default 20, max 100).
-`:domainId` follows the same anti-enumeration 404 as `:projectId` and
-`:keyId` elsewhere on this plane — a domain belonging to another project
-reads as not found, not forbidden.
+dashboard UI addition for later), plus an optional `?mode=test|live` for
+the dashboard's own test/live toggle, combinable with `?external_id=`.
+The list spans both `test` and `live` claims for the project by default
+(`mode` is a field on each row), newest first, cursor-paginated the same
+way as `/v1/domains/:id/events` above (`?limit=`/`?cursor=`, default 20,
+max 100). `:domainId` follows the same anti-enumeration 404 as `:projectId`
+and `:keyId` elsewhere on this plane — a domain belonging to another
+project reads as not found, not forbidden.
+
+`GET /dashboard/projects/:projectId/events` accepts the same optional
+`?mode=test|live` filter, narrowing the project-wide events table to one
+mode; omitted, it returns both modes mixed, same as before this filter
+existed.
 
 ### Frontend API
 

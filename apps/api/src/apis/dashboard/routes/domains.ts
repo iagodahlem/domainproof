@@ -39,6 +39,9 @@ const listQuerySchema = z.object({
 // `apis/v1/routes/domains.ts`.
 const listDomainsQuerySchema = listQuerySchema.extend({
   external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
+  // The dashboard's test/live mode toggle. Optional — omitted returns both
+  // modes mixed, same as before this filter existed.
+  mode: z.enum(['test', 'live']).optional(),
 })
 
 const createDomainBodySchema = z.object({
@@ -295,6 +298,7 @@ export function createDomainsRoutes(
         limit: parsed.data.limit ?? DEFAULT_PAGE_LIMIT,
         cursor: parsed.data.cursor,
         externalId: parsed.data.external_id,
+        mode: parsed.data.mode,
       },
     )
 

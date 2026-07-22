@@ -63,15 +63,17 @@ export interface EventsService {
   ): Promise<ListDomainEventsResult>
 
   /**
-   * A project's events across all its domains and both modes, newest
-   * first, cursor-paginated — the dashboard's project-wide events table,
-   * beside `listDomainEvents`'s single-domain timeline. Each row carries
-   * the owning domain's name (and a non-null `mode`), since a project's
-   * events table needs to render which domain a row belongs to.
+   * A project's events across all its domains, newest first,
+   * cursor-paginated — the dashboard's project-wide events table, beside
+   * `listDomainEvents`'s single-domain timeline. Each row carries the
+   * owning domain's name (and a non-null `mode`), since a project's events
+   * table needs to render which domain a row belongs to. `options.mode`
+   * optionally narrows to one mode (the dashboard's test/live toggle);
+   * omitted returns both modes mixed, same as before this filter existed.
    */
   listProjectEvents(
     projectId: string,
-    options: { limit: number; cursor?: string },
+    options: { limit: number; cursor?: string; mode?: Mode },
   ): Promise<ListProjectEventsResult>
 }
 
@@ -129,11 +131,12 @@ export function createEventsService(
       return { events: rows.map(toSummary), nextCursor }
     },
 
-    async listProjectEvents(projectId, { limit, cursor }) {
+    async listProjectEvents(projectId, { limit, cursor, mode }) {
       const decodedCursor = cursor ? decodeEventsCursor(cursor) : undefined
       const { rows, hasMore } = await repository.listByProject(projectId, {
         limit,
         cursor: decodedCursor,
+        mode,
       })
 
       const lastRow = rows[rows.length - 1]

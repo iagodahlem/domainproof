@@ -14,6 +14,9 @@ const MAX_PAGE_LIMIT = 100
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(MAX_PAGE_LIMIT).optional(),
   cursor: z.string().min(1).optional(),
+  // The dashboard's test/live mode toggle. Optional — omitted returns both
+  // modes mixed, same as before this filter existed.
+  mode: z.enum(['test', 'live']).optional(),
 })
 
 function projectNotFound() {
@@ -45,8 +48,9 @@ function serializeEvent(event: ProjectEventSummary) {
  * Dashboard-facing project-wide events read, mounted at
  * `/projects/:projectId/events` under the dashboard plane's router (giving
  * `/dashboard/projects/:projectId/events`) — the table the dashboard's
- * events page renders: every event across all of a project's domains and
- * both modes, newest first. Per-domain timelines still live at
+ * events page renders: every event across all of a project's domains,
+ * newest first, optionally narrowed to one mode via `?mode=`. Per-domain
+ * timelines still live at
  * `/projects/:projectId/domains/:domainId/events`
  * (`apis/dashboard/routes/domains.ts`); this is the project-wide superset
  * a single domain's page doesn't need. Resolves `:projectId` against the
@@ -101,6 +105,7 @@ export function createEventsRoutes(
       {
         limit: parsed.data.limit ?? DEFAULT_PAGE_LIMIT,
         cursor: parsed.data.cursor,
+        mode: parsed.data.mode,
       },
     )
 

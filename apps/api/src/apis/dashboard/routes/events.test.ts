@@ -230,6 +230,100 @@ describe('/dashboard/projects/:projectId/events', () => {
       expect(body.nextCursor).toBeNull()
     })
 
+    it('filters by mode, narrowing to test or live events', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const domainA = await createTestDomain(projectId, {
+        domain: 'a.example.test',
+        mode: 'live',
+      })
+      const domainB = await createTestDomain(projectId, {
+        domain: 'b.example.test',
+        mode: 'test',
+      })
+
+      await insertEvent(domainA, 'domain.claimed', 'live')
+      await insertEvent(domainB, 'domain.claimed', 'test')
+
+      const liveRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/events?mode=live`,
+      )
+      expect(liveRes.status).toBe(200)
+      const liveBody = (await liveRes.json()) as {
+        events: Array<{ domain: string; mode: string }>
+      }
+      expect(liveBody.events.map((e) => e.domain)).toEqual(['a.example.test'])
+      expect(liveBody.events.every((e) => e.mode === 'live')).toBe(true)
+
+      const testRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/events?mode=test`,
+      )
+      expect(testRes.status).toBe(200)
+      const testBody = (await testRes.json()) as {
+        events: Array<{ domain: string; mode: string }>
+      }
+      expect(testBody.events.map((e) => e.domain)).toEqual(['b.example.test'])
+      expect(testBody.events.every((e) => e.mode === 'test')).toBe(true)
+    })
+
+    it('combines mode with cursor pagination', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+      const domainId = await createTestDomain(projectId, { mode: 'live' })
+
+      for (let i = 0; i < 3; i += 1) {
+        await insertEvent(domainId, 'domain.check_passed', 'live')
+      }
+      await insertEvent(domainId, 'domain.check_failed', 'test')
+
+      const firstRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/events?mode=live&limit=2`,
+      )
+      const firstBody = (await firstRes.json()) as {
+        events: unknown[]
+        nextCursor: string | null
+      }
+      expect(firstBody.events).toHaveLength(2)
+      expect(firstBody.nextCursor).not.toBeNull()
+
+      const secondRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/events?mode=live&limit=2&cursor=${encodeURIComponent(
+          firstBody.nextCursor ?? '',
+        )}`,
+      )
+      const secondBody = (await secondRes.json()) as {
+        events: unknown[]
+        nextCursor: string | null
+      }
+      expect(secondBody.events).toHaveLength(1)
+      expect(secondBody.nextCursor).toBeNull()
+    })
+
+    it('rejects an invalid mode', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/events?mode=sandbox`,
+      )
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_request')
+    })
+
     it("only returns the requested project's events", async () => {
       const app = buildApp()
       const ownerId = freshClerkUserId()

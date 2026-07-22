@@ -300,6 +300,125 @@ describe('/dashboard/projects/:projectId/domains', () => {
       ])
     })
 
+    it('filters by mode, narrowing to test or live claims', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      await createTestDomain(projectId, {
+        domain: 'live.example.test',
+        mode: 'live',
+      })
+      await createTestDomain(projectId, {
+        domain: 'test.example.test',
+        mode: 'test',
+      })
+
+      const liveRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?mode=live`,
+      )
+      expect(liveRes.status).toBe(200)
+      const liveBody = (await liveRes.json()) as {
+        domains: Array<{ domain: string }>
+      }
+      expect(liveBody.domains.map((d) => d.domain)).toEqual([
+        'live.example.test',
+      ])
+
+      const testRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?mode=test`,
+      )
+      expect(testRes.status).toBe(200)
+      const testBody = (await testRes.json()) as {
+        domains: Array<{ domain: string }>
+      }
+      expect(testBody.domains.map((d) => d.domain)).toEqual([
+        'test.example.test',
+      ])
+    })
+
+    it('combines mode with external_id and cursor', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      await createTestDomain(projectId, {
+        domain: 'customer-live-1.test',
+        mode: 'live',
+        externalId: 'customer_1',
+      })
+      await createTestDomain(projectId, {
+        domain: 'customer-live-2.test',
+        mode: 'live',
+        externalId: 'customer_1',
+      })
+      await createTestDomain(projectId, {
+        domain: 'customer-test.test',
+        mode: 'test',
+        externalId: 'customer_1',
+      })
+      await createTestDomain(projectId, {
+        domain: 'other-customer-live.test',
+        mode: 'live',
+        externalId: 'customer_2',
+      })
+
+      const firstRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?mode=live&external_id=customer_1&limit=1`,
+      )
+      expect(firstRes.status).toBe(200)
+      const firstBody = (await firstRes.json()) as {
+        domains: Array<{ domain: string }>
+        nextCursor: string | null
+      }
+      expect(firstBody.domains).toHaveLength(1)
+      expect(firstBody.nextCursor).not.toBeNull()
+
+      const secondRes = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?mode=live&external_id=customer_1&limit=1&cursor=${encodeURIComponent(
+          firstBody.nextCursor ?? '',
+        )}`,
+      )
+      expect(secondRes.status).toBe(200)
+      const secondBody = (await secondRes.json()) as {
+        domains: Array<{ domain: string }>
+        nextCursor: string | null
+      }
+      expect(secondBody.domains).toHaveLength(1)
+      expect(secondBody.nextCursor).toBeNull()
+
+      const allDomains = [...firstBody.domains, ...secondBody.domains].map(
+        (d) => d.domain,
+      )
+      expect(allDomains.sort()).toEqual([
+        'customer-live-1.test',
+        'customer-live-2.test',
+      ])
+    })
+
+    it('rejects an invalid mode', async () => {
+      const app = buildApp()
+      const clerkUserId = freshClerkUserId()
+      const projectId = await createProject(app, clerkUserId)
+
+      const res = await asUser(
+        app,
+        clerkUserId,
+        `/dashboard/projects/${projectId}/domains?mode=sandbox`,
+      )
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('invalid_request')
+    })
+
     it('paginates with limit and cursor', async () => {
       const app = buildApp()
       const clerkUserId = freshClerkUserId()

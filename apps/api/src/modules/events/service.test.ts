@@ -82,7 +82,11 @@ function fakeRepository(seed: EventRow[] = []): EventsRepository {
       // Newest-first, the inverse of `listByDomain`'s chronological
       // insertion order.
       const matching: EventWithDomainRow[] = rows
-        .filter((row) => payloadField(row.payload, 'projectId') === projectId)
+        .filter(
+          (row) =>
+            payloadField(row.payload, 'projectId') === projectId &&
+            (options.mode === undefined || row.mode === options.mode),
+        )
         .map((row) => ({
           ...row,
           domain: payloadField(row.payload, 'domain') ?? '',
@@ -323,5 +327,31 @@ describe('listProjectEvents', () => {
     const result = await service.listProjectEvents('project_1', { limit: 10 })
     expect(result.events).toEqual([])
     expect(result.nextCursor).toBeNull()
+  })
+
+  it('filters by mode, narrowing to one mode', async () => {
+    const repository = fakeRepository()
+    const service = createEventsService(repository)
+
+    await service.record('domain.claimed', {
+      domainId: 'domain_1',
+      projectId: 'project_1',
+      mode: 'live',
+      domain: 'a.com',
+      externalId: null,
+    })
+    await service.record('domain.claimed', {
+      domainId: 'domain_2',
+      projectId: 'project_1',
+      mode: 'test',
+      domain: 'b.com',
+      externalId: null,
+    })
+
+    const { events } = await service.listProjectEvents('project_1', {
+      limit: 10,
+      mode: 'test',
+    })
+    expect(events.map((e) => e.domain)).toEqual(['b.com'])
   })
 })
