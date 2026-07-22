@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Header, Logo } from '@domainproof/ui'
-import { AuthCta } from '@/components/auth-cta'
+import { AuthCta } from '@/components/header/auth-cta'
 
 export const metadata: Metadata = {
   title: 'DomainProof',

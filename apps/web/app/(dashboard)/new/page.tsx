@@ -4,9 +4,9 @@ import { ArrowLeft } from 'lucide-react'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { Button, CenteredMain, Header, Logo } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
-import { CreateProjectFlow } from '@/components/create-project-flow'
-import { ApiErrorState } from '@/components/api-error-state'
-import { UserMenu } from '@/components/dashboard/user-menu'
+import { CreateProjectFlow } from './_components/create-project-flow'
+import { ApiErrorState } from './_components/api-error-state'
+import { UserMenu } from '@/components/dashboard-shell/user-menu'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',

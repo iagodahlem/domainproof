@@ -144,9 +144,10 @@ whichever one claim a `frontendToken` resolves to — one `modules/domains/`
   module's own `middlewares/<name>.ts`. One file per middleware, same as
   everywhere else.
 
-`apps/web`, `packages/sdk`, `packages/cli`, `packages/mcp` are out of scope
-for this map today — they're thin/stub packages that consume `@domainproof/core`
-and the public API, not participants in the api's internal layering.
+`packages/sdk`, `packages/cli`, `packages/mcp` are out of scope for this map
+today — they're thin/stub packages that consume `@domainproof/core` and the
+public API, not participants in the api's internal layering. `apps/web` has
+its own peer layer map instead: see [`apps/web/ARCHITECTURE.md`](./apps/web/ARCHITECTURE.md).
 
 ### Background workers
 
