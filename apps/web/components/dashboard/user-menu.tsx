@@ -7,7 +7,13 @@ export interface UserMenuProps {
   email: string
 }
 
-/** Topbar account menu — email + sign-out (deviation from the board mock, which puts this row at the sidebar's bottom instead; see the PR description). */
+/**
+ * Account menu trigger — avatar pill (initial circle + email) opening a
+ * sign-out dropdown. Lives at the sidebar's bottom (board-conformant) and
+ * is reused as-is in the locked /new screen's header. The pill's padding
+ * matches the avatar's own radius on every side (`p-1`) so the circle
+ * reads as concentrically inset in the pill rather than off-center.
+ */
 export function UserMenu({ email }: UserMenuProps) {
   const initial = email ? email.charAt(0).toUpperCase() : '?'
 
@@ -15,16 +21,16 @@ export function UserMenu({ email }: UserMenuProps) {
     <Menu>
       <MenuTrigger
         aria-label={email ? `Account menu for ${email}` : 'Account menu'}
-        className="flex items-center gap-2 rounded-full border border-border-strong bg-surface px-2 py-1 transition-colors duration-150 hover:bg-surface-2"
+        className="inline-flex max-w-64 items-center gap-2 rounded-full border border-border-strong bg-surface p-1 pr-3 transition-colors duration-150 hover:bg-surface-2"
       >
         <span
           aria-hidden="true"
-          className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-2xs font-bold text-accent"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-2xs font-bold text-accent"
         >
           {initial}
         </span>
         {email ? (
-          <span className="max-w-40 truncate text-sm font-semibold text-foreground max-[640px]:hidden">
+          <span className="min-w-0 truncate text-left text-sm font-semibold text-foreground">
             {email}
           </span>
         ) : null}
