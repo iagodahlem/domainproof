@@ -6,13 +6,19 @@ verification, all from server-side code.
 
 Response types are generated from the API's own OpenAPI document
 (`GET /v1/openapi.json`); the client itself is hand-written on top of
-native `fetch`. No runtime dependencies.
+native `fetch`. No runtime dependencies. Ships both ESM and CommonJS
+builds, so `import` and `require` both work.
 
 ## Install
 
 ```bash
 npm install @domainproof/sdk
 ```
+
+You'll need an API key from a DomainProof project — create one from your
+dashboard, which mints a `dp_test_...` and a `dp_live_...` key together.
+Test-mode keys only work against `.test` sandbox domains, which is what
+the examples below use.
 
 ## Quickstart
 
@@ -23,11 +29,18 @@ const domainproof = new DomainProof({
   apiKey: process.env.DOMAINPROOF_API_KEY!,
 })
 
-const { data, error } = await domainproof.domains.claim({ domain: 'acme.com' })
+const { data, error } = await domainproof.domains.claim({ domain: 'acme.test' })
 if (error) throw error
 
 console.log(data.records[0])
-// { type: 'TXT', name: '_domainproof.acme.com', value: 'domainproof-verify=...', ... }
+// {
+//   type: 'TXT',
+//   name: '_mysaas-challenge.acme.test',   // "mysaas" is your project's slug
+//   value: 'mysaas-verify=8f2a1c4e9b7d3f6a2c5e8b1d4f7a0c3e',
+//   purpose: 'ownership',
+//   description: 'Proves control of acme.test. This record does nothing else and can be removed after verification.',
+//   status: 'pending'
+// }
 ```
 
 Every method returns `{ data, error }` instead of throwing — check `error`

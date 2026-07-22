@@ -9,6 +9,7 @@ export type {
   Domain,
   DomainPage,
   DomainRecord,
+  DomainStatus,
   Event,
   EventPage,
   ListDomainsParams,
