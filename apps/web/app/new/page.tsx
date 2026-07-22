@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { SignOutButton } from '@clerk/nextjs'
-import { Button, Logo } from '@domainproof/ui'
-import { dashboardApi, type ProjectSummary } from '@/lib/api'
+import { Logo } from '@domainproof/ui'
+import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
 import { CreateProjectFlow } from '@/components/create-project-flow'
 import { ApiErrorState } from '@/components/api-error-state'
+import { SignOutButton } from '@/components/dashboard/sign-out-button'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',
@@ -44,9 +44,7 @@ export default async function NewProjectPage() {
             {email ? (
               <span className="text-sm text-text-faint">{email}</span>
             ) : null}
-            <SignOutButton redirectUrl="/">
-              <Button size="sm">Sign out</Button>
-            </SignOutButton>
+            <SignOutButton size="sm" />
           </div>
         </div>
       </header>
