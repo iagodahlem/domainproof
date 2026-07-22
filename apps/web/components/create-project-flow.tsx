@@ -5,15 +5,18 @@ import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useMutation } from '@tanstack/react-query'
-import { Button, Callout, Card, CardBody, TextField } from '@domainproof/ui'
+import { Button, Callout, Card, CardBody, TextField, cn } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
+import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
 
 export interface CreateProjectFlowProps {
   /** Repeat visit via the dashboard shell's "New project" item rather than fresh onboarding — swaps the "first project" copy for one that doesn't assume it. */
   hasExistingProjects?: boolean
+  /** First-signup only: a suggested name (derived from the caller's Clerk profile) pre-filled into the field but fully editable. Omitted for the switcher-created flow, which starts blank. */
+  namePrefill?: string
 }
 
 /**
@@ -24,10 +27,11 @@ export interface CreateProjectFlowProps {
  */
 export function CreateProjectFlow({
   hasExistingProjects = false,
+  namePrefill,
 }: CreateProjectFlowProps) {
   const router = useRouter()
   const { getToken } = useAuth()
-  const [name, setName] = useState('')
+  const [name, setName] = useState(namePrefill ?? '')
   const [fieldError, setFieldError] = useState<string | undefined>()
 
   const createProject = useMutation({
@@ -72,8 +76,7 @@ export function CreateProjectFlow({
   }
 
   return (
-    // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off locked-screen card width matching the board's .lockscreen .card spec, no spacing-scale equivalent; single use
-    <Card className="w-full max-w-[440px]">
+    <Card className={cn('w-full', CREATE_PROJECT_CARD_WIDTH)}>
       <CardBody className="p-8 max-[640px]:p-6">
         <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
           Before you continue

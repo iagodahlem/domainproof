@@ -15,22 +15,27 @@ const headerVariants = cva('border-b border-border', {
   },
 })
 
-const headerContainerVariants = cva('flex items-center justify-between', {
-  variants: {
-    variant: {
-      glass: 'mx-auto max-w-5xl gap-4 px-6 py-3',
-      solid: 'flex-wrap gap-3 px-5 py-4 max-[640px]:px-4',
+const headerContainerVariants = cva(
+  'flex min-h-16 items-center justify-between',
+  {
+    variants: {
+      variant: {
+        glass: 'mx-auto max-w-5xl gap-4 px-6',
+        solid: 'flex-wrap gap-3 px-5 max-[640px]:px-4',
+      },
+    },
+    defaultVariants: {
+      variant: 'glass',
     },
   },
-  defaultVariants: {
-    variant: 'glass',
-  },
-})
+)
 
 export interface HeaderProps extends VariantProps<typeof headerVariants> {
   left: ReactNode
   right?: ReactNode
   className?: string
+  /** Overrides the inner container's own classes (e.g. its horizontal padding) — for a caller that needs to line its content up with a gutter defined outside this component, without duplicating the shared chrome to do it. */
+  contentClassName?: string
 }
 
 /**
@@ -43,10 +48,18 @@ export interface HeaderProps extends VariantProps<typeof headerVariants> {
  * because every current usage is already a two-cluster
  * justify-between layout.
  */
-export function Header({ variant, left, right, className }: HeaderProps) {
+export function Header({
+  variant,
+  left,
+  right,
+  className,
+  contentClassName,
+}: HeaderProps) {
   return (
     <header className={cn(headerVariants({ variant }), className)}>
-      <div className={headerContainerVariants({ variant })}>
+      <div
+        className={cn(headerContainerVariants({ variant }), contentClassName)}
+      >
         {left}
         {right}
       </div>

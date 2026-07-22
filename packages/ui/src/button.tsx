@@ -20,6 +20,8 @@ const buttonVariants = cva(
       size: {
         default: 'rounded-md px-4 py-2',
         sm: 'rounded-sm px-3 py-1 text-xs',
+        /** Square, label-less button — a fixed footprint so two icon buttons placed side by side (e.g. Copy + Reveal) line up exactly. */
+        icon: 'rounded-md h-8 w-8 shrink-0 justify-center p-0',
       },
       shape: {
         default: '',

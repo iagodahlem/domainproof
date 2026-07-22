@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { Header, Logo } from '@domainproof/ui'
+import { Button, CenteredMain, Header, Logo, cn } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
+import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { CreateProjectFlow } from '@/components/create-project-flow'
 import { ApiErrorState } from '@/components/api-error-state'
-import { SignOutButton } from '@/components/dashboard/sign-out-button'
+import { UserMenu } from '@/components/dashboard/user-menu'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',
@@ -16,46 +19,83 @@ export const metadata: Metadata = {
  * shell's project switcher also routes its "New project" item here, so a
  * caller with existing projects can reach it too — routing is derived from
  * the projects list either way (no `/me` route).
+ *
+ * The back affordance rides a `?from=<projectId>` query param rather than
+ * `document.referrer` — a referrer is unset on a fresh tab/direct nav and
+ * strippable by the browser, while the query param survives a reload and
+ * is trivial to validate server-side. `from` is only trusted once it's
+ * confirmed to be one of the caller's own projects (below), which is also
+ * exactly the condition under which a first-signup caller (no projects at
+ * all) naturally gets no back control — there's nothing valid for `from`
+ * to resolve to.
  */
-export default async function NewProjectPage() {
+export default async function NewProjectPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>
+}) {
   const { getToken } = await auth()
-
-  let projects: ProjectSummary[] = []
-  let loadFailed = false
-  try {
-    ;({ projects } = await dashboardApi.listProjects(await getToken()))
-  } catch (error) {
-    console.error('Failed to load projects', error)
-    loadFailed = true
-  }
+  const [{ from }, projectsOutcome] = await Promise.all([
+    searchParams,
+    dashboardApi
+      .listProjects(await getToken())
+      .then((result) => ({
+        projects: result.projects,
+        loadFailed: false as const,
+      }))
+      .catch((error: unknown) => {
+        console.error('Failed to load projects', error)
+        return { projects: [] as ProjectSummary[], loadFailed: true as const }
+      }),
+  ])
+  const { projects, loadFailed } = projectsOutcome
+  const previousProject = projects.find((project) => project.id === from)
 
   const user = await currentUser()
   const email =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses[0]?.emailAddress ??
     ''
+  const namePrefill =
+    projects.length === 0
+      ? user?.firstName
+        ? `${user.firstName}'s project`
+        : 'My project'
+      : undefined
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
+        contentClassName="mx-0 max-w-none px-5 max-[640px]:px-4"
         left={<Logo />}
-        right={
-          <div className="flex items-center gap-3">
-            {email ? (
-              <span className="text-sm text-faint-foreground">{email}</span>
-            ) : null}
-            <SignOutButton size="sm" />
-          </div>
-        }
+        right={email ? <UserMenu email={email} iconOnly /> : null}
       />
 
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
+      <CenteredMain>
         {loadFailed ? (
           <ApiErrorState />
         ) : (
-          <CreateProjectFlow hasExistingProjects={projects.length > 0} />
+          <div
+            className={cn(
+              'flex w-full flex-col gap-3',
+              CREATE_PROJECT_CARD_WIDTH,
+            )}
+          >
+            {previousProject ? (
+              <Button asChild variant="ghost" size="sm" className="self-start">
+                <Link href={`/dashboard/${previousProject.id}/domains`}>
+                  <ArrowLeft aria-hidden="true" size={14} />
+                  Back to {previousProject.name}
+                </Link>
+              </Button>
+            ) : null}
+            <CreateProjectFlow
+              hasExistingProjects={projects.length > 0}
+              namePrefill={namePrefill}
+            />
+          </div>
         )}
-      </main>
+      </CenteredMain>
     </div>
   )
 }

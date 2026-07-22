@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useSignIn, useUser } from '@clerk/nextjs'
 import { isClerkAPIResponseError } from '@clerk/nextjs/errors'
+import { LayoutGrid } from 'lucide-react'
 import { Button, Callout, cn, type ButtonProps } from '@domainproof/ui'
 import { GoogleIcon } from './google-icon'
 
@@ -26,7 +27,10 @@ export function AuthCta({ size, className, iconSize = 15 }: AuthCtaProps) {
   if (isLoaded && isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
-        <Link href="/dashboard">Dashboard</Link>
+        <Link href="/dashboard">
+          <LayoutGrid aria-hidden="true" size={iconSize} />
+          Dashboard
+        </Link>
       </Button>
     )
   }

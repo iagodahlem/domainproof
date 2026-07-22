@@ -17,4 +17,9 @@ describe('Logo', () => {
     render(<Logo className="opacity-50" />)
     expect(screen.getByText('DomainProof').className).toContain('opacity-50')
   })
+
+  it('iconOnly keeps the wordmark for assistive tech but hides it visually', () => {
+    render(<Logo iconOnly />)
+    expect(screen.getByText('DomainProof').className).toContain('sr-only')
+  })
 })
