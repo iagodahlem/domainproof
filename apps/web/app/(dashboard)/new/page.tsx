@@ -66,6 +66,7 @@ export default async function NewProjectPage({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
+        contentClassName="mx-0 max-w-none px-5 max-[640px]:px-4"
         left={<Logo />}
         right={email ? <UserMenu email={email} iconOnly /> : null}
       />
