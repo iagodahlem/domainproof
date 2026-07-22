@@ -36,7 +36,7 @@ export default async function DashboardProjectLayout({
   } catch (error) {
     console.error('Failed to load projects', error)
     return (
-      <div className="flex min-h-screen flex-col bg-bg">
+      <div className="flex min-h-screen flex-col bg-background">
         <Header left={<Logo />} />
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16">
           <Callout tone="warning" className="max-w-md">

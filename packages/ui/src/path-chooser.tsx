@@ -51,7 +51,7 @@ export function PathChooser({
           >
             <span
               className={cn(
-                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-text-faint transition-colors duration-150',
+                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-faint-foreground transition-colors duration-150',
                 active && 'bg-accent text-accent-foreground',
               )}
             >
@@ -66,7 +66,7 @@ export function PathChooser({
               >
                 {option.label}
               </span>
-              <span className="truncate text-2xs leading-caption text-text-faint">
+              <span className="truncate text-2xs leading-caption text-faint-foreground">
                 {option.sub}
               </span>
             </span>

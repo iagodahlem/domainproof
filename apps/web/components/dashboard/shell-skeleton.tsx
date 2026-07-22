@@ -3,7 +3,7 @@ export function ShellSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="flex min-h-screen items-stretch bg-bg max-[760px]:flex-col"
+      className="flex min-h-screen items-stretch bg-background max-[760px]:flex-col"
     >
       <div className="flex w-52 shrink-0 flex-col gap-2 border-r border-border bg-surface p-3 max-[760px]:w-full max-[760px]:flex-row max-[760px]:items-center max-[760px]:border-r-0 max-[760px]:border-b max-[760px]:p-4">
         <div className="mb-5 h-5.5 w-28 animate-pulse rounded-sm bg-surface-3 max-[760px]:mb-0" />

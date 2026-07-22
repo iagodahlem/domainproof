@@ -17,7 +17,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved'
 
 const SAVED_FLASH_MS = 1500
 const SAVED_BUTTON_CLASSES =
-  'border-success-border-strong bg-success-soft text-success hover:bg-success-soft'
+  'border-success-tint-strong bg-success-soft text-success hover:bg-success-soft'
 
 /**
  * The name field's full save flow (no-changes/edited/saving/inline-error/
@@ -77,7 +77,7 @@ export function ProjectNameCard({ project }: ProjectNameCardProps) {
   return (
     <Card className="max-w-xl">
       <CardBody>
-        <h3 className="mb-5 text-lg font-heading text-text">
+        <h3 className="mb-5 text-lg font-heading text-foreground">
           Project settings
         </h3>
         <form onSubmit={handleSubmit}>
@@ -114,7 +114,7 @@ export function ProjectNameCard({ project }: ProjectNameCardProps) {
             }
           />
         </form>
-        <p className="mt-3 text-xs text-text-faint">
+        <p className="mt-3 text-xs text-faint-foreground">
           Your project slug (<code className="font-mono">{project.slug}</code>)
           and existing DNS record names stay the same — renaming your project
           never changes them.

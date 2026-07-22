@@ -29,18 +29,18 @@
    ========================================================================= */
 @theme inline {
   /* surfaces */
-  --color-bg: var(--bg);
+  --color-background: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-bg-glass: var(--bg-glass);
+  --color-background-glass: var(--bg-glass);
 
   /* text */
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-text-faint: var(--text-faint);
+  --color-foreground: var(--text);
+  --color-muted-foreground: var(--text-muted);
+  --color-faint-foreground: var(--text-faint);
 
   /* accent */
   --color-accent: var(--accent);
@@ -59,15 +59,15 @@
   --color-danger-soft: var(--danger-soft);
 
   /* border tints */
-  --color-accent-border: var(--accent-border);
-  --color-accent-border-soft: var(--accent-border-soft);
-  --color-accent-border-strong: var(--accent-border-strong);
-  --color-success-border: var(--success-border);
-  --color-success-border-strong: var(--success-border-strong);
-  --color-warning-border: var(--warning-border);
-  --color-warning-border-strong: var(--warning-border-strong);
-  --color-danger-border: var(--danger-border);
-  --color-danger-border-strong: var(--danger-border-strong);
+  --color-accent-tint: var(--accent-border);
+  --color-accent-tint-soft: var(--accent-border-soft);
+  --color-accent-tint-strong: var(--accent-border-strong);
+  --color-success-tint: var(--success-border);
+  --color-success-tint-strong: var(--success-border-strong);
+  --color-warning-tint: var(--warning-border);
+  --color-warning-tint-strong: var(--warning-border-strong);
+  --color-danger-tint: var(--danger-border);
+  --color-danger-tint-strong: var(--danger-border-strong);
 
   /* type — family */
   --font-sans: var(--font-sans);

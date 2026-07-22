@@ -24,7 +24,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-bg text-text;
+    @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;

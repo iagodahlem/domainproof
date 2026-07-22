@@ -9,7 +9,10 @@ export function FieldLabel({
   children: ReactNode
 }) {
   return (
-    <label htmlFor={htmlFor} className="text-sm font-medium text-text-muted">
+    <label
+      htmlFor={htmlFor}
+      className="text-sm font-medium text-muted-foreground"
+    >
       {children}
     </label>
   )

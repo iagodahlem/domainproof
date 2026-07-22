@@ -28,7 +28,7 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
   return (
     <div
       className={cn(
-        'min-w-0 overflow-hidden rounded-lg border border-border bg-bg',
+        'min-w-0 overflow-hidden rounded-lg border border-border bg-background',
         className,
       )}
     >
@@ -41,8 +41,8 @@ export function CodePanel({ tabs, defaultTabId, className }: CodePanelProps) {
             aria-selected={tab.id === active?.id}
             onClick={() => setActiveId(tab.id)}
             className={cn(
-              'rounded-full px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap text-text-faint transition-colors duration-150 hover:text-text',
-              tab.id === active?.id && 'bg-surface-3 text-text',
+              'rounded-full px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap text-faint-foreground transition-colors duration-150 hover:text-foreground',
+              tab.id === active?.id && 'bg-surface-3 text-foreground',
             )}
           >
             {tab.label}
@@ -80,7 +80,7 @@ export type CodeTokenKind = 'comment' | 'string' | 'keyword'
 const codeTokenVariants = cva('', {
   variants: {
     kind: {
-      comment: 'text-text-faint',
+      comment: 'text-faint-foreground',
       string: 'text-success',
       keyword: 'text-accent',
     },

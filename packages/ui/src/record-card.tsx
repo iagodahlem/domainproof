@@ -64,7 +64,7 @@ export function RecordCard({
             <div className="text-lg font-heading">
               <div>{title}</div>
               {sub ? (
-                <div className="mt-0.5 text-sm font-medium text-text-faint">
+                <div className="mt-0.5 text-sm font-medium text-faint-foreground">
                   {sub}
                 </div>
               ) : null}

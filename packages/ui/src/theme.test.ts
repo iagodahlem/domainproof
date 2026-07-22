@@ -11,7 +11,7 @@ const CLASSES = [
   'text-accent',
   'border-accent',
   'bg-surface',
-  'text-text-muted',
+  'text-muted-foreground',
   'border-border-strong',
   'bg-success',
   'bg-warning',
@@ -21,8 +21,8 @@ const CLASSES = [
   'shadow-current',
   'font-heading',
   'leading-body',
-  'border-accent-border',
-  'bg-bg-glass',
+  'border-accent-tint',
+  'bg-background-glass',
   'backdrop-blur-header',
 ]
 
@@ -59,7 +59,7 @@ describe('theme.css', () => {
       /\.bg-surface\s*{\s*background-color:\s*var\(--surface\);?\s*}/,
     )
     expect(css).toMatch(
-      /\.text-text-muted\s*{\s*color:\s*var\(--text-muted\);?\s*}/,
+      /\.text-muted-foreground\s*{\s*color:\s*var\(--text-muted\);?\s*}/,
     )
     expect(css).toMatch(
       /\.border-border-strong\s*{\s*border-color:\s*var\(--border-strong\);?\s*}/,
@@ -81,7 +81,7 @@ describe('theme.css', () => {
   it('points the new border-tint, shadow and duration utilities at the raw token variable', async () => {
     const css = await compile()
     expect(css).toMatch(
-      /\.border-accent-border\s*{\s*border-color:\s*var\(--accent-border\);?\s*}/,
+      /\.border-accent-tint\s*{\s*border-color:\s*var\(--accent-border\);?\s*}/,
     )
     expect(css).toMatch(
       /\.shadow-current\s*{[^}]*--tw-shadow:\s*var\(--shadow-current\)/,

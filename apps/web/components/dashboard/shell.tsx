@@ -17,7 +17,7 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   return (
-    <div className="flex min-h-screen items-stretch bg-bg max-[760px]:flex-col">
+    <div className="flex min-h-screen items-stretch bg-background max-[760px]:flex-col">
       <Sidebar projects={projects} activeProject={activeProject} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar projectId={activeProject.id} email={email} />

@@ -67,8 +67,10 @@ export function EventsView({
         <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
           <Activity aria-hidden="true" size={18} />
         </div>
-        <h3 className="mb-2 text-lg font-heading text-text">No events yet</h3>
-        <p className="mx-auto max-w-[44ch] text-sm text-text-muted">
+        <h3 className="mb-2 text-lg font-heading text-foreground">
+          No events yet
+        </h3>
+        <p className="mx-auto max-w-[44ch] text-sm text-muted-foreground">
           Every verification event across your project&rsquo;s domains shows up
           here as it happens.
         </p>

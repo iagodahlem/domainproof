@@ -11,7 +11,7 @@ const timelineNodeVariants = cva(
       status: {
         done: 'border-success bg-success text-success-foreground',
         current: 'border-accent bg-surface text-accent shadow-current',
-        upcoming: 'border-border-strong bg-surface text-text-faint',
+        upcoming: 'border-border-strong bg-surface text-faint-foreground',
       },
     },
   },
@@ -87,14 +87,14 @@ export function VerticalTimeline({
                 {step.title}
               </div>
               {step.meta ? (
-                <div className="mt-0.5 font-mono text-2xs text-text-faint">
+                <div className="mt-0.5 font-mono text-2xs text-faint-foreground">
                   {step.meta}
                 </div>
               ) : null}
               {step.description ? (
                 <div
                   className={cn(
-                    'mt-2 max-w-[54ch] text-sm leading-body text-text-muted',
+                    'mt-2 max-w-[54ch] text-sm leading-body text-muted-foreground',
                     !isLast && 'mb-4',
                   )}
                 >

@@ -12,7 +12,9 @@ describe('Badge', () => {
 
   it('defaults to the neutral tone', () => {
     render(<Badge>Not found</Badge>)
-    expect(screen.getByText('Not found').className).toContain('text-text-muted')
+    expect(screen.getByText('Not found').className).toContain(
+      'text-muted-foreground',
+    )
   })
 
   it('drops the visible border in mode-pill treatment', () => {

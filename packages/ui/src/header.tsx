@@ -6,7 +6,7 @@ const headerVariants = cva('border-b border-border', {
   variants: {
     variant: {
       glass:
-        'sticky top-0 z-10 bg-bg-glass backdrop-blur-header backdrop-saturate-[140%]',
+        'sticky top-0 z-10 bg-background-glass backdrop-blur-header backdrop-saturate-[140%]',
       solid: 'bg-surface',
     },
   },

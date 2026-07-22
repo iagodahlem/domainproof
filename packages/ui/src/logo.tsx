@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './cn'
 
 const logoVariants = cva(
-  'inline-flex items-center gap-2 font-bold whitespace-nowrap text-text',
+  'inline-flex items-center gap-2 font-bold whitespace-nowrap text-foreground',
   {
     variants: {
       size: {
@@ -19,7 +19,7 @@ const logoVariants = cva(
 
 const logoMarkVariants = cva(
   // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- brand mark radius is a fixed 7px by design (owner-specified); rounded-md (10px) reads nearly circular at this size
-  'flex shrink-0 items-center justify-center rounded-[7px] border border-accent-border bg-accent-soft text-accent',
+  'flex shrink-0 items-center justify-center rounded-[7px] border border-accent-tint bg-accent-soft text-accent',
   {
     variants: {
       size: {
