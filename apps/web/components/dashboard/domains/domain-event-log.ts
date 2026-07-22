@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { VerificationLogEntry } from '@domainproof/ui'
-import type { DomainEvent } from '@/lib/api'
+import type { DomainEvent } from '@/lib/api/dashboard'
 import { checkOutcomePresentation } from './domain-check-outcome'
 import { formatRelativeTime } from './format-relative-time'
 

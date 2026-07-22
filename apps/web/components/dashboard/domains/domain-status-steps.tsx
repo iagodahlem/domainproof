@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import type { StepperStep } from '@domainproof/ui'
-import type { DomainDetail } from '@/lib/api'
+import type { DomainDetail } from '@/lib/api/dashboard'
 import { formatRelativeTime } from './format-relative-time'
 
 /**

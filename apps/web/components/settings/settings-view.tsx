@@ -1,4 +1,4 @@
-import type { ApiKeyListItem, ProjectSummary } from '@/lib/api'
+import type { ApiKeyListItem, ProjectSummary } from '@/lib/api/dashboard'
 import { ProjectNameCard } from './project-name-card'
 import { ApiKeysCard } from './api-keys-card'
 

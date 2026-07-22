@@ -1,14 +1,7 @@
 'use client'
 
-import { useClerk } from '@clerk/nextjs'
-import { LogOut } from 'lucide-react'
-import {
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
-} from '@domainproof/ui'
+import { Menu, MenuContent, MenuSeparator, MenuTrigger } from '@domainproof/ui'
+import { SignOutButton } from './sign-out-button'
 
 export interface UserMenuProps {
   email: string
@@ -16,7 +9,6 @@ export interface UserMenuProps {
 
 /** Topbar account menu — email + sign-out (deviation from the board mock, which puts this row at the sidebar's bottom instead; see the PR description). */
 export function UserMenu({ email }: UserMenuProps) {
-  const { signOut } = useClerk()
   const initial = email ? email.charAt(0).toUpperCase() : '?'
 
   return (
@@ -44,14 +36,7 @@ export function UserMenu({ email }: UserMenuProps) {
           </div>
         ) : null}
         <MenuSeparator />
-        <MenuItem
-          icon={<LogOut aria-hidden="true" size={14} />}
-          onSelect={() => {
-            void signOut({ redirectUrl: '/' })
-          }}
-        >
-          Sign out
-        </MenuItem>
+        <SignOutButton variant="menu-item" />
       </MenuContent>
     </Menu>
   )

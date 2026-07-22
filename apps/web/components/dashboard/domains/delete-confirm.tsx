@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { AlertTriangle } from 'lucide-react'
 import { Button, Callout } from '@domainproof/ui'
-import { ApiError, dashboardApi } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi } from '@/lib/api/dashboard'
 
 export interface DeleteConfirmProps {
   projectId: string

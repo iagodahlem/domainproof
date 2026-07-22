@@ -4,14 +4,14 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { Button, Callout, Checkbox, Select, TextField } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   WEBHOOK_EVENT_TYPES,
   type CreateWebhookEndpointResult,
   type Mode,
   type WebhookEventType,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 
 export interface CreateEndpointFormProps {
   projectId: string
@@ -85,6 +85,7 @@ export function CreateEndpointForm({
       )
       onCreated(result)
     } catch (err) {
+      console.error('Failed to create webhook endpoint', err)
       setFormError(
         err instanceof ApiError
           ? err.message

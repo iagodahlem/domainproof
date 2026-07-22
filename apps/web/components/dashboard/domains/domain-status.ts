@@ -1,5 +1,5 @@
 import type { Tone } from '@domainproof/ui'
-import type { DomainStatus } from '@/lib/api'
+import type { DomainStatus } from '@/lib/api/dashboard'
 
 export interface DomainStatusPresentation {
   label: string

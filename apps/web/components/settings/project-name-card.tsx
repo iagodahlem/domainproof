@@ -5,7 +5,8 @@ import type { FormEvent } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { Check } from 'lucide-react'
 import { Button, Card, CardBody, TextField } from '@domainproof/ui'
-import { ApiError, dashboardApi, type ProjectSummary } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
 
 export interface ProjectNameCardProps {
   project: ProjectSummary
@@ -59,6 +60,7 @@ export function ProjectNameCard({ project }: ProjectNameCardProps) {
         SAVED_FLASH_MS,
       )
     } catch (err) {
+      console.error('Failed to rename project', err)
       setError(
         err instanceof ApiError
           ? err.message

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { dashboardApi } from '@/lib/api'
+import { dashboardApi } from '@/lib/api/dashboard'
 import { WebhooksView } from '@/components/webhooks/webhooks-view'
 
 export const metadata: Metadata = {

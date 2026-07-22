@@ -4,12 +4,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { Button, Callout, Select, TextField } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
 import {
-  ApiError,
   dashboardApi,
   type DomainDetail,
   type DomainMode,
-} from '@/lib/api'
+} from '@/lib/api/dashboard'
 
 const MODE_OPTIONS = [
   { value: 'test', label: 'Test' },
