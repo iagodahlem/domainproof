@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useSignIn, useUser } from '@clerk/nextjs'
 import { isClerkAPIResponseError } from '@clerk/nextjs/errors'
 import { Button, Callout, cn, type ButtonProps } from '@domainproof/ui'
@@ -10,6 +9,11 @@ import { GoogleIcon } from './google-icon'
 export interface AuthCtaProps extends Pick<ButtonProps, 'size' | 'className'> {
   iconSize?: number
 }
+
+// The dashboard world (Clerk's callback + every protected route) lives on
+// its own host — see apps/web/middleware.ts — so this landing-page CTA
+// always points there absolutely, not at a same-origin relative path.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
 /**
  * The one CTA slot on the landing page: "Continue with Google" for a
@@ -26,7 +30,7 @@ export function AuthCta({ size, className, iconSize = 15 }: AuthCtaProps) {
   if (isLoaded && isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
-        <Link href="/dashboard">Dashboard</Link>
+        <a href={new URL('/dashboard', APP_URL).toString()}>Dashboard</a>
       </Button>
     )
   }
@@ -38,8 +42,8 @@ export function AuthCta({ size, className, iconSize = 15 }: AuthCtaProps) {
     try {
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/dashboard',
+        redirectUrl: new URL('/sso-callback', APP_URL).toString(),
+        redirectUrlComplete: new URL('/dashboard', APP_URL).toString(),
       })
     } catch (err) {
       setStarting(false)

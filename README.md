@@ -22,14 +22,15 @@ rules.
 
 ## Environments
 
-|                            | URL                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| Web (production)           | <https://domainproof.dev>                                                                     |
-| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                           |
-| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only; pending DNS — being provisioned |
-| Frontend API (production)  | `verify.domainproof.dev` — serves `/frontend/*` only; pending DNS — being provisioned         |
-| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                   |
-| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                   |
+|                            | URL                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| Marketing (production)     | <https://domainproof.dev> — landing + the hosted `/verify/:token` page                            |
+| Dashboard (production)     | <https://app.domainproof.dev> — `/dashboard`, `/new`, `/sso-callback`; host-routed by the web app |
+| Public API (production)    | <https://api.domainproof.dev> — serves `/v1/*` only                                               |
+| Dashboard API (production) | `dashboard.api.domainproof.dev` — serves `/dashboard/*` only                                      |
+| Frontend API (production)  | `frontend.api.domainproof.dev` — serves `/frontend/*` only                                        |
+| Docs (production)          | <https://docs.domainproof.dev> — host-routed by the web app                                       |
+| Demo (production)          | <https://demo.domainproof.dev> — host-routed by the web app                                       |
 
 |          | Local (`pnpm dev`)      | Local (`docker compose up`)   |
 | -------- | ----------------------- | ----------------------------- |
@@ -54,6 +55,12 @@ cp apps/web/.env.example apps/web/.env.local
 `NEXT_PUBLIC_API_URL` pointed at the api configured with that instance —
 locally that's normally one dev instance for both, with `CLERK_JWKS_URL`
 following the pattern `https://<instance-domain>/.well-known/jwks.json`.
+
+`apps/web/.env.local`'s `NEXT_PUBLIC_APP_URL`/`NEXT_PUBLIC_MARKETING_URL`
+default to the same local origin, which keeps the web app's host-based
+routing (see `apps/web/middleware.ts`) disabled locally — every route stays
+reachable on one origin with no `/etc/hosts` tricks. Production points them
+at the real, distinct hosts.
 
 `apps/api/.env` (`pnpm --filter api dev` loads it automatically via
 `node`'s `--env-file-if-exists` flag — no shell exports needed, and
@@ -99,7 +106,7 @@ The API has three authentication planes, split by path prefix (see
 [ARCHITECTURE.md](./ARCHITECTURE.md#route-planes)). In production, each
 plane is also confined to its own host — `api.domainproof.dev` serves
 `/v1/*` only, `dashboard.api.domainproof.dev` serves `/dashboard/*`
-only, `verify.domainproof.dev` serves `/frontend/*` only — but locally
+only, `frontend.api.domainproof.dev` serves `/frontend/*` only — but locally
 and in the Railway service domain all three stay reachable on one origin,
 so the split below is what matters for local development:
 

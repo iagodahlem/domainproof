@@ -9,9 +9,12 @@ agent-driven verification.
 
 ```txt
 apps/
-  web/        # Next.js 15 (App Router) — the only Next app. Serves:
-              #   - landing + dashboard at the apex domain (domainproof.dev)
-              #   - hosted verification portal at /v/[token]
+  web/        # Next.js 15 (App Router) — the only Next app. Host-routed
+              #   (apps/web/middleware.ts), one Vercel deployment:
+              #   - landing + hosted verification portal at /verify/[token]
+              #     on the apex domain (domainproof.dev)
+              #   - the dashboard (/dashboard, /new, /sso-callback — Clerk
+              #     mounted only here) on app.domainproof.dev
               #   - docs (Fumadocs) on docs.domainproof.dev via host-based routing
               #   - a demo consumer app on demo.domainproof.dev via host-based
               #     routing, deliberately distinct branding, consumes only the
