@@ -8,6 +8,7 @@ import {
   ConfirmBar,
   RecordCard,
   RecordField,
+  cn,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { ApiKeyListItem, CreateKeyResult } from '@/lib/api/dashboard'
@@ -15,6 +16,7 @@ import {
   useRotateOrRevokeApiKey,
   type RotateOrRevokeKeyInput,
 } from '@/lib/query/keys'
+import { useMode } from '@/lib/mode'
 
 export interface ApiKeysCardProps {
   projectId: string
@@ -64,6 +66,7 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
   const [revealedKey, setRevealedKey] = useState<CreateKeyResult | null>(null)
 
   const rotateOrRevoke = useRotateOrRevokeApiKey(projectId)
+  const { mode: activeMode } = useMode()
 
   const busyKeyId = rotateOrRevoke.isPending
     ? (rotateOrRevoke.variables?.keyId ?? null)
@@ -134,11 +137,18 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
           </div>
         ) : (
           keys.flatMap((key) => {
+            const isActiveMode = key.mode === activeMode
             const nodes = [
               <RecordField
                 key={`${key.keyId}-field`}
                 label={keyLabel(key)}
                 value={key.maskedKey}
+                className={cn(
+                  isActiveMode &&
+                    (key.mode === 'live'
+                      ? 'bg-success-soft'
+                      : 'bg-warning-soft'),
+                )}
                 explain={
                   <>
                     Created {formatDate(key.createdAt)} · Last used{' '}

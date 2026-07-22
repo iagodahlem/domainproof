@@ -374,11 +374,12 @@ export const dashboardApi = {
   listProjectEvents(
     token: string | null,
     projectId: string,
-    options: { limit?: number; cursor?: string } = {},
+    options: { limit?: number; cursor?: string; mode?: Mode } = {},
   ) {
     const query = toQueryString({
       limit: options.limit?.toString(),
       cursor: options.cursor,
+      mode: options.mode,
     })
     return request<ListProjectEventsResult>(
       `/dashboard/projects/${projectId}/events${query}`,

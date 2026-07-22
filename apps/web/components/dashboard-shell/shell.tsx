@@ -1,5 +1,9 @@
+'use client'
+
 import type { ReactNode } from 'react'
+import { cn } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
+import { ModeProvider, useMode } from '@/lib/mode'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 
@@ -17,7 +21,38 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   return (
-    <div className="flex min-h-screen items-stretch bg-background max-[760px]:flex-col">
+    <ModeProvider>
+      <ShellBody
+        projects={projects}
+        activeProject={activeProject}
+        email={email}
+      >
+        {children}
+      </ShellBody>
+    </ModeProvider>
+  )
+}
+
+/**
+ * Split from `DashboardShell` so `useMode()` (needed for the test-mode top
+ * border) can run inside the provider it's mounted from, rather than the
+ * component that renders that provider.
+ */
+function ShellBody({
+  projects,
+  activeProject,
+  email,
+  children,
+}: DashboardShellProps) {
+  const { mode } = useMode()
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-screen items-stretch bg-background max-[760px]:flex-col',
+        mode === 'test' && 'border-t-2 border-warning',
+      )}
+    >
       <Sidebar
         projects={projects}
         activeProject={activeProject}

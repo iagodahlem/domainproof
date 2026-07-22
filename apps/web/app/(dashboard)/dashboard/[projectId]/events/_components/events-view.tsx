@@ -18,23 +18,30 @@ import { ApiError } from '@/lib/query/errors'
 // this structural migration and left for an immediate follow-on PR (see
 // apps/web/ARCHITECTURE.md).
 // eslint-disable-next-line no-restricted-imports -- see note above
-import { dashboardApi, type ProjectEventSummary } from '@/lib/api/dashboard'
+import {
+  dashboardApi,
+  type Mode,
+  type ProjectEventSummary,
+} from '@/lib/api/dashboard'
 import { EventRow, EVENT_GRID_COLS } from './event-row'
 
 export interface EventsViewProps {
   projectId: string
+  /** The mode this page's data was loaded for — passed through to `loadMore` so pagination doesn't drift onto the other mode's rows. */
+  mode: Mode
   initialEvents: ProjectEventSummary[]
   initialCursor: string | null
 }
 
 /**
- * Project-wide events table — every verification event across the
- * project's domains and both modes, newest first. No search: the API
- * gives no filter beyond cursor pagination, and the board calls the
- * table short enough to scan directly.
+ * Project-wide events table — every verification event for the project's
+ * domains in the active mode, newest first. No search: the API gives no
+ * filter beyond cursor pagination and mode, and the board calls the table
+ * short enough to scan directly.
  */
 export function EventsView({
   projectId,
+  mode,
   initialEvents,
   initialCursor,
 }: EventsViewProps) {
@@ -52,6 +59,7 @@ export function EventsView({
       const token = await getToken()
       const result = await dashboardApi.listProjectEvents(token, projectId, {
         cursor,
+        mode,
       })
       setEvents((prev) => [...prev, ...result.events])
       setCursor(result.nextCursor)
@@ -74,11 +82,11 @@ export function EventsView({
           <Activity aria-hidden="true" size={18} />
         </div>
         <h3 className="mb-2 text-lg font-heading text-foreground">
-          No events yet
+          No {mode} events yet
         </h3>
         <p className="mx-auto max-w-[44ch] text-sm text-muted-foreground">
-          Every verification event across your project&rsquo;s domains shows up
-          here as it happens.
+          Every verification event across your project&rsquo;s {mode} domains
+          shows up here as it happens.
         </p>
       </div>
     )
