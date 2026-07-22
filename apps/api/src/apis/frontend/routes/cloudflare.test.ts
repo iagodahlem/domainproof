@@ -9,14 +9,13 @@ import { generateKeyId } from '@modules/keys/domain/encoding'
 import type { CloudflareClient } from '@modules/cloudflare/ports'
 
 /**
- * End-to-end coverage of the Cloudflare one-click DNS setup flow (FD-023
- * A1): claims a real domain through `/v1/domains`, drives the authorize
- * redirect and callback exactly as a browser would (extracting `state`
- * from the authorize redirect's `Location` header, feeding it back to the
+ * End-to-end coverage of the Cloudflare one-click DNS setup flow: claims a
+ * real domain through `/v1/domains`, drives the authorize redirect and
+ * callback exactly as a browser would (extracting `state` from the
+ * authorize redirect's `Location` header, feeding it back to the
  * callback), against a real db throughout and a fake `CloudflareClient`
- * standing in for Cloudflare's own API (per FD-023: everything works
- * against mocked Cloudflare endpoints, since the real OAuth client doesn't
- * exist yet).
+ * standing in for Cloudflare's own API, since the real OAuth client
+ * doesn't exist yet.
  */
 const db: Database = createDb(
   process.env.DATABASE_URL ??

@@ -71,9 +71,8 @@ export interface CloudflareOAuthService {
    *
    * The Cloudflare access token this exchanges for lives only in this
    * function's own local scope: it's never persisted, never logged, and
-   * never appears in the returned result — see FD-023's grant-handling
-   * constraint. Once this call returns, nothing in the process still
-   * references it.
+   * never appears in the returned result. Once this call returns, nothing
+   * in the process still references it.
    */
   handleCallback(params: {
     code?: string
