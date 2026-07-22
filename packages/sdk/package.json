@@ -1,19 +1,44 @@
 {
   "name": "@domainproof/sdk",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Typed Node.js client for the DomainProof domain-ownership verification API.",
+  "keywords": [
+    "domainproof",
+    "domain-verification",
+    "domain-ownership",
+    "dns",
+    "sdk"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iagodahlem/domainproof.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
-  "main": "./dist/index.js",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "generate": "openapi-typescript http://localhost:3001/v1/openapi.json -o src/generated/openapi-types.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
-  },
-  "dependencies": {
-    "@domainproof/core": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
