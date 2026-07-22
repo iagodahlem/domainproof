@@ -156,29 +156,30 @@ plane, `/v1/*`) and `dashboard.api.domainproof.dev` (`/dashboard/*`) are
 live/in-progress today. Any new plane host follows
 `<plane>.api.domainproof.dev`.
 
-**Flagged gap, not yet reconciled:** there's a stated intent for `/frontend/*`
-to eventually also answer on `api.domainproof.dev` instead of getting its
-own custom domain — it's "public" in the same sense `/v1` is (no builder
-session), and consolidating saves a plan-capped custom-domain slot. Two
-things stand in the way of flipping that on today, so don't act on it
-without resolving both first:
+**Resolved (2026-07-22):** the frontend plane runs on its own custom domain,
+`frontend.api.domainproof.dev` — provisioned after the plan upgrade lifted
+the custom-domain cap, keeping the documented one-plane-per-host contract.
+A consolidation PR that would have served `/frontend/*` on the public host
+was closed unmerged once the dedicated host became possible. Any lingering
+`verify.domainproof.dev` references in older docs are stale — that name was
+never provisioned.
 
-- `host-restriction.ts` enforces exactly one path prefix per configured
-  host. If `PUBLIC_API_HOST` and `FRONTEND_API_HOST` are ever set to the
-  same value, every `/frontend/*` request 404s (the host matches
-  `publicApiHost`, and the path doesn't start with `/v1`) — the middleware
-  needs a "this host allows more than one prefix" mode first.
-- `ARCHITECTURE.md`'s current documented rationale for giving the frontend
-  plane its own host (`verify.domainproof.dev` in the README today) is
-  specifically that it has **no session or api-key auth at all**, so it's
-  kept off hosts that serve authenticated planes. Consolidating it onto
-  `api.domainproof.dev` reverses that call — treat it as an open design
-  question, not a DNS change to make casually.
+**Creating a new service in this project — three gotchas that already
+burned a night:**
 
-Until one of those is resolved, provision the frontend plane's host the
-same way dashboard's was: its own subdomain, `frontend.api.domainproof.dev`
-under the current naming pattern (replacing the not-yet-provisioned
-`verify.domainproof.dev` name still in the README).
+- New Railway services default to the Railpack builder, which cannot infer
+  a start command from this monorepo's root. The api builds from
+  `apps/api/Dockerfile`, selected via a service variable:
+  `RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`. Set it BEFORE the first
+  deploy or the build fails with "railpack process exited with an error".
+- A deploy triggered at service creation races the variables — set every
+  variable first, then trigger the deploy (a first FAILED deploy right
+  after `serviceCreate` usually just means it built before `DATABASE_URL`
+  existed).
+- Project tokens are environment-scoped and cannot create environments —
+  that's why staging is a second SERVICE (`api-staging`, Railway-generated
+  domain) inside the production environment, not a separate environment:
+  Neon branch database, dev-instance Clerk JWKS, no host restriction.
 
 ## Cloudflare DNS
 
