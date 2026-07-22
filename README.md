@@ -422,15 +422,26 @@ dashboard that owns the zones this flow should write to:
    only by this account; never switch it to Public, which starts an
    irreversible, ~2-day domain-ownership verification for a client URL this
    flow doesn't need).
-3. Set the **redirect URI** to exactly
-   `https://frontend.api.domainproof.dev/frontend/cloudflare/callback` — this is
-   hardcoded in `apps/api/src/app.ts`'s `CLOUDFLARE_OAUTH_REDIRECT_URI` and
-   must match exactly, or Cloudflare will reject the exchange.
-4. Grant it **Zone → Zone → Read** and **Zone → DNS → Edit** permissions
-   (confirm the exact scope strings against `GET /client/v4/oauth/scopes`
-   if asked for one — the dashboard picks permissions by checkbox, not by
-   typing a scope string).
-5. Copy the generated **client ID** and **client secret** into
+3. Fill the form: **Client Name** `DomainProof`; **Response Type** `Code`;
+   **Grant type** `Authorization Code`; **Token Authentication Method**
+   `client_secret_post` (the exchange sends `client_secret` in the POST
+   body — see `infra/cloudflare/oauth-client.ts`); **Client URL** is
+   optional; skip every Advanced option.
+4. Add BOTH **Redirect (Callback) URLs** — one client serves production and
+   staging, same credentials on both services:
+   `https://frontend.api.domainproof.dev/frontend/cloudflare/callback` and
+   the staging api's Railway domain plus the same
+   `/frontend/cloudflare/callback` path. These must match the runtime's
+   redirect URI exactly, or Cloudflare rejects the exchange.
+5. On the permissions screen, check exactly two boxes under **DNS &
+   Zones**: **DNS → Edit** and **Zone → Read** (2/11 selected). Nothing
+   else.
+6. Cloudflare also offers a `cloudflare_oauth_client_publisher=...` DNS TXT
+   record for "domain verification" at creation time — do **NOT** add it.
+   That record is the first step of the public-client verification path
+   (the irreversible one from step 2); the private client works fully
+   without it.
+7. Copy the generated **client ID** and **client secret** into
    `CLOUDFLARE_OAUTH_CLIENT_ID` / `CLOUDFLARE_OAUTH_CLIENT_SECRET` (see the
    env var table above) wherever the api runs.
 
