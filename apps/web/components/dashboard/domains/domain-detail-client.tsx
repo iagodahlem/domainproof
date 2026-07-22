@@ -1,15 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  RefreshCw,
-  RotateCw,
-  Trash2,
-} from 'lucide-react'
+import { Check, ChevronDown, RefreshCw, RotateCw, Trash2 } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -31,6 +23,7 @@ import {
   useRegenerateDomain,
   useVerifyDomain,
 } from '@/lib/query/domains'
+import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { domainStatusPresentation } from './domain-status'
 import { domainStatusSteps } from './domain-status-steps'
 import { checkOutcomePresentation } from './domain-check-outcome'
@@ -119,22 +112,23 @@ export function DomainDetailClient({
     })
   }
 
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Link
-          href={`/dashboard/${projectId}/domains`}
-          aria-label="Back to domains"
-          className="text-faint-foreground transition-colors duration-150 hover:text-foreground"
-        >
-          <ChevronLeft aria-hidden="true" size={16} />
-        </Link>
-        <h1 className="font-mono text-xl font-heading text-foreground">
+  useTopbarSlot({
+    back: {
+      href: `/dashboard/${projectId}/domains`,
+      label: 'Back to domains',
+    },
+    title: (
+      <div className="flex items-center gap-3">
+        <h1 className="font-mono text-base font-heading text-foreground">
           {domain.domain}
         </h1>
         <Badge tone={presentation.tone}>{presentation.label}</Badge>
       </div>
+    ),
+  })
 
+  return (
+    <div>
       <RecordCard
         className="mb-6"
         step={

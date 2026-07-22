@@ -32,6 +32,13 @@ const listDeliveriesQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
 })
 
+// The dashboard's test/live mode toggle. Optional — omitted returns both
+// modes mixed, same as before this filter existed (mirrors
+// `apis/dashboard/routes/domains.ts`'s identical `mode` query param).
+const listEndpointsQuerySchema = z.object({
+  mode: z.enum(['test', 'live']).optional(),
+})
+
 function projectNotFound() {
   return {
     body: apiError('not_found', 'Project not found'),
@@ -133,7 +140,16 @@ export function createWebhooksRoutes(
       return c.json(body, status)
     }
 
-    const endpoints = await webhooksService.listEndpoints(projectId)
+    const parsed = listEndpointsQuerySchema.safeParse(c.req.query())
+    if (!parsed.success) {
+      const { body, status } = invalidRequest('Invalid query parameters')
+      return c.json(body, status)
+    }
+
+    const endpoints = await webhooksService.listEndpoints(
+      projectId,
+      parsed.data.mode,
+    )
 
     return c.json({ endpoints })
   })

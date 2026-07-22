@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Header, Logo, cn } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
 import { DASHBOARD_NAV_ITEMS } from './nav-items'
-import { ModeSwitch } from './mode-switch'
 import { ProjectSwitcher } from './project-switcher'
 import { UserMenu } from './user-menu'
 
@@ -16,25 +15,23 @@ export interface SidebarProps {
 }
 
 /**
- * Board-conformant order: logo, then project switcher at the top, the
- * test/live mode switch directly below it (owner-approved deviation from
- * the board, which put the mode switch in each page's own topbar — the
- * sidebar keeps it in one place instead of repeating it per page), nav
- * links below that, account menu pinned to the bottom. The logo and
- * switcher each sit in their own `Header` (`variant="solid"`, same as the
- * topbar) rather than hand-rolled markup, so their height and bottom
- * border line up exactly with the topbar's — together they read as one
- * continuous header band across the page.
+ * Board-conformant order: logo, then project switcher at the top, nav links
+ * below that, account menu pinned to the bottom. The test/live mode switch
+ * lives in the shell's topbar instead (each page's own header, next to that
+ * page's action button) — the board's own placement, not a sidebar
+ * deviation. The logo and switcher each sit in their own `Header`
+ * (`variant="solid"`, same as the topbar) rather than hand-rolled markup, so
+ * their height and bottom border line up exactly with the topbar's —
+ * together they read as one continuous header band across the page.
  *
  * Below 760px this collapses to a 3-column grid strip (`1fr auto 1fr`) so
  * the nav icons stay truly centered regardless of how wide the flanking
  * content is: logo (icon-only, no wordmark) + a compact project switcher
  * on the left, nav icons centered, account menu (icon-only) on the right —
- * opposite the logo. The mode switch stays desktop-only for now. The
- * account menu stays visible there since it's the only sign-out affordance
- * now that the topbar no longer carries one; the switcher reappearing here
- * is a proposal beyond the board's own stated mobile-nav follow-up (see
- * the PR description).
+ * opposite the logo. The account menu stays visible there since it's the
+ * only sign-out affordance now that the topbar no longer carries one; the
+ * switcher reappearing here is a proposal beyond the board's own stated
+ * mobile-nav follow-up (see the PR description).
  */
 export function Sidebar({ projects, activeProject, email }: SidebarProps) {
   const pathname = usePathname()
@@ -67,9 +64,6 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
             />
           }
         />
-        <div className="border-b border-border p-3">
-          <ModeSwitch />
-        </div>
       </div>
 
       <div className="hidden items-center gap-2 max-[760px]:flex max-[760px]:justify-self-start">

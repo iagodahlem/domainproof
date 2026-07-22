@@ -18,7 +18,7 @@ const DEFAULT_MODE: Mode = 'test'
  * places for the global toggle to reflect into the URL (deep-linkable,
  * shareable). Every other dashboard route reads/writes mode through
  * context + localStorage only, same as the design-system's theme toggle. */
-const MODE_AWARE_SEGMENTS = ['domains', 'events']
+const MODE_AWARE_SEGMENTS = ['domains', 'events', 'webhooks']
 
 function isMode(value: string | null): value is Mode {
   return value === 'test' || value === 'live'

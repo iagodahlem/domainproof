@@ -221,6 +221,58 @@ describe('/dashboard/projects/:projectId/webhooks', () => {
     expect(serialized).not.toContain(created.secret)
   })
 
+  it('filters the list by mode, and omits the filter to return both', async () => {
+    const app = buildApp()
+    const clerkUserId = freshClerkUserId()
+    const { projectId } = await createProject(app, clerkUserId)
+
+    await createEndpoint(app, clerkUserId, projectId, {
+      url: 'https://example.com/hooks/test',
+      mode: 'test',
+    })
+    await createEndpoint(app, clerkUserId, projectId, {
+      url: 'https://example.com/hooks/live',
+      mode: 'live',
+    })
+
+    const testRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/webhooks?mode=test`,
+    )
+    const testBody = (await testRes.json()) as {
+      endpoints: Array<{ url: string; mode: string }>
+    }
+    expect(testBody.endpoints.map((e) => e.url)).toEqual([
+      'https://example.com/hooks/test',
+    ])
+
+    const liveRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/webhooks?mode=live`,
+    )
+    const liveBody = (await liveRes.json()) as {
+      endpoints: Array<{ url: string; mode: string }>
+    }
+    expect(liveBody.endpoints.map((e) => e.url)).toEqual([
+      'https://example.com/hooks/live',
+    ])
+
+    const allRes = await asUser(
+      app,
+      clerkUserId,
+      `/dashboard/projects/${projectId}/webhooks`,
+    )
+    const allBody = (await allRes.json()) as {
+      endpoints: Array<{ url: string; mode: string }>
+    }
+    expect(allBody.endpoints.map((e) => e.url).sort()).toEqual([
+      'https://example.com/hooks/live',
+      'https://example.com/hooks/test',
+    ])
+  })
+
   it('rejects an invalid url', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()

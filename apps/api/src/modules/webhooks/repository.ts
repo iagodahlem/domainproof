@@ -59,8 +59,11 @@ export interface TerminalDeliveryUpdate {
 export interface WebhooksRepository {
   insertEndpoint(values: WebhookEndpointInsert): Promise<WebhookEndpointRow>
 
-  /** All endpoints (any mode, any status) belonging to a project. */
-  listEndpointsByProject(projectId: string): Promise<WebhookEndpointRow[]>
+  /** Endpoints belonging to a project — every mode (any status) unless `mode` narrows it to one. */
+  listEndpointsByProject(
+    projectId: string,
+    mode?: Mode,
+  ): Promise<WebhookEndpointRow[]>
 
   /** Scoped to `projectId`, so an endpoint id belonging to a different project is treated as not found. */
   findEndpoint(
@@ -141,11 +144,18 @@ export function createWebhooksRepository(db: Database): WebhooksRepository {
       return row
     },
 
-    async listEndpointsByProject(projectId) {
+    async listEndpointsByProject(projectId, mode) {
       return db
         .select()
         .from(webhookEndpoints)
-        .where(eq(webhookEndpoints.projectId, projectId))
+        .where(
+          mode
+            ? and(
+                eq(webhookEndpoints.projectId, projectId),
+                eq(webhookEndpoints.mode, mode),
+              )
+            : eq(webhookEndpoints.projectId, projectId),
+        )
     },
 
     async findEndpoint(projectId, endpointId) {

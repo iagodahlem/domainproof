@@ -124,8 +124,11 @@ export interface WebhooksService {
     eventTypes: WebhookEventType[],
   ): Promise<CreateWebhookEndpointResult>
 
-  /** All endpoints (any mode, any status) belonging to a project. */
-  listEndpoints(projectId: string): Promise<WebhookEndpointSummary[]>
+  /** Endpoints belonging to a project — every mode (any status) unless `mode` narrows it to one. */
+  listEndpoints(
+    projectId: string,
+    mode?: Mode,
+  ): Promise<WebhookEndpointSummary[]>
 
   /** Returns the deleted endpoint, or `null` if `endpointId` doesn't belong to `projectId`. */
   deleteEndpoint(
@@ -324,8 +327,8 @@ export function createWebhooksService(
       return { endpoint: toEndpointSummary(row), secret }
     },
 
-    async listEndpoints(projectId) {
-      const rows = await repository.listEndpointsByProject(projectId)
+    async listEndpoints(projectId, mode) {
+      const rows = await repository.listEndpointsByProject(projectId, mode)
       return rows.map(toEndpointSummary)
     },
 

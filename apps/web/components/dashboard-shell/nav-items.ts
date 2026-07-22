@@ -18,3 +18,11 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { segment: 'events', label: 'Events', icon: Activity },
   { segment: 'settings', label: 'Settings', icon: Settings },
 ]
+
+/**
+ * Routes whose data the dashboard-wide test/live toggle actually changes —
+ * `Topbar` shows the switch only here, never on settings. `domains` also
+ * covers a domain's own detail page for free, since that route's path
+ * starts with this same segment.
+ */
+export const MODE_TOGGLE_SEGMENTS = ['domains', 'webhooks', 'events']
