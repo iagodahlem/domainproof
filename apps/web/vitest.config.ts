@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
   // apps/web's own tsconfig sets `jsx: "preserve"` (Next's compiler does the
@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // Playwright owns e2e/ (run via `test:e2e`) — keep vitest out of it.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })
