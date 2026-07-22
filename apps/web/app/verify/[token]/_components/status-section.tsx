@@ -26,8 +26,14 @@ export interface StatusSectionProps {
   pollError: string | null
 }
 
+// `pending` reads as `warning` (amber), matching both the design board's
+// token semantics (accent/success is reserved for the verified state — the
+// product's whole job is proving something true, so brand and "verified"
+// share one color on purpose) and the dashboard's own
+// `domainStatusPresentation` — a pending pill must never look like a
+// verified one.
 const BADGE_TONE_BY_STATUS_TONE: Record<StatusTone, Tone> = {
-  pending: 'accent',
+  pending: 'warning',
   success: 'success',
   warning: 'warning',
   danger: 'danger',

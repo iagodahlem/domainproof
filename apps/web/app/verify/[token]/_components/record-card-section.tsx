@@ -6,6 +6,7 @@ import {
   RecordCard,
   RecordField,
 } from '@domainproof/ui'
+import { Check } from 'lucide-react'
 import type { VerificationRecord } from '@/lib/api/frontend'
 // This route mounts no QueryProvider (D-029: no auth/session context on the
 // anonymous verification page) — converting to a lib/query hook would mean
@@ -48,9 +49,12 @@ export function RecordCardSection({
     provider === 'cloudflare' && status !== 'verified'
   const providerHint = PROVIDER_HINT_BY_PROVIDER[provider]
   const firstRecordType = records[0]?.type
+  const isVerified = status === 'verified'
 
   return (
     <RecordCard
+      step={isVerified ? <Check aria-hidden="true" size={12} /> : 1}
+      stepTone={isVerified ? 'success' : 'accent'}
       title="Add this DNS record"
       sub="At whoever manages this domain's DNS"
       trailing={
@@ -59,30 +63,45 @@ export function RecordCardSection({
     >
       {records.map((record) => (
         <div key={record.label}>
-          <RecordField label="Host" value={record.label} copyable />
-          <RecordField label="Value" value={record.value} copyable />
+          <RecordField
+            label="Host"
+            value={record.label}
+            copyable
+            explain="This subdomain is unique to this request. It doesn't touch your existing DNS, mail, or website — it only exists to answer one question."
+          />
+          <RecordField
+            label="Value"
+            value={record.value}
+            copyable
+            explain="A one-time token, generated for this request only. Paste it exactly as shown."
+          />
         </div>
       ))}
 
-      {providerHint ? (
-        <CardRow className="text-sm text-text-muted">{providerHint}</CardRow>
-      ) : null}
-
-      <CardRow className="text-xs text-text-faint">
-        Paste the value exactly as shown — some DNS providers add a trailing dot
-        automatically. If verification keeps failing, check for one.
+      <CardRow>
+        <Callout tone="warning" className="text-sm">
+          Paste the value exactly as shown — some DNS providers add a trailing
+          dot automatically. If verification keeps failing, check for one.
+        </Callout>
       </CardRow>
 
-      {showCloudflareButton || outcomeView ? (
-        <CardRow className="flex flex-col gap-3">
-          {showCloudflareButton ? (
+      {showCloudflareButton && providerHint ? (
+        <CardRow>
+          <Callout
+            tone="accent"
+            className="flex flex-col items-start gap-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span>{providerHint}</span>
             <CloudflareButton authorizeUrl={cloudflareAuthorizeUrl(token)} />
-          ) : null}
-          {outcomeView ? (
-            <Callout tone={outcomeView.tone} className="text-sm">
-              {outcomeView.message}
-            </Callout>
-          ) : null}
+          </Callout>
+        </CardRow>
+      ) : null}
+
+      {outcomeView ? (
+        <CardRow>
+          <Callout tone={outcomeView.tone} className="text-sm">
+            {outcomeView.message}
+          </Callout>
         </CardRow>
       ) : null}
     </RecordCard>

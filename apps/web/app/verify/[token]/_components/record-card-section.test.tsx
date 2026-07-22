@@ -11,7 +11,7 @@ const RECORDS = [
 ]
 
 describe('RecordCardSection', () => {
-  it('renders the host and value fields', () => {
+  it('renders the host and value fields with their explain copy', () => {
     render(
       <RecordCardSection
         token="tok_1"
@@ -23,9 +23,11 @@ describe('RecordCardSection', () => {
     )
     expect(screen.getByText('_acme-challenge.example.com')).toBeTruthy()
     expect(screen.getByText('acme-verify=abc123')).toBeTruthy()
+    expect(screen.getByText(/unique to this request/i)).toBeTruthy()
+    expect(screen.getByText(/one-time token/i)).toBeTruthy()
   })
 
-  it('shows the Cloudflare one-click button when the provider is cloudflare and not yet verified', () => {
+  it('shows the Cloudflare one-click button alongside its provider hint when the provider is cloudflare and not yet verified', () => {
     render(
       <RecordCardSection
         token="tok_1"
@@ -36,9 +38,10 @@ describe('RecordCardSection', () => {
       />,
     )
     expect(screen.getByText('Add this record for me')).toBeTruthy()
+    expect(screen.getByText(/we detected cloudflare/i)).toBeTruthy()
   })
 
-  it('hides the Cloudflare button once verified', () => {
+  it('hides the Cloudflare button and its provider hint once verified — nothing left to add', () => {
     render(
       <RecordCardSection
         token="tok_1"
@@ -49,6 +52,7 @@ describe('RecordCardSection', () => {
       />,
     )
     expect(screen.queryByText('Add this record for me')).toBeNull()
+    expect(screen.queryByText(/we detected cloudflare/i)).toBeNull()
   })
 
   it('hides the Cloudflare button for a non-cloudflare provider', () => {
