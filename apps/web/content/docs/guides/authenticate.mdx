@@ -16,6 +16,41 @@ curl https://api.domainproof.dev/v1/domains \
 
 A key always looks like `dp_<mode>_<key id>_<secret>`. The `key id` segment is public — safe to show in logs or dashboards — and exists purely to look the key up; the trailing `secret` is what actually authenticates the request. An invalid, unknown, or revoked key all return the same `401 invalid_api_key` — there's no way to distinguish "this key doesn't exist" from "this key exists but the secret is wrong."
 
+## Using the SDK
+
+The `@domainproof/sdk` package wraps this same header — pass the key once, at construction:
+
+```ts
+import { DomainProof } from '@domainproof/sdk'
+
+const domainproof = new DomainProof({
+  apiKey: process.env.DOMAINPROOF_API_KEY!, // dp_test_... or dp_live_...
+})
+```
+
+Every method on `domainproof` returns `{ data, error }` instead of throwing — `error` is a `DomainProofApiError` carrying the same `code` this page's error responses use (`invalid_api_key`, `not_found`, `domain_already_claimed`, ...), so you can branch on `.code` without parsing `.message`:
+
+```ts
+const { data, error } = await domainproof.domains.claim({ domain: 'acme.test' })
+if (error) {
+  if (error.code === 'invalid_api_key') {
+    // the key is missing, malformed, unknown, or revoked
+  }
+  throw error
+}
+```
+
+By default the client talks to `https://api.domainproof.dev`. Point it at a local API during development with `baseUrl`:
+
+```ts
+const domainproof = new DomainProof({
+  apiKey: process.env.DOMAINPROOF_API_KEY!,
+  baseUrl: 'http://localhost:3001',
+})
+```
+
+The test/live rule above applies to whichever key you pass in — a `dp_test_...` key still can't claim anything but `.test` sandbox domains, SDK or not.
+
 ## Test vs. live
 
 Every key is minted for one of two modes:

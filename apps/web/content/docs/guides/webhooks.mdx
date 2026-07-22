@@ -20,6 +20,7 @@ A project-scoped subset of every event DomainProof can publish — every one exc
 - `domain.verified` — the domain transitioned to `verified` (first pass, or recovery from the grace window).
 - `domain.temporarily_failed` — a previously verified domain lost its record and entered the 72-hour grace window.
 - `domain.failed` — the domain transitioned to `failed` (verification window elapsed, or the grace window expired).
+- `domain.dns_autoconfigured` — the [Cloudflare one-click DNS setup flow](/docs/hosted-verification-page#cloudflare-one-click-dns-setup) wrote the challenge's record on the domain owner's behalf. Always precedes the `domain.check_passed`/`domain.verified` pair the triggered check produces, not a replacement for either.
 
 ## Delivery payload
 

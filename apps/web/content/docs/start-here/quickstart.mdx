@@ -86,6 +86,32 @@ Call the same endpoint again after 45 seconds have passed since the claim:
 
 Done — that's the full loop: claim, check, verified. Polling `/verify` is entirely optional in production: a background scheduler re-checks every claimed domain on its own backoff schedule, so a claim eventually reflects a correct DNS record even if you never call this endpoint again. See [How verification works](/docs/how-verification-works) for the full state machine and recheck cadence.
 
+## Using the SDK
+
+The three calls above collapse into a claim, then a poll loop, using [`@domainproof/sdk`](/docs/authenticate#using-the-sdk):
+
+```ts
+import { DomainProof } from '@domainproof/sdk'
+
+const domainproof = new DomainProof({
+  apiKey: process.env.DOMAINPROOF_API_KEY!,
+})
+
+const claim = await domainproof.domains.claim({ domain: 'pending-then-verified.test' })
+if (claim.error) throw claim.error
+
+let result = await domainproof.domains.verify(claim.data.id)
+while (!result.error && result.data.domain.status === 'pending') {
+  await new Promise((resolve) => setTimeout(resolve, 5_000))
+  result = await domainproof.domains.verify(claim.data.id)
+}
+
+if (result.error) throw result.error
+console.log(result.data.domain.status) // 'verified'
+```
+
+Same sandbox domain, same 45-second settle time — the loop above just calls `verify` every 5 seconds instead of you timing two manual calls. See [Claim and verify a domain](/docs/claim-and-verify) for the SDK method behind every other call in this guide.
+
 ## Where to next
 
 - [Sandbox: verify without a real domain](/docs/sandbox) — every scripted journey (`verified.test`, `wrong-value.test`, `flaky.test`, ...), not just the pending-then-verified one used above.

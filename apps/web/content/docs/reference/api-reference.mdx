@@ -7,7 +7,7 @@ order: 1
 
 # API reference
 
-Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://verify.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below.
+Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://frontend.api.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below.
 
 ## Public API (`/v1/*`)
 
@@ -35,6 +35,8 @@ No session, no API key — each domain claim carries its own unguessable `fronte
 | `GET` | `/frontend/verifications/:token` | Reads a claim's status, record instructions, and last check outcome. |
 | `POST` | `/frontend/verifications/:token/check` | Runs the DNS check for a claim (rate limited: 1 per 15 seconds, 20 per hour) and returns the same shape as the `GET` above. |
 | `GET` | `/frontend/verifications/:token/events` | Cursor-paginated timeline of events for a domain, with no account/project ids in the payload. |
+| `GET` | `/frontend/verifications/:token/cloudflare/authorize` | Starts the Cloudflare one-click DNS setup flow — redirects to Cloudflare's OAuth consent screen. |
+| `GET` | `/frontend/cloudflare/callback` | The Cloudflare OAuth callback; redirects back to the hosted verification page with an outcome. |
 | `POST` | `/frontend/component-sessions/:sessionToken/claim` | Spends a component session (rate limited: 10 per hour, per session token) to claim a domain; returns the claim plus its own `frontendToken`. |
 
 ## Dashboard API (`/dashboard/*`)

@@ -22,6 +22,26 @@ curl https://api.domainproof.dev/v1/domains \
 
 A successful claim returns `201` with the domain and its verification instructions — see the [Quickstart](/docs/quickstart) for the full response shape. A domain already claimed by your project (in the same mode) returns `409 domain_already_claimed`; an unclaimable hostname (empty, malformed, an IP address, or missing a recognized public suffix) returns `400 invalid_request`.
 
+### Using the SDK
+
+```ts
+import { DomainProof } from '@domainproof/sdk'
+
+const domainproof = new DomainProof({
+  apiKey: process.env.DOMAINPROOF_API_KEY!,
+})
+
+const { data, error } = await domainproof.domains.claim({
+  domain: 'example.com',
+  externalId: 'customer_123', // camelCase — the SDK sends this as external_id
+})
+if (error) throw error
+
+console.log(data.id) // save this — every other call below needs it
+```
+
+The rest of this guide assumes `domainproof` is the client constructed above — see [Authenticate with an API key](/docs/authenticate) for `apiKey`/`baseUrl` details.
+
 ## Get a domain
 
 ```bash
@@ -30,6 +50,15 @@ curl https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b6a1f0e2c
 ```
 
 Returns the domain and its current record instructions, in the same shape the claim call returned. An unknown id — including one belonging to another project — returns `404 not_found`.
+
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.get(domainId)
+if (error) throw error
+
+console.log(data.status)
+```
 
 ## Run a check
 
@@ -51,6 +80,17 @@ Re-runs the DNS check right now and returns the updated domain alongside a `chec
 
 This endpoint is safe to call repeatedly — it re-runs the check every time, never caches a prior result. That said, **calling it is entirely optional**: a background scheduler re-checks every domain on its own backoff schedule regardless of whether you ever poll, so a claim eventually reflects a correct DNS record even if you never call `/verify` again. Use it when you want an immediate answer — a "check now" button, a CI step waiting on a claim — not as a required part of the integration.
 
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.verify(domainId)
+if (error) throw error
+
+console.log(data.domain.status, data.check.outcome)
+```
+
+`data` is a `VerifyDomainResult` — `{ domain, check }`, matching the JSON above — not the bare domain the `claim`/`get`/`release`/`regenerate` methods return. See the [Quickstart](/docs/quickstart)'s "Using the SDK" section for the polling pattern this method is built for.
+
 ## List domains
 
 ```bash
@@ -69,6 +109,18 @@ Cursor-paginated (`?limit=`, default 20, max 100, and `?cursor=`, the opaque `ne
 
 Two filters combine: `?external_id=` (every domain claimed under that identifier — the "does this customer have a verified domain?" check) and `?domain=` (an exact match on the claimed hostname). `nextCursor` is `null` once there's nothing left to fetch.
 
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.list({
+  externalId: 'customer_123',
+  limit: 20,
+})
+if (error) throw error
+
+console.log(data.domains, data.nextCursor)
+```
+
 ## Release a domain
 
 ```bash
@@ -78,6 +130,13 @@ curl -X DELETE https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d
 
 Releases the claim, freeing the hostname to be claimed again (by you or anyone else). Returns the domain as it was at the moment of release.
 
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.release(domainId)
+if (error) throw error
+```
+
 ## Regenerate a challenge
 
 ```bash
@@ -86,6 +145,15 @@ curl -X POST https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b
 ```
 
 Issues a fresh token and record, restarting verification from `pending` with a new 72-hour window. Only valid for domains currently `pending` or `failed` — calling it on a `verified` or `temporarily_failed` domain returns `409 invalid_status`. This is how a `failed` domain (verification window elapsed, or grace window expired) gets a second chance.
+
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.regenerate(domainId)
+if (error) throw error
+
+console.log(data.status) // 'pending'
+```
 
 ## Get a domain's event timeline
 
@@ -111,4 +179,13 @@ Returns every event published for this domain, oldest first, cursor-paginated th
 }
 ```
 
-`type` is one of the same event types [Webhooks](/docs/webhooks) covers — `domain.claimed`, `domain.challenge_regenerated`, `domain.check_passed`, `domain.check_failed`, `domain.verified`, `domain.temporarily_failed`, `domain.failed`. This is the same data a webhook subscription delivers, useful for backfilling a timeline UI or debugging a claim without setting up an endpoint.
+`type` is one of the same event types [Webhooks](/docs/webhooks) covers — `domain.claimed`, `domain.challenge_regenerated`, `domain.check_passed`, `domain.check_failed`, `domain.verified`, `domain.temporarily_failed`, `domain.failed`, `domain.dns_autoconfigured`. This is the same data a webhook subscription delivers, useful for backfilling a timeline UI or debugging a claim without setting up an endpoint.
+
+### Using the SDK
+
+```ts
+const { data, error } = await domainproof.domains.listEvents(domainId)
+if (error) throw error
+
+console.log(data.events, data.nextCursor)
+```

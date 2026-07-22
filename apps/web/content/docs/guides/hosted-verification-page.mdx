@@ -19,12 +19,14 @@ The trailing segment is the claim's `frontendToken`: a 128-bit unguessable crede
 
 Redirect an end user (the person who actually controls DNS for the domain — often not the same person as your own logged-in user) straight to `verificationUrl` and they'll see the record to publish, its current status, and a way to trigger a recheck once they've done it. This is the fast path: no UI to build, no polling to wire up yourself.
 
+If the domain's nameservers resolve to Cloudflare, the page also offers a one-click "Add this record for me" button instead of the manual instructions — see [Cloudflare one-click DNS setup](#cloudflare-one-click-dns-setup) below.
+
 ## Building your own UI instead
 
 If you'd rather render the same information inside your own product, the page's data comes from three Frontend API endpoints, scoped by the same `frontendToken`:
 
 ```bash
-curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5
+curl https://frontend.api.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5
 ```
 
 ```json
@@ -33,6 +35,7 @@ curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u
   "mode": "live",
   "status": "pending",
   "projectName": "Acme",
+  "provider": "unknown",
   "records": [
     { "label": "_domainproof-challenge.example.com", "type": "TXT", "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4" }
   ],
@@ -41,21 +44,31 @@ curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u
 }
 ```
 
-Notice what's absent: no account id, no project id, no key material — only what's safe to show the person on the other end of this link, whether or not they're someone you trust with your own API key.
+Notice what's absent: no account id, no project id, no key material — only what's safe to show the person on the other end of this link, whether or not they're someone you trust with your own API key. `provider` is `"cloudflare"` or `"unknown"`, detected from the domain's nameservers — `"unknown"` for anything that isn't Cloudflare-hosted, including every `.test` sandbox domain.
 
 ```bash
-curl -X POST https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/check
+curl -X POST https://frontend.api.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/check
 ```
 
 Runs the same check `POST /v1/domains/:id/verify` does — same transitions, same events — and returns the identical shape as the read above. This is rate limited (at most once every 15 seconds, and 20 times per hour, per token — `429 rate_limited` beyond that), since it's exposed with no other credential than the link itself.
 
 ```bash
-curl https://verify.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/events
+curl https://frontend.api.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r6s7t2u3v4w5/events
 ```
 
 A cursor-paginated timeline of the same event types [Webhooks](/docs/webhooks) covers, with `domainId`/`projectId`/`domain` stripped from each entry.
 
 An unknown token, or a released domain's now-defunct token, both 404 identically (`{ "error": { "code": "not_found" } }`) — there's no second factor to distinguish "wrong token" from "right token, wrong something else."
+
+## Cloudflare one-click DNS setup
+
+When `provider` is `"cloudflare"`, the hosted page can write the challenge's TXT record on the domain owner's behalf instead of asking them to do it by hand:
+
+1. `GET /frontend/verifications/:token/cloudflare/authorize` redirects to Cloudflare's OAuth consent screen.
+2. The domain owner grants (or denies) read-only zone access plus DNS edit access on Cloudflare.
+3. Cloudflare redirects to `GET /frontend/cloudflare/callback`, which creates the exact TXT record the manual instructions already show, then triggers the standard verify path and redirects back to the hosted page with `?cloudflare=<outcome>` (`success`, `denied`, `no_matching_zone`, `record_create_failed`, `exchange_failed`, or `not_found`).
+
+The `authorize` route is token-scoped like the rest of this plane; `callback` isn't (an OAuth redirect URI has to be a fixed, exact-match URL, so it can't carry the token in its own path) — it verifies the signed `state` round-tripped through Cloudflare's redirect instead, which carries the same claim binding. Both 404 with `not_configured` if the environment has no Cloudflare OAuth client set up. This flow is only reachable through the hosted page itself — there's nothing to wire up if you're building your own UI on the Frontend API directly, beyond gating your own "add it for me" affordance on `provider === "cloudflare"`.
 
 ## Which one should you use?
 
