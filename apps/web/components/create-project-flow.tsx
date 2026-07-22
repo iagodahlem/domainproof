@@ -5,7 +5,8 @@ import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { Button, Callout, Card, CardBody, TextField } from '@domainproof/ui'
-import { ApiError, dashboardApi, type CreateProjectResult } from '@/lib/api'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi, type CreateProjectResult } from '@/lib/api/dashboard'
 import { slugPreview } from '@/lib/slug-preview'
 import { KeysHandoff } from './keys-handoff'
 
@@ -59,6 +60,7 @@ export function CreateProjectFlow({
       const created = await dashboardApi.createProject(token, trimmed)
       setResult(created)
     } catch (error) {
+      console.error('Failed to create project', error)
       setFormError(
         error instanceof ApiError
           ? error.message

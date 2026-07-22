@@ -10,7 +10,7 @@ import {
   MenuTrigger,
   cn,
 } from '@domainproof/ui'
-import type { ProjectSummary } from '@/lib/api'
+import type { ProjectSummary } from '@/lib/api/dashboard'
 
 export interface ProjectSwitcherProps {
   projects: ProjectSummary[]

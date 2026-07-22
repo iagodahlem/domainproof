@@ -8,7 +8,7 @@ import {
   RecordCard,
   RecordField,
 } from '@domainproof/ui'
-import type { CreateProjectResult } from '@/lib/api'
+import type { CreateProjectResult } from '@/lib/api/dashboard'
 
 export interface KeysHandoffProps {
   result: CreateProjectResult
