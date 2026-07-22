@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { SignOutButton } from '@clerk/nextjs'
 import { Button, Logo } from '@domainproof/ui'
-import { dashboardApi } from '@/lib/api'
+import { dashboardApi, type ProjectSummary } from '@/lib/api'
 import { CreateProjectFlow } from '@/components/create-project-flow'
 import { ApiErrorState } from '@/components/api-error-state'
 
@@ -12,25 +11,22 @@ export const metadata: Metadata = {
 }
 
 /**
- * Locked create-project screen (D-045): a fresh account has no project yet,
- * so it lands here and stays here — no nav, nothing else to click. Routing
- * is derived from the projects list (no `/me` route): a caller who already
- * has one is sent straight to `/dashboard` instead.
+ * Create-project screen (D-045): a fresh account has no project yet, so it
+ * lands here and stays here — no nav, nothing else to click. The dashboard
+ * shell's project switcher also routes its "New project" item here, so a
+ * caller with existing projects can reach it too — routing is derived from
+ * the projects list either way (no `/me` route).
  */
 export default async function NewProjectPage() {
   const { getToken } = await auth()
 
-  let hasProjects = false
+  let projects: ProjectSummary[] = []
   let loadFailed = false
   try {
-    const { projects } = await dashboardApi.listProjects(await getToken())
-    hasProjects = projects.length > 0
-  } catch {
+    ;({ projects } = await dashboardApi.listProjects(await getToken()))
+  } catch (error) {
+    console.error('Failed to load projects', error)
     loadFailed = true
-  }
-
-  if (hasProjects) {
-    redirect('/dashboard')
   }
 
   const user = await currentUser()
@@ -56,7 +52,11 @@ export default async function NewProjectPage() {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        {loadFailed ? <ApiErrorState /> : <CreateProjectFlow />}
+        {loadFailed ? (
+          <ApiErrorState />
+        ) : (
+          <CreateProjectFlow hasExistingProjects={projects.length > 0} />
+        )}
       </main>
     </div>
   )

@@ -69,4 +69,13 @@ export {
 export { TextField, type TextFieldProps } from './text-field'
 export { Select, type SelectProps, type SelectOption } from './select'
 export { Checkbox, type CheckboxProps } from './checkbox'
+export {
+  Menu,
+  MenuTrigger,
+  MenuContent,
+  type MenuContentProps,
+  MenuItem,
+  type MenuItemProps,
+  MenuSeparator,
+} from './menu'
 export { cn } from './cn'
