@@ -14,7 +14,10 @@ import type { VerificationRecord } from '@/lib/api/frontend'
 // eslint-disable-next-line no-restricted-imports -- see note above
 import { cloudflareAuthorizeUrl } from '@/lib/api/frontend'
 import { CloudflareButton } from './cloudflare-button'
-import { describeCloudflareOutcome } from '../_lib/cloudflare-outcome'
+import {
+  describeCloudflareOutcome,
+  isCloudflareOutcomeStale,
+} from '../_lib/cloudflare-outcome'
 
 export interface RecordCardSectionProps {
   token: string
@@ -37,9 +40,10 @@ export function RecordCardSection({
   status,
   cloudflareOutcome,
 }: RecordCardSectionProps) {
-  const outcomeView = cloudflareOutcome
-    ? describeCloudflareOutcome(cloudflareOutcome)
-    : null
+  const outcomeView =
+    cloudflareOutcome && !isCloudflareOutcomeStale(status)
+      ? describeCloudflareOutcome(cloudflareOutcome)
+      : null
   const showCloudflareButton =
     provider === 'cloudflare' && status !== 'verified'
   const providerHint = PROVIDER_HINT_BY_PROVIDER[provider]

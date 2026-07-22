@@ -76,4 +76,30 @@ describe('RecordCardSection', () => {
     )
     expect(screen.getByText(/couldn't find this domain/i)).toBeTruthy()
   })
+
+  it('clears the success callout once the domain reaches verified', () => {
+    render(
+      <RecordCardSection
+        token="tok_1"
+        records={RECORDS}
+        provider="cloudflare"
+        status="verified"
+        cloudflareOutcome="success"
+      />,
+    )
+    expect(screen.queryByText(/checking now/i)).toBeNull()
+  })
+
+  it('clears an outcome callout once the domain reaches a terminal failure', () => {
+    render(
+      <RecordCardSection
+        token="tok_1"
+        records={RECORDS}
+        provider="unknown"
+        status="failed"
+        cloudflareOutcome="no_matching_zone"
+      />,
+    )
+    expect(screen.queryByText(/couldn't find this domain/i)).toBeNull()
+  })
 })

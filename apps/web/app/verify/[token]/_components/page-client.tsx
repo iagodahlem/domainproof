@@ -63,15 +63,24 @@ export function VerificationPageClient({
   // of `data` is still whatever the initial SSR fetch saw *before* that —
   // force one immediate check so the optimistic "checking now…" callout
   // resolves quickly instead of waiting for the poll's first backoff rung.
+  // Gated on the *initial* fetch already being verified: `cloudflareOutcome`
+  // comes from the URL and survives a plain page reload, so without this
+  // guard, reloading a since-verified page would fire another check (and
+  // log another event) for no reason — there's nothing left to optimistically
+  // resolve.
   useEffect(() => {
-    if (cloudflareOutcome !== 'success' || triggeredOptimisticRecheck.current) {
+    if (
+      cloudflareOutcome !== 'success' ||
+      triggeredOptimisticRecheck.current ||
+      initialData.status === 'verified'
+    ) {
       return
     }
     triggeredOptimisticRecheck.current = true
     void runVerificationCheck(token).then((result) => {
       if (result.ok) setData(result.data)
     })
-  }, [cloudflareOutcome, token])
+  }, [cloudflareOutcome, initialData.status, token])
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12 max-[640px]:px-4 max-[640px]:py-8">
