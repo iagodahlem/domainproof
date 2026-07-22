@@ -48,6 +48,30 @@ describe('RecordField', () => {
     expect(screen.getByText('Value').className).toContain('max-[560px]:w-auto')
   })
 
+  it('sizes the label to content when labelWidth is content', () => {
+    render(
+      <RecordField
+        label="Live key"
+        value="dp_live_...ab12"
+        labelWidth="content"
+      />,
+    )
+    const label = screen.getByText('Live key')
+    expect(label.className).not.toContain('w-23')
+    expect(label.className).toContain('w-auto')
+  })
+
+  it('truncates the value to a single line when truncateValue is set, keeping the full value in title and copy', () => {
+    const fullValue = 'dp_test_v2gdk3kr4nm7_yij25nsgbvw3vsz5pwyyliavwa'
+    render(
+      <RecordField label="Test key" value={fullValue} truncateValue copyable />,
+    )
+    const value = screen.getByText(fullValue)
+    expect(value.className).toContain('truncate')
+    expect(value.className).not.toContain('break-all')
+    expect(value.getAttribute('title')).toBe(fullValue)
+  })
+
   it('renders a custom action instead of the copy button', () => {
     render(
       <RecordField

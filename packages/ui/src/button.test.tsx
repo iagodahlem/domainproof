@@ -44,6 +44,17 @@ describe('Button', () => {
     expect(el.className).toContain('rounded-md')
   })
 
+  it('applies the icon size classes', () => {
+    render(
+      <Button size="icon" aria-label="Reveal">
+        <span aria-hidden="true">👁</span>
+      </Button>,
+    )
+    const el = screen.getByRole('button', { name: 'Reveal' })
+    expect(el.className).toContain('h-8')
+    expect(el.className).toContain('w-8')
+  })
+
   it('applies the pill shape classes', () => {
     render(<Button shape="pill">Recheck now</Button>)
     const el = screen.getByRole('button')

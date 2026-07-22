@@ -13,6 +13,8 @@ export interface CopyButtonProps extends Omit<ButtonProps, 'onClick'> {
   value: string
   copiedLabel?: ReactNode
   resetAfter?: number
+  /** Hides the label, leaving just the copy icon — pass `aria-label` for the accessible name and `size="icon"` to match another icon button beside it (e.g. a Reveal action). The label still renders `sr-only` so the copied-state change is announced. */
+  iconOnly?: boolean
 }
 
 export function CopyButton({
@@ -21,6 +23,7 @@ export function CopyButton({
   copiedLabel = 'Copied',
   resetAfter = 1500,
   size = 'sm',
+  iconOnly = false,
   className,
   ...props
 }: CopyButtonProps) {
@@ -54,7 +57,13 @@ export function CopyButton({
       {...props}
     >
       <Copy aria-hidden="true" size={13} />
-      {copied ? copiedLabel : children}
+      {iconOnly ? (
+        <span className="sr-only">{copied ? copiedLabel : children}</span>
+      ) : copied ? (
+        copiedLabel
+      ) : (
+        children
+      )}
     </Button>
   )
 }
