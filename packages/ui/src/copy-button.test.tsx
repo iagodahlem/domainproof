@@ -55,6 +55,27 @@ describe('CopyButton', () => {
     )
   })
 
+  it('renders icon-only with an sr-only label for the accessible name', async () => {
+    const { user, writeText } = setupUserWithClipboard()
+    render(
+      <CopyButton
+        value="dp_test_abc"
+        iconOnly
+        size="icon"
+        aria-label="Copy test key"
+      >
+        Copy
+      </CopyButton>,
+    )
+
+    const button = screen.getByRole('button', { name: 'Copy test key' })
+    expect(screen.queryByText('Copy')).toBeTruthy() // sr-only, still in the DOM
+    await user.click(button)
+
+    expect(writeText).toHaveBeenCalledWith('dp_test_abc')
+    await waitFor(() => expect(screen.getByText('Copied')).toBeTruthy())
+  })
+
   it('accepts a custom copied label', async () => {
     const { user } = setupUserWithClipboard()
     render(

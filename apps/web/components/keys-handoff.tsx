@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { Eye, TriangleAlert } from 'lucide-react'
 import {
   Badge,
   Button,
   Callout,
+  CopyButton,
   RecordCard,
   RecordField,
 } from '@domainproof/ui'
@@ -39,18 +41,39 @@ export function KeysHandoff({ result, onContinue }: KeysHandoffProps) {
         </p>
       </div>
 
-      <Callout tone="warning">
-        <strong>Save these now.</strong> Full key values are shown exactly once
-        — copy them somewhere safe. You won&rsquo;t be able to see them again
-        after you leave this screen.
+      <Callout tone="warning" className="flex items-start gap-3">
+        <TriangleAlert
+          aria-hidden="true"
+          size={16}
+          className="mt-0.5 shrink-0 text-warning-strong"
+        />
+        <p>
+          <strong>Save these now.</strong> Full key values are shown exactly
+          once — copy them somewhere safe. You won&rsquo;t be able to see them
+          again after you leave this screen.
+        </p>
       </Callout>
 
       <RecordCard
-        title={result.project.name}
-        sub="API keys"
+        title="API keys"
         trailing={<Badge tone="accent">One-time</Badge>}
       >
-        <RecordField label="Test key" value={result.keys.test.key} copyable />
+        <RecordField
+          label="Test key"
+          value={result.keys.test.key}
+          labelWidth="content"
+          truncateValue
+          action={
+            <CopyButton
+              value={result.keys.test.key}
+              size="icon"
+              iconOnly
+              aria-label="Copy test key"
+            >
+              Copy
+            </CopyButton>
+          }
+        />
         <RecordField
           label="Live key"
           value={
@@ -58,16 +81,26 @@ export function KeysHandoff({ result, onContinue }: KeysHandoffProps) {
               ? result.keys.live.key
               : result.keys.live.apiKey.maskedKey
           }
-          copyable={liveRevealed}
+          labelWidth="content"
+          truncateValue
           action={
-            liveRevealed ? undefined : (
+            liveRevealed ? (
+              <CopyButton
+                value={result.keys.live.key}
+                size="icon"
+                iconOnly
+                aria-label="Copy live key"
+              >
+                Copy
+              </CopyButton>
+            ) : (
               <Button
                 type="button"
-                size="sm"
-                variant="ghost"
+                size="icon"
+                aria-label="Reveal"
                 onClick={() => setLiveRevealed(true)}
               >
-                Reveal
+                <Eye aria-hidden="true" size={14} />
               </Button>
             )
           }
