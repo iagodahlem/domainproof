@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Plus } from 'lucide-react'
 import {
   Button,
@@ -16,7 +17,12 @@ import type {
   DomainListItem,
   DomainMode,
 } from '@/lib/api/dashboard'
-import { useListDomains } from '@/lib/query/domains'
+import type { DomainsListPage } from '@/lib/query/domains'
+import {
+  domainsListKey,
+  useDomainsList,
+  useListDomains,
+} from '@/lib/query/domains'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { formatRelativeTime } from '@/lib/format-relative-time'
@@ -40,8 +46,12 @@ export function DomainsPageClient({
   initialNextCursor,
 }: DomainsPageClientProps) {
   const router = useRouter()
-  const [domains, setDomains] = useState(initialDomains)
-  const [nextCursor, setNextCursor] = useState(initialNextCursor)
+  const queryClient = useQueryClient()
+  const { data } = useDomainsList(projectId, mode, {
+    domains: initialDomains,
+    nextCursor: initialNextCursor,
+  })
+  const { domains, nextCursor } = data
   const [loadMoreError, setLoadMoreError] = useState<string | undefined>()
   const [addFormState, setAddFormState] = useState<
     { open: false } | { open: true; prefill?: string }
@@ -58,7 +68,14 @@ export function DomainsPageClient({
     // `DomainListItem` doc comment) — defaulted to 'unknown' here since
     // `handleCreated` navigates straight to the new domain's own detail
     // page, so this row is never actually seen in the table.
-    setDomains((current) => [{ ...created, provider: 'unknown' }, ...current])
+    queryClient.setQueryData<DomainsListPage>(
+      domainsListKey(projectId, mode),
+      (current) =>
+        current && {
+          ...current,
+          domains: [{ ...created, provider: 'unknown' }, ...current.domains],
+        },
+    )
     setAddFormState({ open: false })
     goToDomain(created.id)
   }
@@ -68,8 +85,14 @@ export function DomainsPageClient({
     setLoadMoreError(undefined)
     listDomains.mutate(nextCursor, {
       onSuccess: (result) => {
-        setDomains((current) => [...current, ...result.domains])
-        setNextCursor(result.nextCursor)
+        queryClient.setQueryData<DomainsListPage>(
+          domainsListKey(projectId, mode),
+          (current) =>
+            current && {
+              domains: [...current.domains, ...result.domains],
+              nextCursor: result.nextCursor,
+            },
+        )
       },
       onError: (error) => {
         setLoadMoreError(

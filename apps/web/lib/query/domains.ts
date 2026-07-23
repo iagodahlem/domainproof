@@ -6,12 +6,19 @@ import { dashboardApi } from '@/lib/api/dashboard'
 import type {
   DomainDetail,
   DomainEvent,
+  DomainListItem,
   DomainMode,
   DomainStatus,
 } from '@/lib/api/dashboard'
 
+/** Broad invalidation root — `invalidateQueries` matches by prefix, so this also covers `domainsListKey`'s mode-filtered variants below. */
 export function domainsKey(projectId: string) {
   return ['domains', projectId] as const
+}
+
+/** The domains table's own list, filtered by the page's active mode tab — a distinct query per mode so switching tabs doesn't show the other mode's rows while refetching. */
+export function domainsListKey(projectId: string, mode: DomainMode) {
+  return [...domainsKey(projectId), 'list', mode] as const
 }
 
 export function domainKey(projectId: string, domainId: string) {
@@ -113,6 +120,42 @@ export function useDomainEvents(
       boundedPollInterval(
         queryClient.getQueryState<DomainDetail>(domainKey(projectId, domainId)),
       ),
+  })
+}
+
+export interface DomainsListPage {
+  domains: DomainListItem[]
+  nextCursor: string | null
+}
+
+/**
+ * Wraps `GET /dashboard/projects/:id/domains` (first page) — seeded with
+ * the server-rendered list so there's no loading flash. Unlike
+ * `useDomain`/`useDomainEvents` this doesn't poll, but being a real query
+ * (rather than local component state) means it has a cache entry
+ * `useDeleteDomain`/`useCreateDomain` can actually invalidate — the list
+ * used to be seeded once into `useState` and never reconciled with
+ * invalidations, so deleting a domain left it in the table until a full
+ * reload remounted the page with fresh props.
+ */
+export function useDomainsList(
+  projectId: string,
+  mode: DomainMode,
+  initialData: DomainsListPage,
+) {
+  const { getToken } = useAuth()
+  return useQuery({
+    queryKey: domainsListKey(projectId, mode),
+    queryFn: async () => {
+      const token = await getToken()
+      const { domains, nextCursor } = await dashboardApi.listDomains(
+        token,
+        projectId,
+        { mode },
+      )
+      return { domains, nextCursor }
+    },
+    initialData,
   })
 }
 
