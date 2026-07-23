@@ -7,10 +7,12 @@ import type { ProviderForDomain } from '@modules/domains/ports'
 import type { EventsService } from '@modules/events/service'
 import type { SessionVerifier } from '@modules/accounts/ports'
 import type { WebhooksService } from '@modules/webhooks/service'
+import type { ComponentSessionsService } from '@modules/component-sessions/service'
 import {
   createSessionAuthMiddleware,
   type SessionAuthVariables,
 } from './middlewares/session-auth'
+import { createComponentSessionsRoutes } from './routes/component-sessions'
 import { createDomainsRoutes } from './routes/domains'
 import { createEventsRoutes } from './routes/events'
 import { createKeysRoutes } from './routes/keys'
@@ -24,6 +26,7 @@ export interface DashboardRouterDeps {
   providerForDomain: ProviderForDomain
   eventsService: EventsService
   webhooksService: WebhooksService
+  componentSessionsService: ComponentSessionsService
   /** `undefined` means session auth isn't configured — every plane request 500s until it is. */
   sessionVerifier: SessionVerifier | undefined
   /**
@@ -80,6 +83,13 @@ export function createDashboardRouter(deps: DashboardRouterDeps) {
   router.route(
     '/projects/:projectId/webhooks',
     createWebhooksRoutes(deps.webhooksService, deps.projectsService),
+  )
+  router.route(
+    '/projects/:projectId/component-sessions',
+    createComponentSessionsRoutes(
+      deps.componentSessionsService,
+      deps.projectsService,
+    ),
   )
 
   return router

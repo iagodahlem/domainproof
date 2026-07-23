@@ -506,6 +506,7 @@ export function createApp(
       providerForDomain,
       eventsService,
       webhooksService,
+      componentSessionsService,
       sessionVerifier,
       webOrigin: deps.webOrigin ?? env.WEB_ORIGIN,
     }),
