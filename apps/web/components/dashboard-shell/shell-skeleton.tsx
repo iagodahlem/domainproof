@@ -36,7 +36,9 @@ export function ShellSkeleton() {
           <div className="h-4 w-20 animate-pulse rounded-sm bg-surface-3" />
         </div>
         <div className="flex-1 p-6 max-[640px]:p-4">
-          <div className="h-40 animate-pulse rounded-lg bg-surface-3" />
+          <div className="mx-auto w-full max-w-dashboard-content">
+            <div className="h-40 animate-pulse rounded-lg bg-surface-3" />
+          </div>
         </div>
       </div>
     </div>

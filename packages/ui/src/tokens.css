@@ -187,6 +187,11 @@
      both themes. */
   --focus-ring-width: 2px;
   --focus-ring-color: var(--accent);
+
+  /* layout — the board's `.container` measure (marketing pages, docs),
+     reused as the dashboard's content-column cap so tables/forms/empty
+     states stop stretching full-bleed beside the sidebar on wide screens. */
+  --dashboard-content-max: 1180px;
 }
 
 :root[data-theme='light'] {

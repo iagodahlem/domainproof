@@ -31,7 +31,11 @@ export function DashboardShell({
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar projectId={activeProject.id} />
-            <main className="flex-1 p-6 max-[640px]:p-4">{children}</main>
+            <main className="flex-1 p-6 max-[640px]:p-4">
+              <div className="mx-auto w-full max-w-dashboard-content">
+                {children}
+              </div>
+            </main>
           </div>
         </div>
       </TopbarSlotProvider>
