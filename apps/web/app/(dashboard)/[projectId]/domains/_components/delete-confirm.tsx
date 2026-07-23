@@ -78,6 +78,16 @@ export function DeleteConfirm({
             onClick={handleConfirm}
             loading={deleteDomain.isPending}
           >
+            {deleteDomain.isPending ? null : (
+              // Reserves the spinner's own footprint (icon + Button's
+              // `gap-2`) so the button doesn't widen — and the callout's
+              // message doesn't reflow around it — the moment it does.
+              <span
+                aria-hidden="true"
+                // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- matches ButtonSpinner's own `h-[1em] w-[1em]`: sized relative to the button's font-size, not a fixed token value.
+                className="h-[1em] w-[1em]"
+              />
+            )}
             Confirm delete
           </Button>
         </div>

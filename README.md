@@ -470,10 +470,10 @@ dashboard that owns the zones this flow should write to:
 
 A project's webhook endpoints (`POST /dashboard/projects/:projectId/webhooks`)
 subscribe to a non-empty subset of the project-scoped event types:
-`domain.claimed`, `domain.check_passed`, `domain.check_failed`,
-`domain.verified`, `domain.temporarily_failed`, `domain.failed`,
-`domain.dns_autoconfigured` (every `DomainEventMap` entry except
-`account.created`, which isn't scoped to a project). Creating an endpoint
+`domain.claimed`, `domain.challenge_regenerated`, `domain.check_passed`,
+`domain.check_failed`, `domain.verified`, `domain.temporarily_failed`,
+`domain.failed`, `domain.dns_autoconfigured` (every `DomainEventMap` entry
+except `account.created`, which isn't scoped to a project). Creating an endpoint
 returns its signing secret (`whsec_...`)
 exactly once — every later response only shows a masked form
 (`whsec_...ab12`). `:projectId` follows the same anti-enumeration 404 as
