@@ -49,14 +49,39 @@ Read this before anything else in this file.
 
 ## Railway: deploy status, logs, redeploy
 
-Auth is a single header, not `Authorization: Bearer`:
+Auth is `Authorization: Bearer $RAILWAY_TOKEN` — a custom `Project-Access-Token`
+header was documented here previously and no longer works (verified
+2026-07-23: every resource-scoped query 403s/"Not Authorized"s with it,
+even with valid IDs; meta queries like `{ __typename }` misleadingly
+"succeed" with any header shape, including no token at all, since they
+resolve no protected resource — don't use one to sanity-check a token):
 
 ```bash
 curl -s https://backboard.railway.com/graphql/v2 \
-  -H "Project-Access-Token: $RAILWAY_TOKEN" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
   -d '{"query": "{ __typename }"}'
+```
+
+**Have `RAILWAY_PROJECT_ID` (Railway dashboard -> Project Settings ->
+General, see root `.env.example`) but not `RAILWAY_ENVIRONMENT_ID`/
+`RAILWAY_SERVICE_ID` cached yet?** The `project` query below returns
+every environment and service in the project in one shot — there's no
+zero-knowledge discovery of the project id itself (a `projectToken` self-
+identification query exists in the schema but 500s "Project Token not
+found" for this token, tried both header shapes; the dashboard is the
+reliable source for that one id). `api`/`api-staging` are separate
+Railway services, both inside the `production` environment, per "Creating
+a new service in this project" below — a same-named `staging` environment,
+if the project still has one, isn't where `api-staging` actually runs:
+
+```bash
+curl -s https://backboard.railway.com/graphql/v2 \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+  -d "{\"query\": \"query(\$id: String!) { project(id: \$id) { id name environments { edges { node { id name } } } services { edges { node { id name } } } } }\", \"variables\": {\"id\": \"$RAILWAY_PROJECT_ID\"}}"
 ```
 
 **The User-Agent header is load-bearing.** Cloudflare's WAF sits in front
@@ -73,7 +98,7 @@ shape before proceeding:
 
 ```bash
 curl -s https://backboard.railway.com/graphql/v2 \
-  -H "Project-Access-Token: $RAILWAY_TOKEN" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
   -d '{"query": "{ __schema { mutationType { fields { name } } } }"}'
@@ -83,7 +108,7 @@ curl -s https://backboard.railway.com/graphql/v2 \
 
 ```bash
 curl -s https://backboard.railway.com/graphql/v2 \
-  -H "Project-Access-Token: $RAILWAY_TOKEN" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
   -d "{\"query\": \"query(\$p: String!, \$s: String!, \$e: String!) { deployments(input: { projectId: \$p, serviceId: \$s, environmentId: \$e }) { edges { node { id status createdAt } } } }\", \"variables\": {\"p\": \"$RAILWAY_PROJECT_ID\", \"s\": \"$RAILWAY_SERVICE_ID\", \"e\": \"$RAILWAY_ENVIRONMENT_ID\"}}"
@@ -93,7 +118,7 @@ curl -s https://backboard.railway.com/graphql/v2 \
 
 ```bash
 curl -s https://backboard.railway.com/graphql/v2 \
-  -H "Project-Access-Token: $RAILWAY_TOKEN" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
   -d "{\"query\": \"query(\$d: String!) { deploymentLogs(deploymentId: \$d, limit: 200) { timestamp message severity } }\", \"variables\": {\"d\": \"<deployment-id>\"}}"
@@ -108,7 +133,7 @@ latest build, not a rollback):
 
 ```bash
 curl -s https://backboard.railway.com/graphql/v2 \
-  -H "Project-Access-Token: $RAILWAY_TOKEN" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
   -d "{\"query\": \"mutation(\$s: String!, \$e: String!) { serviceInstanceDeploy(serviceId: \$s, environmentId: \$e) }\", \"variables\": {\"s\": \"$RAILWAY_SERVICE_ID\", \"e\": \"$RAILWAY_ENVIRONMENT_ID\"}}"
