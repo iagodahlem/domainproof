@@ -79,7 +79,7 @@ export function UserMenu({
         className="w-64"
       >
         {email ? (
-          <div className="px-3 py-2 text-xs break-words text-faint-foreground">
+          <div className="px-3 py-2 font-mono text-2xs break-words text-faint-foreground">
             {email}
           </div>
         ) : null}
@@ -91,30 +91,42 @@ export function UserMenu({
   )
 }
 
-/** Flips the dashboard's light/dark override — labeled and iconed for the
- * theme it switches *to*, same word-to-icon pairing (dark/moon,
- * light/sun) as the design-system page's own toggle. Prevents Radix's
- * default select-closes-menu behavior so the user can see the flip and
- * toggle again without reopening the menu. */
+/** Flips the dashboard's light/dark override — icon-only (moon/sun, same
+ * icon-to-theme pairing as the design-system page's own toggle), with the
+ * label carried by `aria-label` and a hover/focus tooltip instead of
+ * visible text. A full label row reads as a labeled command like Sign out
+ * below it; this is a quick, reversible, frequently-reached-for control,
+ * so it gets a compact icon button instead of stretching to the row's
+ * full width. Prevents Radix's default select-closes-menu behavior so the
+ * user can see the flip and toggle again without reopening the menu. */
 function ThemeMenuItem() {
   const { theme, toggleTheme } = useTheme()
   const next: ThemeOverride = theme === 'dark' ? 'light' : 'dark'
+  const label = next === 'dark' ? 'View dark' : 'View light'
 
   return (
     <MenuItem
+      iconOnly
+      aria-label={label}
       icon={
-        next === 'dark' ? (
-          <Moon aria-hidden="true" size={14} />
-        ) : (
-          <Sun aria-hidden="true" size={14} />
-        )
+        <span className="relative inline-flex">
+          {next === 'dark' ? (
+            <Moon aria-hidden="true" size={14} />
+          ) : (
+            <Sun aria-hidden="true" size={14} />
+          )}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-md border border-border-strong bg-surface-3 px-3 py-1 text-xs font-semibold whitespace-nowrap text-foreground opacity-0 shadow-card transition-opacity duration-150 group-data-[highlighted]:opacity-100"
+          >
+            {label}
+          </span>
+        </span>
       }
       onSelect={(event) => {
         event.preventDefault()
         toggleTheme()
       }}
-    >
-      {next === 'dark' ? 'View dark' : 'View light'}
-    </MenuItem>
+    />
   )
 }

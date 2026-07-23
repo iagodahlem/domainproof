@@ -44,21 +44,35 @@ export const MenuContent = forwardRef<
 })
 
 const menuItemVariants = cva(
-  'flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors duration-150 data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
+  'group flex cursor-pointer items-center rounded-md text-left text-sm font-semibold text-muted-foreground outline-none transition-colors duration-150',
   {
     variants: {
       tone: {
-        default: '',
-        accent: 'text-accent',
+        default:
+          'data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
+        accent:
+          'text-accent data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
+        danger:
+          'data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger',
       },
       active: {
         true: 'bg-surface-2 text-foreground',
         false: '',
       },
+      // Compact square button instead of a full-width row — for controls
+      // (like the theme toggle) that carry no visible label. Still a real
+      // DropdownMenuPrimitive.Item under the hood, so it stays in Radix's
+      // roving-focus/arrow-key collection rather than becoming an
+      // unreachable orphan (the menu swallows Tab).
+      iconOnly: {
+        true: 'h-8 w-8 shrink-0 justify-center border border-border-strong bg-surface p-0',
+        false: 'w-full gap-3 px-3 py-2',
+      },
     },
     defaultVariants: {
       tone: 'default',
       active: false,
+      iconOnly: false,
     },
   },
 )
@@ -78,6 +92,7 @@ export const MenuItem = forwardRef<
     className,
     tone = 'default',
     active = false,
+    iconOnly = false,
     icon,
     children,
     asChild = false,
@@ -90,7 +105,11 @@ export const MenuItem = forwardRef<
       aria-hidden="true"
       className={cn(
         'shrink-0',
-        tone === 'accent' ? 'text-accent' : 'text-faint-foreground',
+        tone === 'accent'
+          ? 'text-accent'
+          : tone === 'danger'
+            ? 'text-faint-foreground group-data-[highlighted]:text-danger'
+            : 'text-faint-foreground',
       )}
     >
       {icon}
@@ -104,30 +123,31 @@ export const MenuItem = forwardRef<
   // child — so the icon/label/check can't be siblings of that element
   // the way they are in the non-asChild case below. Instead they're
   // spliced into the single child's own children (e.g. a Link's content).
-  const content =
-    asChild && isValidElement<{ children?: ReactNode }>(children) ? (
-      cloneElement(
-        children,
-        undefined,
-        <>
-          {iconEl}
-          <span className="flex-1 truncate">{children.props.children}</span>
-          {checkEl}
-        </>,
-      )
-    ) : (
+  const content = iconOnly ? (
+    iconEl
+  ) : asChild && isValidElement<{ children?: ReactNode }>(children) ? (
+    cloneElement(
+      children,
+      undefined,
       <>
         {iconEl}
-        <span className="flex-1 truncate">{children}</span>
+        <span className="flex-1 truncate">{children.props.children}</span>
         {checkEl}
-      </>
+      </>,
     )
+  ) : (
+    <>
+      {iconEl}
+      <span className="flex-1 truncate">{children}</span>
+      {checkEl}
+    </>
+  )
 
   return (
     <DropdownMenuPrimitive.Item
       ref={ref}
       asChild={asChild}
-      className={cn(menuItemVariants({ tone, active }), className)}
+      className={cn(menuItemVariants({ tone, active, iconOnly }), className)}
       {...props}
     >
       {content}
