@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import { Header, Logo } from '@domainproof/ui'
+import { resolveActiveProjectPath } from '@/lib/project-resolution'
 import { AuthCta } from '@/components/header/auth-cta'
 import { MarketingActions } from '@/components/header/marketing-actions'
 
@@ -10,14 +11,16 @@ export const metadata: Metadata = {
 }
 
 export default async function LandingPage() {
-  const { userId } = await auth()
-  const isSignedIn = Boolean(userId)
+  const { userId, getToken } = await auth()
+  const initialDashboardHref = userId
+    ? await resolveActiveProjectPath(await getToken())
+    : null
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
         left={<Logo />}
-        right={<MarketingActions isSignedIn={isSignedIn} />}
+        right={<MarketingActions initialDashboardHref={initialDashboardHref} />}
       />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
@@ -37,7 +40,7 @@ export default async function LandingPage() {
             <AuthCta
               className="self-start"
               iconSize={15}
-              initialIsSignedIn={isSignedIn}
+              initialDashboardHref={initialDashboardHref}
             />
           </div>
         </div>

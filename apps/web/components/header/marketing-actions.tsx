@@ -3,8 +3,8 @@ import { AuthCta } from './auth-cta'
 import { DocsLink } from './docs-link'
 
 export interface MarketingActionsProps {
-  /** Forwarded to `AuthCta`'s `initialIsSignedIn` — the caller resolves this server-side via `auth()` so the CTA's first paint is correct. */
-  isSignedIn: boolean
+  /** Forwarded to `AuthCta`'s `initialDashboardHref` — the caller resolves this server-side via `auth()` + `resolveActiveProjectPath` so the CTA's first paint is correct. */
+  initialDashboardHref: string | null
 }
 
 /**
@@ -18,7 +18,9 @@ export interface MarketingActionsProps {
  * at every width. Docs sits as the ghost-styled quiet sibling next to the
  * CTA, which stays the loudest element in the cluster.
  */
-export function MarketingActions({ isSignedIn }: MarketingActionsProps) {
+export function MarketingActions({
+  initialDashboardHref,
+}: MarketingActionsProps) {
   return (
     <div className="flex items-center justify-end gap-3">
       <ThemeToggle className="shrink-0" />
@@ -32,7 +34,7 @@ export function MarketingActions({ isSignedIn }: MarketingActionsProps) {
         size="sm"
         iconSize={13}
         compact
-        initialIsSignedIn={isSignedIn}
+        initialDashboardHref={initialDashboardHref}
         className="shrink-0 whitespace-nowrap"
       />
     </div>

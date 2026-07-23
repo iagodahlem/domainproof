@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { Button, Header, Logo } from '@domainproof/ui'
+import { resolveActiveProjectPath } from '@/lib/project-resolution'
 
 /**
  * The real Header, variant="glass" — same instance the marketing pages and
@@ -16,10 +17,14 @@ import { Button, Header, Logo } from '@domainproof/ui'
  * Dashboard link resolves auth state server-side (Clerk's auth()) so a
  * signed-out visitor never bounces through Clerk's hosted sign-in page —
  * every project route is protected (see middleware.ts), so a signed-out
- * click goes to the marketing root instead.
+ * click goes to the marketing root instead. For a signed-in visitor, it
+ * also resolves their active project server-side (the same rule
+ * `[projectId]/layout.tsx` falls back to) so the link goes straight there
+ * — no placeholder hop.
  */
 export async function DocsHeader() {
-  const { userId } = await auth()
+  const { userId, getToken } = await auth()
+  const href = userId ? await resolveActiveProjectPath(await getToken()) : '/'
 
   return (
     <Header
@@ -36,7 +41,7 @@ export async function DocsHeader() {
       }
       right={
         <Button asChild size="sm">
-          <Link href={userId ? '/active' : '/'}>Dashboard</Link>
+          <Link href={href}>Dashboard</Link>
         </Button>
       }
     />

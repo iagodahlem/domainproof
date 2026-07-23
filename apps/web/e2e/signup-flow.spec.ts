@@ -50,9 +50,16 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
     description: `email claim present by default: ${emailClaimPresent}`,
   })
 
-  // Fresh account, no projects yet: /active redirects to the locked
-  // create-project screen (routing is derived from the projects list).
-  await page.goto('/active')
+  // Fresh account, no projects yet: Clerk's live client update after
+  // clerk.signIn() flips the hero CTA to "Dashboard" in place (same path a
+  // same-tab session pickup hits in production), and it resolves straight
+  // to the locked create-project screen (routing is derived from the
+  // projects list) — no intermediate placeholder route.
+  const dashboardLink = page
+    .getByRole('main')
+    .getByRole('link', { name: /dashboard/i })
+  await expect(dashboardLink).toBeVisible()
+  await dashboardLink.click()
   await expect(page).toHaveURL(/\/new$/)
   await expect(
     page.getByRole('heading', { name: 'Name your project' }),

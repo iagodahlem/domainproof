@@ -32,11 +32,12 @@ function loaded(isSignedIn: boolean) {
 }
 
 describe('AuthCta', () => {
-  it('renders Dashboard on first paint for a signed-in visitor, before Clerk has loaded client-side', () => {
+  it('renders Dashboard linking to the resolved project on first paint, before Clerk has loaded client-side', () => {
     notLoaded()
-    render(<AuthCta initialIsSignedIn={true} />)
+    render(<AuthCta initialDashboardHref="/acme-app" />)
 
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeTruthy()
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect(link.getAttribute('href')).toBe('/acme-app')
     expect(
       screen.queryByRole('button', { name: /continue with google/i }),
     ).toBeNull()
@@ -44,7 +45,7 @@ describe('AuthCta', () => {
 
   it('renders a disabled Continue with Google on first paint for a signed-out visitor, before Clerk has loaded client-side', () => {
     notLoaded()
-    render(<AuthCta initialIsSignedIn={false} />)
+    render(<AuthCta initialDashboardHref={null} />)
 
     expect(
       screen
@@ -54,16 +55,25 @@ describe('AuthCta', () => {
     expect(screen.queryByRole('link', { name: /dashboard/i })).toBeNull()
   })
 
-  it('trusts the live Clerk state once loaded, even if it differs from the initial server-resolved value', () => {
+  it('trusts the live Clerk state once loaded, linking to the server-resolved project', () => {
     loaded(true)
-    render(<AuthCta initialIsSignedIn={false} />)
+    render(<AuthCta initialDashboardHref="/acme-app" />)
 
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeTruthy()
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect(link.getAttribute('href')).toBe('/acme-app')
+  })
+
+  it('falls back to /new once loaded if the live client is signed in but the server saw no session', () => {
+    loaded(true)
+    render(<AuthCta initialDashboardHref={null} />)
+
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect(link.getAttribute('href')).toBe('/new')
   })
 
   it('renders an enabled Continue with Google once Clerk has loaded for a signed-out visitor', () => {
     loaded(false)
-    render(<AuthCta initialIsSignedIn={false} />)
+    render(<AuthCta initialDashboardHref={null} />)
 
     expect(
       screen

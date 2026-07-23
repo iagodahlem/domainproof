@@ -5,6 +5,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { Callout, CenteredMain, Header, Logo } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
+import { pickActiveProject } from '@/lib/project-resolution'
 import { DashboardShell } from '@/components/dashboard-shell/shell'
 import { ReloadButton } from '@/components/dashboard-shell/reload-button'
 
@@ -16,9 +17,11 @@ export const metadata: Metadata = {
  * Resolves the active project from `GET /dashboard/projects` + the
  * `projectId` URL segment (there's no `/me` route) and renders the shared
  * sidebar/topbar shell around every nav route below it. A fresh account
- * with no projects goes to `/new`; an unknown/placeholder segment (e.g.
- * `/active`, the post-signin landing target) redirects to the caller's
- * first project.
+ * with no projects goes to `/new`; an unrecognized segment (a stale or
+ * deleted project id from an old bookmark) redirects to the caller's first
+ * project. Post-signin routing resolves this same first-project rule
+ * before the browser ever lands here — see `lib/project-resolution.ts` — so
+ * this fallback only fires for the stale-URL case now.
  */
 export default async function DashboardProjectLayout({
   children,
@@ -51,7 +54,7 @@ export default async function DashboardProjectLayout({
     )
   }
 
-  const firstProject = projects[0]
+  const firstProject = pickActiveProject(projects)
   if (!firstProject) {
     redirect('/new')
   }

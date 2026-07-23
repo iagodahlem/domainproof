@@ -39,6 +39,7 @@ import {
   Checkbox,
 } from '@domainproof/ui'
 import { MarketingActions } from '@/components/header/marketing-actions'
+import { resolveActiveProjectPath } from '@/lib/project-resolution'
 import { PathChooserDemo } from './_components/path-chooser-demo'
 
 export const metadata: Metadata = {
@@ -284,8 +285,10 @@ const { data, error } = await dp.domains.create({
 });`
 
 export default async function DesignSystemPage() {
-  const { userId } = await auth()
-  const isSignedIn = Boolean(userId)
+  const { userId, getToken } = await auth()
+  const initialDashboardHref = userId
+    ? await resolveActiveProjectPath(await getToken())
+    : null
 
   return (
     <div
@@ -294,7 +297,7 @@ export default async function DesignSystemPage() {
     >
       <Header
         left={<Logo />}
-        right={<MarketingActions isSignedIn={isSignedIn} />}
+        right={<MarketingActions initialDashboardHref={initialDashboardHref} />}
       />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
