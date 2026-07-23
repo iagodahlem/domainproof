@@ -7,7 +7,7 @@ order: 5
 
 # Verify domains from your React app
 
-`@domainproof/react` is an embeddable component and a set of headless hooks for [DomainProof](https://domainproof.dev) verification — claim a domain, show the DNS record to publish, and poll for verification, all from a component in your own frontend. It talks directly to the Frontend API over native `fetch`, with no runtime dependency on `@domainproof/sdk` or any other DomainProof package, and peer-depends only on `react >=18`.
+`@domainproof/react` is an embeddable component and a set of headless hooks for [DomainProof](https://domainproof.dev) verification — claim a domain, show the DNS record to publish, and poll for verification, all from a component in your own frontend. `<DomainVerification />` renders DomainProof's own design system — the same record card, status pill, and stepper the hosted verification page and dashboard use — via a precompiled stylesheet, so it looks like part of the product rather than a generic embed. It talks directly to the Frontend API over native `fetch`, with no runtime dependency on `@domainproof/sdk` or any DomainProof workspace package at runtime, and peer-depends only on `react >=18`.
 
 ```bash
 npm install @domainproof/react
@@ -37,6 +37,7 @@ Pass `externalId` to `create()` the same way you would to [`domains.claim`](/doc
 'use client'
 
 import { DomainVerification } from '@domainproof/react'
+import '@domainproof/react/styles.css'
 
 export function ConnectDomain({ sessionToken }: { sessionToken: string }) {
   return (
@@ -50,14 +51,16 @@ export function ConnectDomain({ sessionToken }: { sessionToken: string }) {
 }
 ```
 
-That's it — the component claims the domain on mount, then renders the TXT record to publish (with copy buttons), an auto-checking status indicator, and the verified/failed outcome states.
+That's it — no Tailwind or build-step setup required in your app. The component takes a domain from the user, claims it, then renders the TXT record to publish (with copy buttons), a status pill and progress stepper, an auto-checking indicator, and the verified/failed outcome states.
 
-| Prop           | Type                                   | Notes                                                               |
-| -------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| `sessionToken` | `string`                               | Required — the token minted in step 1.                              |
-| `baseUrl`      | `string`                               | Overrides `DomainProofProvider`'s `baseUrl` for this instance.      |
-| `onVerified`   | `(verification: Verification) => void` | Called once, the first time this claim's status reaches `verified`. |
-| `className`    | `string`                               |                                                                     |
+| Prop           | Type                                   | Notes                                                                 |
+| -------------- | -------------------------------------- | --------------------------------------------------------------------- |
+| `sessionToken` | `string`                               | Required — the token minted in step 1.                                |
+| `baseUrl`      | `string`                               | Overrides `DomainProofProvider`'s `baseUrl` for this instance.        |
+| `onVerified`   | `(verification: Verification) => void` | Called once, the first time this claim's status reaches `verified`.   |
+| `theme`        | `'light' \| 'dark'`                    | Selects the compiled token set. Defaults to `'dark'`.                 |
+| `style`        | `CSSProperties`                        | Applied to the component's own root — where its theme tokens resolve. |
+| `className`    | `string`                               |                                                                       |
 
 By default the component (and every hook below) talks to the production Frontend API (`https://frontend.api.domainproof.dev`). Point it at a local API during development, either per-component (`baseUrl`) or for a whole tree:
 
@@ -110,31 +113,37 @@ Polling uses the same bounded backoff as [the hosted verification page](/docs/ho
 
 ## Theming
 
-`<DomainVerification />` ships fully styled with sensible defaults and no CSS import required — every color, radius, and font is a `--dp-*` custom property with a built-in fallback, so setting none of them still renders a clean card. Override any subset on the component itself or any ancestor element:
+The stylesheet imported in step 2 is precompiled at publish time by scanning this package's and `@domainproof/ui`'s (DomainProof's internal, unpublished design system) source for the classes `<DomainVerification />` actually uses — your app never needs Tailwind installed or configured, and every rule is scoped under the component's own root element so it can't collide with styles elsewhere on your page.
+
+It ships two color themes — the same tokens the rest of DomainProof themes with. Pick one with the `theme` prop (defaults to `'dark'`):
 
 ```tsx
-<div style={{ '--dp-color-accent': '#7c3aed' } as React.CSSProperties}>
-  <DomainVerification sessionToken={sessionToken} />
-</div>
+<DomainVerification sessionToken={sessionToken} theme="light" />
 ```
 
-| Variable                     | Default                 |
-| ---------------------------- | ----------------------- |
-| `--dp-color-bg`              | `#ffffff`               |
-| `--dp-color-bg-muted`        | `#f8fafc`               |
-| `--dp-color-border`          | `#e2e8f0`               |
-| `--dp-color-text`            | `#0f172a`               |
-| `--dp-color-text-muted`      | `#64748b`               |
-| `--dp-color-accent`          | `#2563eb`               |
-| `--dp-color-accent-contrast` | `#ffffff`               |
-| `--dp-color-success`         | `#15803d`               |
-| `--dp-color-success-bg`      | `#f0fdf4`               |
-| `--dp-color-warning`         | `#b45309`               |
-| `--dp-color-warning-bg`      | `#fffbeb`               |
-| `--dp-color-danger`          | `#b91c1c`               |
-| `--dp-color-danger-bg`       | `#fef2f2`               |
-| `--dp-radius`                | `10px`                  |
-| `--dp-font`                  | system sans-serif stack |
+For finer control, every token is a CSS custom property you can override via the `style` prop on the component itself — not an ancestor element, since the compiled stylesheet declares these directly on the component's own root, and a direct declaration always wins over one inherited from further up the tree:
+
+```tsx
+<DomainVerification
+  sessionToken={sessionToken}
+  style={{ '--accent': '#7c3aed' } as React.CSSProperties}
+/>
+```
+
+| Variable               | Dark (default)                   | Light                        |
+| ---------------------- | -------------------------------- | ---------------------------- |
+| `--bg`                 | `oklch(0.13 0.006 235)`          | `oklch(0.99 0.002 235)`      |
+| `--surface`            | `oklch(0.17 0.008 235)`          | `oklch(0.975 0.004 235)`     |
+| `--border`             | `oklch(1 0 0 / 8%)`              | `oklch(0.13 0.01 235 / 10%)` |
+| `--text`               | `oklch(0.96 0.004 235)`          | `oklch(0.18 0.01 235)`       |
+| `--text-muted`         | `oklch(0.66 0.01 235)`           | `oklch(0.42 0.012 235)`      |
+| `--accent`             | `oklch(0.76 0.16 152)`           | `oklch(0.52 0.15 152)`       |
+| `--success`            | `oklch(0.76 0.16 152)`           | `oklch(0.5 0.15 152)`        |
+| `--warning`            | `oklch(0.82 0.175 96)`           | `oklch(0.64 0.165 88)`       |
+| `--danger`             | `oklch(0.68 0.19 25)`            | `oklch(0.55 0.19 25)`        |
+| `--radius-sm/md/lg/xl` | `6px` / `10px` / `14px` / `20px` | same                         |
+
+See `@domainproof/ui`'s `tokens.css` for the complete list (border tints, type scale, shadows) — every value there is overridable the same way.
 
 ## Test mode
 
