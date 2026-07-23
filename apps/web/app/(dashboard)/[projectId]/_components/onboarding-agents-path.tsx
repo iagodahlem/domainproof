@@ -24,13 +24,13 @@ const AGENT_TARGET_LABEL: Record<AgentClient, string> = {
   generic: 'mcp.json',
 }
 
-const MCP_JSON_CONFIG = `{
+const MCP_HTTP_JSON_CONFIG = `{
   "mcpServers": {
     "domainproof": {
-      "command": "npx",
-      "args": ["-y", "@domainproof/mcp"],
-      "env": {
-        "DOMAINPROOF_API_KEY": "dp_test_••••…"
+      "type": "http",
+      "url": "https://mcp.domainproof.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer dp_test_••••…"
       }
     }
   }
@@ -38,9 +38,16 @@ const MCP_JSON_CONFIG = `{
 
 const AGENT_SNIPPETS: Record<AgentClient, string> = {
   claude:
+    'claude mcp add --transport http domainproof https://mcp.domainproof.dev/mcp --header "Authorization: Bearer dp_test_••••…"',
+  cursor: MCP_HTTP_JSON_CONFIG,
+  generic: MCP_HTTP_JSON_CONFIG,
+}
+
+const AGENT_STDIO_SNIPPETS: Record<AgentClient, string> = {
+  claude:
     'claude mcp add domainproof -e DOMAINPROOF_API_KEY=dp_test_••••… -- npx -y @domainproof/mcp',
-  cursor: MCP_JSON_CONFIG,
-  generic: MCP_JSON_CONFIG,
+  cursor: 'npx -y @domainproof/mcp',
+  generic: 'npx -y @domainproof/mcp',
 }
 
 const ASK_AGENT_PROMPT = `Claim and verify ${SANDBOX_DOMAIN} with DomainProof, then show me the events`
@@ -49,12 +56,10 @@ const ASK_AGENT_PROMPT = `Claim and verify ${SANDBOX_DOMAIN} with DomainProof, t
  * Step 1's body — an agent-client picker driving a single relabeled code
  * block, not a tab strip (that's `CodePanel`'s job elsewhere): only one
  * config is ever "the" one for whichever client is selected, there's no
- * reason to compare two side by side. The MCP server is a stdio process
- * (`npx -y @domainproof/mcp`, authenticated via an env var), not an HTTP
- * endpoint — matching `packages/mcp`'s actual README, not the
- * `https://mcp.domainproof.dev/mcp` HTTP-transport shape an earlier
- * design pass sketched before the server shipped as a stdio wrapper
- * around `@domainproof/sdk` instead.
+ * reason to compare two side by side. Leads with the hosted server at
+ * `mcp.domainproof.dev` (Streamable HTTP, no process to manage), matching
+ * `packages/mcp`'s README; the stdio/npx form is a one-line alternative
+ * beneath for anyone who'd rather run their own process.
  */
 function McpConnectStep() {
   const [agent, setAgent] = useState<AgentClient>('claude')
@@ -87,6 +92,11 @@ function McpConnectStep() {
           </CopyButton>
         </div>
       </div>
+      <p className="text-2xs text-faint-foreground">
+        Prefer to run it yourself?{' '}
+        <code className="font-mono">{AGENT_STDIO_SNIPPETS[agent]}</code> works
+        as a local stdio server too.
+      </p>
     </>
   )
 }
