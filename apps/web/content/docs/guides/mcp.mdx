@@ -7,17 +7,43 @@ order: 6
 
 # Let an AI agent manage verification
 
-`@domainproof/mcp` is an [MCP](https://modelcontextprotocol.io) server that lets an AI agent claim, verify, and monitor domains through DomainProof — no browser, no dashboard, just tool calls. It's a thin stdio wrapper around [`@domainproof/sdk`](/docs/authenticate#using-the-sdk): every tool call maps to one SDK method, and every SDK error becomes a tool error with an actionable message (bad key, not found, rate limit, ...).
+`@domainproof/mcp` is an [MCP](https://modelcontextprotocol.io) server that lets an AI agent claim, verify, and monitor domains through DomainProof — no browser, no dashboard, just tool calls. Every tool call maps to one [`@domainproof/sdk`](/docs/authenticate#using-the-sdk) method, and every SDK error becomes a tool error with an actionable message (bad key, not found, rate limit, ...). Runs two ways: hosted, over Streamable HTTP — no install, no process to manage — or as a local stdio/npx subprocess.
 
 ## Install
 
-For Claude Code:
+The hosted server at `mcp.domainproof.dev` is the primary way to use this — for Claude Code:
+
+```bash
+claude mcp add --transport http domainproof https://mcp.domainproof.dev/mcp --header "Authorization: Bearer $DOMAINPROOF_API_KEY"
+```
+
+Or by hand, in any client that reads an MCP servers JSON config:
+
+```json
+{
+  "mcpServers": {
+    "domainproof": {
+      "type": "http",
+      "url": "https://mcp.domainproof.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer dp_test_..."
+      }
+    }
+  }
+}
+```
+
+Every request needs `Authorization: Bearer <DomainProof API key>` — missing or malformed, and the server 401s with a message pointing back here.
+
+### Run it yourself instead (stdio/npx)
+
+No hosted dependency, no network hop between the MCP process and the tool call — useful offline, air-gapped, or if you'd rather run your own process:
 
 ```bash
 claude mcp add domainproof -e DOMAINPROOF_API_KEY=dp_test_... -- npx -y @domainproof/mcp
 ```
 
-Or by hand, in any client that reads an MCP servers JSON config:
+Or by hand:
 
 ```json
 {
@@ -32,6 +58,8 @@ Or by hand, in any client that reads an MCP servers JSON config:
   }
 }
 ```
+
+#### Config
 
 | Env var                | Required? | For                                                                                   |
 | ---------------------- | --------- | ------------------------------------------------------------------------------------- |
