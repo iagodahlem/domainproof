@@ -1,4 +1,10 @@
-import { Callout, CardRow, RecordCard, RecordField } from '@domainproof/ui'
+import {
+  Badge,
+  Callout,
+  CardRow,
+  RecordCard,
+  RecordField,
+} from '@domainproof/ui'
 import type { VerificationRecord } from '@/lib/api/frontend'
 
 export interface RecordCardSectionProps {
@@ -11,6 +17,9 @@ export function RecordCardSection({ domain, records }: RecordCardSectionProps) {
     <RecordCard
       title="Add this DNS record"
       sub={`Add this where you manage DNS for ${domain}`}
+      trailing={
+        records[0] ? <Badge tone="accent">{records[0].type}</Badge> : null
+      }
     >
       {records.map((record) => (
         <div key={record.label}>
