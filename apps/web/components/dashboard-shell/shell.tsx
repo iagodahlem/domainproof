@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import type { ProjectSummary } from '@/lib/api/dashboard'
 import { ModeProvider } from '@/lib/mode'
-import { ThemeProvider } from '@/lib/theme'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { TopbarSlotProvider } from './topbar-slot'
@@ -22,26 +21,24 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   return (
-    <ThemeProvider>
-      <ModeProvider>
-        <TopbarSlotProvider>
-          <div className="flex min-h-screen items-stretch bg-background max-[760px]:flex-col">
-            <Sidebar
-              projects={projects}
-              activeProject={activeProject}
-              email={email}
-            />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Topbar projectId={activeProject.id} />
-              <main className="flex-1 p-6 max-[640px]:p-4">
-                <div className="mx-auto w-full max-w-dashboard-content">
-                  {children}
-                </div>
-              </main>
-            </div>
+    <ModeProvider>
+      <TopbarSlotProvider>
+        <div className="flex min-h-screen items-stretch bg-background max-[760px]:flex-col">
+          <Sidebar
+            projects={projects}
+            activeProject={activeProject}
+            email={email}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Topbar projectId={activeProject.id} />
+            <main className="flex-1 p-6 max-[640px]:p-4">
+              <div className="mx-auto w-full max-w-dashboard-content">
+                {children}
+              </div>
+            </main>
           </div>
-        </TopbarSlotProvider>
-      </ModeProvider>
-    </ThemeProvider>
+        </div>
+      </TopbarSlotProvider>
+    </ModeProvider>
   )
 }

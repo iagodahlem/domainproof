@@ -9,8 +9,9 @@ import {
   MenuSeparator,
   MenuTrigger,
   cn,
+  useTheme,
+  type ThemeOverride,
 } from '@domainproof/ui'
-import { useTheme, type ThemeOverride } from '@/lib/theme'
 import { SignOutButton } from './sign-out-button'
 
 const triggerVariants = cva(

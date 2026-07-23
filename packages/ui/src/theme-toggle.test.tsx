@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ThemeToggle } from './theme-toggle'
+import { ThemeProvider } from './theme-provider'
+import { THEME_STORAGE_KEY } from './theme-storage-key'
 
 // jsdom under this Node/vitest combo doesn't implement window.localStorage
 // (see the sibling CopyButton test's navigator.clipboard stub for the same
@@ -19,8 +21,34 @@ function installLocalStorageStub() {
   })
 }
 
+// jsdom doesn't implement window.matchMedia either, and ThemeProvider's own
+// effect subscribes to it on mount.
+function installMatchMediaStub() {
+  Object.defineProperty(window, 'matchMedia', {
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+    configurable: true,
+  })
+}
+
+function renderToggle(props?: {
+  variant?: 'pill' | 'icon'
+  className?: string
+}) {
+  return render(
+    <ThemeProvider>
+      <ThemeToggle {...props} />
+    </ThemeProvider>,
+  )
+}
+
 beforeEach(() => {
   installLocalStorageStub()
+  installMatchMediaStub()
 })
 
 afterEach(() => {
@@ -30,14 +58,14 @@ afterEach(() => {
 
 describe('ThemeToggle', () => {
   it('defaults to the dark theme', () => {
-    render(<ThemeToggle />)
+    renderToggle()
     expect(screen.getByRole('button', { name: 'View light' })).toBeTruthy()
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
   })
 
   it('switches to light on click and back on a second click', async () => {
     const user = userEvent.setup()
-    render(<ThemeToggle />)
+    renderToggle()
 
     await user.click(screen.getByRole('button', { name: 'View light' }))
     expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy()
@@ -50,45 +78,60 @@ describe('ThemeToggle', () => {
 
   it('persists the choice to localStorage and restores it on mount', async () => {
     const user = userEvent.setup()
-    const { unmount } = render(<ThemeToggle />)
+    const { unmount } = renderToggle()
 
     await user.click(screen.getByRole('button', { name: 'View light' }))
-    expect(window.localStorage.getItem('dp-theme')).toBe('light')
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
     unmount()
 
-    render(<ThemeToggle />)
+    renderToggle()
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy(),
     )
   })
 
-  it('clears the data-theme override on unmount', async () => {
+  it('does not clear the data-theme override when it unmounts', async () => {
     const user = userEvent.setup()
-    const { unmount } = render(<ThemeToggle />)
+    const { unmount } = renderToggle()
 
     await user.click(screen.getByRole('button', { name: 'View light' }))
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
 
     unmount()
-    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
+  it('shares theme state with another toggle mounted under the same provider', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThemeProvider>
+        <ThemeToggle variant="icon" />
+        <ThemeToggle />
+      </ThemeProvider>,
+    )
+
+    const toggles = screen.getAllByRole('button', { name: 'View light' })
+    await user.click(toggles[0]!)
+
+    expect(screen.getAllByRole('button', { name: 'View dark' })).toHaveLength(2)
   })
 
   it('merges a passed className', () => {
-    render(<ThemeToggle className="ml-2" />)
+    renderToggle({ className: 'ml-2' })
     expect(screen.getByRole('button').className).toContain('ml-2')
   })
 })
 
 describe('ThemeToggle variant="icon"', () => {
   it('exposes the accessible name via aria-label instead of visible text', () => {
-    render(<ThemeToggle variant="icon" />)
+    renderToggle({ variant: 'icon' })
     const button = screen.getByRole('button', { name: 'View light' })
     expect(button.getAttribute('aria-label')).toBe('View light')
   })
 
   it('still toggles the theme on click', async () => {
     const user = userEvent.setup()
-    render(<ThemeToggle variant="icon" />)
+    renderToggle({ variant: 'icon' })
 
     await user.click(screen.getByRole('button', { name: 'View light' }))
     expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy()

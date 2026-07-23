@@ -1,13 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './cn'
-
-type Theme = 'dark' | 'light'
-
-const STORAGE_KEY = 'dp-theme'
+import { useTheme } from './theme-provider'
 
 const themeToggleVariants = cva(
   // `focus-ring` (the bare utility, not `focus-visible:`) paints
@@ -38,26 +34,11 @@ export interface ThemeToggleProps extends VariantProps<
 }
 
 /**
- * Flips `data-theme` on the document root and remembers the choice in
- * localStorage. Scoped to whichever pages render it — unmounting resets to
- * the default (dark) rather than leaving an orphaned override for pages
- * that never opted into a toggle at all.
+ * Flips the app's global theme preference (shared with every other surface
+ * via `ThemeProvider`) and remembers the choice in localStorage.
  */
 export function ThemeToggle({ variant, className }: ThemeToggleProps) {
-  const [theme, setTheme] = useState<Theme>('dark')
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === 'dark' || stored === 'light') setTheme(stored)
-  }, [])
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    window.localStorage.setItem(STORAGE_KEY, theme)
-    return () => {
-      document.documentElement.removeAttribute('data-theme')
-    }
-  }, [theme])
+  const { theme, toggleTheme } = useTheme()
 
   const label = theme === 'dark' ? 'View light' : 'View dark'
   const isIcon = variant === 'icon'
@@ -67,9 +48,7 @@ export function ThemeToggle({ variant, className }: ThemeToggleProps) {
       type="button"
       aria-pressed={theme === 'light'}
       aria-label={isIcon ? label : undefined}
-      onClick={() =>
-        setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
-      }
+      onClick={toggleTheme}
       className={cn(themeToggleVariants({ variant }), className)}
     >
       {/* Fixed-height slot (matches the label's line-height) so the button
