@@ -8,6 +8,7 @@ import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { CreateProjectFlow } from './_components/create-project-flow'
 import { ApiErrorState } from './_components/api-error-state'
 import { UserMenu } from '@/components/dashboard-shell/user-menu'
+import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
   title: 'Create your project — DomainProof',
@@ -64,38 +65,45 @@ export default async function NewProjectPage({
       : undefined
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header
-        contentClassName="mx-0 max-w-none px-5 max-[640px]:px-4"
-        left={<Logo />}
-        right={email ? <UserMenu email={email} iconOnly /> : null}
-      />
+    <ThemeProvider>
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header
+          contentClassName="mx-0 max-w-none px-5 max-[640px]:px-4"
+          left={<Logo />}
+          right={email ? <UserMenu email={email} iconOnly /> : null}
+        />
 
-      <CenteredMain>
-        {loadFailed ? (
-          <ApiErrorState />
-        ) : (
-          <div
-            className={cn(
-              'flex w-full flex-col gap-3',
-              CREATE_PROJECT_CARD_WIDTH,
-            )}
-          >
-            {previousProject ? (
-              <Button asChild variant="ghost" size="sm" className="self-start">
-                <Link href={`/${previousProject.id}`}>
-                  <ArrowLeft aria-hidden="true" size={14} />
-                  Back to {previousProject.name}
-                </Link>
-              </Button>
-            ) : null}
-            <CreateProjectFlow
-              hasExistingProjects={projects.length > 0}
-              namePrefill={namePrefill}
-            />
-          </div>
-        )}
-      </CenteredMain>
-    </div>
+        <CenteredMain>
+          {loadFailed ? (
+            <ApiErrorState />
+          ) : (
+            <div
+              className={cn(
+                'flex w-full flex-col gap-3',
+                CREATE_PROJECT_CARD_WIDTH,
+              )}
+            >
+              {previousProject ? (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
+                >
+                  <Link href={`/${previousProject.id}`}>
+                    <ArrowLeft aria-hidden="true" size={14} />
+                    Back to {previousProject.name}
+                  </Link>
+                </Button>
+              ) : null}
+              <CreateProjectFlow
+                hasExistingProjects={projects.length > 0}
+                namePrefill={namePrefill}
+              />
+            </div>
+          )}
+        </CenteredMain>
+      </div>
+    </ThemeProvider>
   )
 }

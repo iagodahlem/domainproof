@@ -1,13 +1,16 @@
 'use client'
 
 import { cva } from 'class-variance-authority'
+import { Moon, Sun } from 'lucide-react'
 import {
   Menu,
   MenuContent,
+  MenuItem,
   MenuSeparator,
   MenuTrigger,
   cn,
 } from '@domainproof/ui'
+import { useTheme, type ThemeOverride } from '@/lib/theme'
 import { SignOutButton } from './sign-out-button'
 
 const triggerVariants = cva(
@@ -81,8 +84,32 @@ export function UserMenu({
           </div>
         ) : null}
         <MenuSeparator />
+        <ThemeMenuItem />
         <SignOutButton variant="menu-item" />
       </MenuContent>
     </Menu>
+  )
+}
+
+/** Flips the dashboard's light/dark override — labeled and iconed for the
+ * theme it switches *to*, same word-to-icon pairing (dark/moon,
+ * light/sun) as the design-system page's own toggle. */
+function ThemeMenuItem() {
+  const { theme, toggleTheme } = useTheme()
+  const next: ThemeOverride = theme === 'dark' ? 'light' : 'dark'
+
+  return (
+    <MenuItem
+      icon={
+        next === 'dark' ? (
+          <Moon aria-hidden="true" size={14} />
+        ) : (
+          <Sun aria-hidden="true" size={14} />
+        )
+      }
+      onSelect={toggleTheme}
+    >
+      {next === 'dark' ? 'View dark' : 'View light'}
+    </MenuItem>
   )
 }

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- Fixed dark-theme variant of icon.svg (same shape/colors as its
+       non-media-query branch), for the in-app theme override script to
+       swap to when data-theme is forced rather than left to
+       prefers-color-scheme. Keep in sync with icon.svg's dark branch. -->
+  <rect
+    x="0.5"
+    y="0.5"
+    width="21"
+    height="21"
+    rx="6.5"
+    stroke-width="1"
+    fill="oklch(0.2182 0.0236 164.54)"
+    stroke="oklch(0.3505 0.0566 155.92)"
+  />
+  <svg x="4.5" y="4.5" width="13" height="13" viewBox="0 0 24 24" fill="none">
+    <path
+      d="M20 6 9 17l-5-5"
+      stroke="oklch(0.76 0.16 152)"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+</svg>
