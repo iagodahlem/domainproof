@@ -88,4 +88,15 @@ export {
   type MenuItemProps,
   MenuSeparator,
 } from './menu'
+export {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  type DialogContentProps,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  ConfirmDialog,
+  type ConfirmDialogProps,
+} from './dialog'
 export { cn } from './cn'

@@ -42,6 +42,32 @@ describe('Stepper', () => {
     expect(connectors).toHaveLength(STEPS.length - 1)
   })
 
+  it('renders a failed step in its own danger tone, distinct from upcoming', () => {
+    const steps = [
+      ...STEPS.slice(0, 2),
+      {
+        id: 'propagated',
+        status: 'failed' as const,
+        node: '✕',
+        label: 'Propagated',
+      },
+      {
+        id: 'verified',
+        status: 'upcoming' as const,
+        node: '4',
+        label: 'Verified',
+      },
+    ]
+    render(<Stepper steps={steps} />)
+    const failedLabel = screen.getByText('Propagated')
+    expect(failedLabel.className).toContain('text-danger')
+    const failedNode = failedLabel
+      .closest('div')
+      ?.querySelector('span:first-child')
+    expect(failedNode?.className).toContain('border-danger')
+    expect(failedNode?.className).toContain('bg-danger-soft')
+  })
+
   it('stays a single scrollable row at every width, never stacking', () => {
     const { container } = render(<Stepper steps={STEPS} />)
     expect(container.firstElementChild?.className).toContain('overflow-x-auto')
@@ -70,5 +96,11 @@ describe('StatusSummary', () => {
     expect(screen.getByText('Last checked')).toBeTruthy()
     expect(screen.getByText('in ~3 min')).toBeTruthy()
     expect(screen.getByText('Propagated')).toBeTruthy()
+  })
+
+  it('omits the header row entirely when no statusBadge or meta is given', () => {
+    const { container } = render(<StatusSummary steps={STEPS} />)
+    expect(screen.queryByText('Last checked')).toBeNull()
+    expect(container.querySelector('.mb-6.flex')).toBeNull()
   })
 })

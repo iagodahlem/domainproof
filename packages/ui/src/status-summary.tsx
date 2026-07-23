@@ -3,7 +3,7 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { cva } from 'class-variance-authority'
 import { cn } from './cn'
 
-export type StepperStepStatus = 'done' | 'current' | 'upcoming'
+export type StepperStepStatus = 'done' | 'current' | 'upcoming' | 'failed'
 
 const stepNodeVariants = cva(
   'flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full border-2 font-sans text-2xs leading-none font-heading',
@@ -13,6 +13,12 @@ const stepNodeVariants = cva(
         done: 'border-success bg-success text-success-foreground',
         current: 'border-accent bg-surface text-accent shadow-current',
         upcoming: 'border-border-strong bg-surface text-faint-foreground',
+        // Same soft-tint recipe as badge-danger/callout-danger (border +
+        // text from --danger, no fill) rather than a solid fill like
+        // `done` — this token set has no --danger-foreground for a
+        // guaranteed-legible label on a filled danger surface (see
+        // tokens.css's comment on it).
+        failed: 'border-danger bg-danger-soft text-danger',
       },
     },
   },
@@ -26,6 +32,7 @@ const stepLabelVariants = cva(
         done: '',
         current: 'text-accent',
         upcoming: '',
+        failed: 'text-danger',
       },
     },
   },
@@ -39,6 +46,7 @@ const stepConnectorVariants = cva(
         done: 'bg-success',
         current: '',
         upcoming: '',
+        failed: '',
       },
     },
   },
@@ -95,7 +103,8 @@ export interface StatusSummaryMetaItem {
 }
 
 export interface StatusSummaryProps extends HTMLAttributes<HTMLDivElement> {
-  statusBadge: ReactNode
+  /** Omit when the same status is already shown elsewhere on the page (e.g. the domain detail header's own pill) — repeating it inside this box too would just be noise. */
+  statusBadge?: ReactNode
   meta?: StatusSummaryMetaItem[]
   steps: StepperStep[]
 }
@@ -115,19 +124,21 @@ export function StatusSummary({
       )}
       {...props}
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        {statusBadge}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-faint-foreground">
-          {meta.map((item, index) => (
-            <span key={index}>
-              <strong className="font-semibold text-muted-foreground">
-                {item.label}
-              </strong>{' '}
-              {item.value}
-            </span>
-          ))}
+      {statusBadge || meta.length > 0 ? (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          {statusBadge}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-faint-foreground">
+            {meta.map((item, index) => (
+              <span key={index}>
+                <strong className="font-semibold text-muted-foreground">
+                  {item.label}
+                </strong>{' '}
+                {item.value}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
       <Stepper steps={steps} />
     </div>
   )

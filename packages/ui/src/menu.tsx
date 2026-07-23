@@ -50,6 +50,8 @@ const menuItemVariants = cva(
       tone: {
         default: '',
         accent: 'text-accent',
+        danger:
+          'text-danger data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger',
       },
       active: {
         true: 'bg-surface-2 text-foreground',
@@ -90,7 +92,9 @@ export const MenuItem = forwardRef<
       aria-hidden="true"
       className={cn(
         'shrink-0',
-        tone === 'accent' ? 'text-accent' : 'text-faint-foreground',
+        tone === 'accent' && 'text-accent',
+        tone === 'danger' && 'text-danger',
+        tone === 'default' && 'text-faint-foreground',
       )}
     >
       {icon}
