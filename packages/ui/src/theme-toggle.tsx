@@ -42,15 +42,20 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
       }
       className={cn(
-        'focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-2 sm:px-4',
+        'focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-surface-2',
         className,
       )}
     >
-      {theme === 'dark' ? (
-        <Moon aria-hidden="true" size={14} />
-      ) : (
-        <Sun aria-hidden="true" size={14} />
-      )}
+      {/* Fixed-height slot (matches the label's line-height) so the button
+          is the same height icon-only below `sm` as it is with the label
+          showing. */}
+      <span className="inline-flex h-4 w-4 items-center justify-center">
+        {theme === 'dark' ? (
+          <Moon aria-hidden="true" size={13} />
+        ) : (
+          <Sun aria-hidden="true" size={13} />
+        )}
+      </span>
       {/* Icon-only below sm — the label stays in the DOM (sr-only) so the
           accessible name doesn't depend on viewport width. */}
       <span className="sr-only sm:not-sr-only">
