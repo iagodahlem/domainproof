@@ -100,17 +100,20 @@ export function DomainsPageClient({
         <AddDomainForm
           projectId={projectId}
           initialDomain={addFormState.prefill}
+          defaultMode={mode}
           onCreated={handleCreated}
           onCancel={() => setAddFormState({ open: false })}
         />
       ) : null}
 
       {domains.length === 0 ? (
-        <DomainEmptyState
-          onVerifyFirstDomain={() =>
-            setAddFormState({ open: true, prefill: SANDBOX_DOMAIN_PREFILL })
-          }
-        />
+        addFormState.open ? null : (
+          <DomainEmptyState
+            onVerifyFirstDomain={() =>
+              setAddFormState({ open: true, prefill: SANDBOX_DOMAIN_PREFILL })
+            }
+          />
+        )
       ) : (
         <DomainTable>
           <DomainTableHead />

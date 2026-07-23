@@ -16,6 +16,8 @@ export interface AddDomainFormProps {
   projectId: string
   /** Pre-fills the domain field — used by the empty state's sandbox-domain shortcut. */
   initialDomain?: string
+  /** Mode the select starts on — the page's own active mode filter, so claiming a domain from the Live tab doesn't silently default to Test. */
+  defaultMode?: DomainMode
   onCreated: (domain: DomainDetail) => void
   onCancel: () => void
 }
@@ -28,11 +30,12 @@ export interface AddDomainFormProps {
 export function AddDomainForm({
   projectId,
   initialDomain = '',
+  defaultMode = 'test',
   onCreated,
   onCancel,
 }: AddDomainFormProps) {
   const [domain, setDomain] = useState(initialDomain)
-  const [mode, setMode] = useState<DomainMode>('test')
+  const [mode, setMode] = useState<DomainMode>(defaultMode)
   const [fieldError, setFieldError] = useState<string | undefined>()
   const [formError, setFormError] = useState<string | undefined>()
 
@@ -93,12 +96,14 @@ export function AddDomainForm({
           <Button
             type="submit"
             variant="primary"
+            size="sm"
             loading={createDomain.isPending}
           >
             Add domain
           </Button>
           <Button
             type="button"
+            size="sm"
             onClick={onCancel}
             disabled={createDomain.isPending}
           >

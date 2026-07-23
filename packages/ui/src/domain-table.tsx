@@ -89,7 +89,7 @@ export function DomainTableRow({
       )}
       {...props}
     >
-      <TableCell className="flex items-center max-[760px]:order-1">
+      <TableCell className="flex items-center max-[760px]:order-1 max-[760px]:mt-1 max-[760px]:self-start">
         <span className={dotVariants({ tone: statusTone })} />
       </TableCell>
       <TableCell className="max-[760px]:order-2 max-[760px]:flex-1">
