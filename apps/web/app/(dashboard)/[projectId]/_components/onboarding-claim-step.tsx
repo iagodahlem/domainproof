@@ -1,11 +1,16 @@
 'use client'
 
+import Link from 'next/link'
 import { Play } from 'lucide-react'
 import { Button, Callout, CodePanel } from '@domainproof/ui'
 import { buildClaimCodeTabs } from './onboarding-claim-code'
-import { SANDBOX_DOMAIN } from './onboarding-constants'
+import {
+  SANDBOX_DOMAIN,
+  WALKTHROUGH_SURFACE_MAX_WIDTH,
+} from './onboarding-constants'
 
 export interface ClaimStepContentProps {
+  projectId: string
   alreadyClaimed: boolean
   isClaiming: boolean
   claimError?: string
@@ -19,6 +24,7 @@ export interface ClaimStepContentProps {
  * lives, parametrized only by which tab's description text wraps it.
  */
 export function ClaimStepContent({
+  projectId,
   alreadyClaimed,
   isClaiming,
   claimError,
@@ -26,7 +32,10 @@ export function ClaimStepContent({
 }: ClaimStepContentProps) {
   return (
     <>
-      <CodePanel tabs={buildClaimCodeTabs(SANDBOX_DOMAIN)} />
+      <CodePanel
+        tabs={buildClaimCodeTabs(SANDBOX_DOMAIN)}
+        className={WALKTHROUGH_SURFACE_MAX_WIDTH}
+      />
       <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="primary"
@@ -47,8 +56,13 @@ export function ClaimStepContent({
       <p className="text-2xs text-faint-foreground">
         Uses the test key you saved when creating the project. Lost it? Rotate
         it from{' '}
-        <strong className="text-muted-foreground">Settings → API keys</strong> —
-        the old one stops working the moment you do.
+        <Link
+          href={`/${projectId}/settings`}
+          className="font-semibold text-muted-foreground underline"
+        >
+          Settings → API keys
+        </Link>{' '}
+        — the old one stops working the moment you do.
       </p>
     </>
   )

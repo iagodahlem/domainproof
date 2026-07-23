@@ -18,9 +18,9 @@ export function OverviewLinkCard({
   description,
 }: OverviewLinkCardProps) {
   return (
-    <Link href={href} className="group block">
-      <Card className="transition-colors duration-150 hover:border-border-strong">
-        <CardBody className="flex flex-col gap-3">
+    <Link href={href} className="group block h-full">
+      <Card className="flex h-full flex-col transition-colors duration-150 hover:border-border-strong">
+        <CardBody className="flex flex-1 flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-soft text-accent">
               <Icon aria-hidden="true" size={16} />

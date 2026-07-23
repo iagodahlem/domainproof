@@ -4,8 +4,10 @@ import type { VerticalTimelineStep } from '@domainproof/ui'
 import type { DomainDetail } from '@/lib/api/dashboard'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { ClaimStepContent } from './onboarding-claim-step'
+import { WALKTHROUGH_SURFACE_MAX_WIDTH } from './onboarding-constants'
 
 export interface ApiPathStepsInput {
+  projectId: string
   domain: DomainDetail | null
   isClaiming: boolean
   claimError?: string
@@ -26,6 +28,7 @@ export interface ApiPathStepsInput {
  * possibly-still-settling status.
  */
 export function buildApiPathSteps({
+  projectId,
   domain,
   isClaiming,
   claimError,
@@ -53,6 +56,7 @@ export function buildApiPathSteps({
       ),
       content: (
         <ClaimStepContent
+          projectId={projectId}
           alreadyClaimed={claimed}
           isClaiming={isClaiming}
           claimError={claimError}
@@ -68,7 +72,9 @@ export function buildApiPathSteps({
       description:
         'The response includes a host and value to add at your DNS provider — the same record shown on the hosted page.',
       content: record ? (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div
+          className={`overflow-hidden rounded-lg border border-border ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}
+        >
           <RecordField label="Host" value={record.name} compact copyable />
           <RecordField label="Value" value={record.value} compact copyable />
         </div>

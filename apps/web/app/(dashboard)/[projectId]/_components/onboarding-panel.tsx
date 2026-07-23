@@ -50,8 +50,7 @@ const PATH_OPTIONS: PathChooserOption[] = [
 const INTRO_TEXT: Record<Exclude<IntegrationPath, 'agents'>, string> = {
   api: 'Call our API directly — you build the verification UI.',
   hosted: 'Redirect to our hosted page — we build the verification UI.',
-  components:
-    'Drop @domainproof/react into your app — same UI, your app shell.',
+  components: 'Drop @domainproof/react into your app — we build the UI.',
 }
 
 const DELEGATE_PROMPT: Record<Exclude<IntegrationPath, 'agents'>, string> = {
@@ -183,7 +182,7 @@ export function OnboardingPanel({
       {activePath === 'agents' ? (
         <VerticalTimeline steps={buildAgentsPathSteps({ projectId })} />
       ) : activePath === 'components' ? (
-        <VerticalTimeline steps={buildComponentsPathSteps()} />
+        <VerticalTimeline steps={buildComponentsPathSteps({ projectId })} />
       ) : claimedDomain ? (
         <ClaimedDomainWalkthrough
           key={claimedDomain.id}
@@ -199,6 +198,7 @@ export function OnboardingPanel({
           steps={
             activePath === 'api'
               ? buildApiPathSteps({
+                  projectId,
                   domain: null,
                   isClaiming: createDomain.isPending,
                   claimError,
@@ -207,6 +207,7 @@ export function OnboardingPanel({
                   isVerifying: false,
                 })
               : buildHostedPathSteps({
+                  projectId,
                   domain: null,
                   isClaiming: createDomain.isPending,
                   claimError,
@@ -264,6 +265,7 @@ function ClaimedDomainWalkthrough({
   const steps =
     path === 'api'
       ? buildApiPathSteps({
+          projectId,
           domain,
           isClaiming,
           claimError,
@@ -273,6 +275,7 @@ function ClaimedDomainWalkthrough({
           verifyError,
         })
       : buildHostedPathSteps({
+          projectId,
           domain,
           isClaiming,
           claimError,

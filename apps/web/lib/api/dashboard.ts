@@ -175,6 +175,12 @@ export interface ListProjectEventsResult {
   nextCursor: string | null
 }
 
+/** A minted, single-use component-session token for `@domainproof/react`'s `<DomainVerification />` — see `createComponentSession`. */
+export interface ComponentSession {
+  sessionToken: string
+  expiresAt: string
+}
+
 function toQueryString(params: Record<string, string | undefined>): string {
   const entries = Object.entries(params).filter(
     (entry): entry is [string, string] => entry[1] !== undefined,
@@ -223,6 +229,20 @@ export const dashboardApi = {
     return request<{ apiKeys: ApiKeyListItem[] }>(
       `/dashboard/projects/${projectId}/keys`,
       token,
+    )
+  },
+
+  /**
+   * Mints a test-mode component session — the Overview walkthrough's
+   * Components tab uses it to render the real `@domainproof/react`
+   * `<DomainVerification />` against a real, live-claiming session token
+   * instead of a static reference snippet.
+   */
+  createComponentSession(token: string | null, projectId: string) {
+    return request<ComponentSession>(
+      `/dashboard/projects/${projectId}/component-sessions`,
+      token,
+      { method: 'POST' },
     )
   },
 

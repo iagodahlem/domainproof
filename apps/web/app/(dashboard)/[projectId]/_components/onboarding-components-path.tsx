@@ -1,9 +1,11 @@
 import { CopyButton } from '@domainproof/ui'
 import type { VerticalTimelineStep } from '@domainproof/ui'
+import { LiveComponentPreview } from './onboarding-live-component'
+import { WALKTHROUGH_SURFACE_MAX_WIDTH } from './onboarding-constants'
 
 function SnippetBlock({ code }: { code: string }) {
   return (
-    <div className="relative">
+    <div className={`relative ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}>
       <pre className="overflow-x-auto rounded-md border border-border bg-background p-4 pr-22 font-mono text-xs leading-code break-words whitespace-pre-wrap">
         {code}
       </pre>
@@ -42,7 +44,13 @@ import { DomainVerification } from "@domainproof/react";
  * `RecordCard`/`VerificationStatus` components an earlier design pass
  * sketched before the package shipped as one drop-in component instead.
  */
-export function buildComponentsPathSteps(): VerticalTimelineStep[] {
+export interface ComponentsPathStepsInput {
+  projectId: string
+}
+
+export function buildComponentsPathSteps({
+  projectId,
+}: ComponentsPathStepsInput): VerticalTimelineStep[] {
   return [
     {
       id: 'install',
@@ -67,8 +75,13 @@ export function buildComponentsPathSteps(): VerticalTimelineStep[] {
       node: '3',
       title: 'Drop in <DomainVerification />',
       description:
-        'It claims the domain, shows the record, and polls status automatically — no separate record card or status component to wire up.',
-      content: <SnippetBlock code={RENDER_SNIPPET} />,
+        'It claims the domain, shows the record, and polls status automatically — no separate record card or status component to wire up. Try it below: the real component, talking to a real session.',
+      content: (
+        <>
+          <SnippetBlock code={RENDER_SNIPPET} />
+          <LiveComponentPreview projectId={projectId} />
+        </>
+      ),
     },
   ]
 }

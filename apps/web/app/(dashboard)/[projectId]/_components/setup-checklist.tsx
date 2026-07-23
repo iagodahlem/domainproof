@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge, cn } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
@@ -20,13 +21,8 @@ const STEP_TITLE: Record<ChecklistStepInfo['id'], string> = {
   'add-webhook': 'Add a webhook',
 }
 
-const STEP_DESCRIPTION: Record<ChecklistStepInfo['id'], string> = {
-  'create-project': '',
-  'first-run':
-    "Pick how you're integrating — the walkthrough below adapts, and ends with a real verified sandbox domain.",
-  'add-webhook':
-    "Get notified the moment a domain's state changes. Skip for now if you're just exploring.",
-}
+const FIRST_RUN_DESCRIPTION =
+  "Pick how you're integrating — the walkthrough below adapts, and ends with a real verified sandbox domain."
 
 export interface SetupChecklistProps {
   project: ProjectSummary
@@ -105,6 +101,7 @@ export function SetupChecklist({
           <ChecklistStepRow
             key={step.id}
             step={step}
+            projectId={project.id}
             projectName={project.name}
             projectCreatedAt={project.createdAt}
             content={step.id === 'first-run' ? firstRunContent : null}
@@ -131,20 +128,32 @@ function ProgressRing({ doneCount }: { doneCount: number }) {
 
 function ChecklistStepRow({
   step,
+  projectId,
   projectName,
   projectCreatedAt,
   content,
 }: {
   step: ChecklistStepInfo
+  projectId: string
   projectName: string
   projectCreatedAt: string
   content: ReactNode
 }) {
   const done = step.status === 'done'
-  const description =
-    step.id === 'create-project'
-      ? `${projectName} — created ${formatRelativeTime(projectCreatedAt)}.`
-      : STEP_DESCRIPTION[step.id]
+  const description: ReactNode =
+    step.id === 'create-project' ? (
+      `${projectName} — created ${formatRelativeTime(projectCreatedAt)}.`
+    ) : step.id === 'add-webhook' ? (
+      <>
+        Get notified the moment a domain&rsquo;s state changes.{' '}
+        <Link href={`/${projectId}/webhooks`} className="text-accent underline">
+          Add a webhook
+        </Link>
+        . Skip for now if you&rsquo;re just exploring.
+      </>
+    ) : (
+      FIRST_RUN_DESCRIPTION
+    )
 
   return (
     <div

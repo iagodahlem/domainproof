@@ -7,7 +7,10 @@ import type { VerticalTimelineStep } from '@domainproof/ui'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import { useWatchDomainsList } from '@/lib/query/domains'
-import { SANDBOX_DOMAIN } from './onboarding-constants'
+import {
+  SANDBOX_DOMAIN,
+  WALKTHROUGH_SURFACE_MAX_WIDTH,
+} from './onboarding-constants'
 import { useRefreshOnVerified } from './onboarding-storage'
 
 type AgentClient = 'claude' | 'cursor' | 'generic'
@@ -75,7 +78,9 @@ function McpConnectStep() {
           onChange={(event) => setAgent(event.target.value as AgentClient)}
         />
       </div>
-      <div className="overflow-hidden rounded-md border border-border bg-background">
+      <div
+        className={`overflow-hidden rounded-md border border-border bg-background ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}
+      >
         <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-2 px-3 py-2 font-mono text-2xs text-faint-foreground">
           {AGENT_TARGET_LABEL[agent]}
         </div>
@@ -105,7 +110,9 @@ function McpConnectStep() {
 function AskAgentStep() {
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-2xs text-muted-foreground">
+      <div
+        className={`flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-2xs text-muted-foreground ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}
+      >
         <Bot aria-hidden="true" size={13} className="shrink-0" />
         <span className="min-w-0 flex-1 truncate">{ASK_AGENT_PROMPT}</span>
         <CopyButton
@@ -145,7 +152,9 @@ function WatchItLandStep({ projectId }: { projectId: string }) {
   return (
     <>
       {mostRecent && presentation ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-2 px-4 py-3">
+        <div
+          className={`flex items-center justify-between gap-3 rounded-md border border-border bg-surface-2 px-4 py-3 ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}
+        >
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
               {mostRecent.domain}

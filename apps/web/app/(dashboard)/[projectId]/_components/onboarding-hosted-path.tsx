@@ -1,15 +1,34 @@
 import { Check } from 'lucide-react'
-import { BrowserChrome, Callout, CopyButton, StatusPill } from '@domainproof/ui'
+import { BrowserChrome, Callout, CopyField, StatusPill } from '@domainproof/ui'
 import type { VerticalTimelineStep } from '@domainproof/ui'
 import type { DomainDetail } from '@/lib/api/dashboard'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { ClaimStepContent } from './onboarding-claim-step'
+import { WALKTHROUGH_SURFACE_MAX_WIDTH } from './onboarding-constants'
+import { LiveBadge } from './live-badge'
 
 export interface HostedPathStepsInput {
+  projectId: string
   domain: DomainDetail | null
   isClaiming: boolean
   claimError?: string
   onClaim: () => void
+}
+
+/**
+ * `verificationUrl` is always the production `https://domainproof.dev/verify/…`
+ * absolute URL (see each plane's `routes/domains.ts`, `VERIFICATION_BASE_URL`) —
+ * correct to copy/send as-is, but wrong to embed as this preview's iframe
+ * `src` outside of production itself, where it would silently point at a
+ * domain this environment never claimed. Deriving a root-relative path from
+ * the same token instead resolves against whatever origin is actually
+ * serving this page — the real production URL in production, this app's
+ * own dev server in dev — so the live preview always shows the domain this
+ * walkthrough itself just claimed.
+ */
+function hostedPreviewPath(verificationUrl: string): string {
+  const token = verificationUrl.split('/').pop()
+  return `/verify/${token}`
 }
 
 /**
@@ -20,6 +39,7 @@ export interface HostedPathStepsInput {
  * comment) for why steps 1–2 share a `done` transition.
  */
 export function buildHostedPathSteps({
+  projectId,
   domain,
   isClaiming,
   claimError,
@@ -44,6 +64,7 @@ export function buildHostedPathSteps({
       ),
       content: (
         <ClaimStepContent
+          projectId={projectId}
           alreadyClaimed={claimed}
           isClaiming={isClaiming}
           claimError={claimError}
@@ -58,32 +79,24 @@ export function buildHostedPathSteps({
       title: 'Send them the hosted link',
       description:
         'Skip building any verification UI — the same response also returns a link to the hosted page, pre-scoped to this request and pre-filled with the sandbox record.',
-      content:
-        domain && presentation ? (
-          <>
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-3 font-mono text-xs text-muted-foreground">
-                {domain.verificationUrl}
-              </div>
-              <CopyButton value={domain.verificationUrl} size="sm" />
-            </div>
-            <BrowserChrome url={domain.verificationUrl} className="max-w-72">
-              <div className="flex flex-col gap-2 p-4">
-                <p className="text-2xs text-faint-foreground">
-                  Verify <code className="font-mono">{domain.domain}</code> —
-                  sandbox.
-                </p>
-                <StatusPill
-                  tone={presentation.tone}
-                  pulse={!verified}
-                  size="small"
-                >
-                  {presentation.label}
-                </StatusPill>
-              </div>
+      content: domain ? (
+        <>
+          <CopyField
+            value={domain.verificationUrl}
+            className={WALKTHROUGH_SURFACE_MAX_WIDTH}
+          />
+          <div className="flex max-w-md flex-col gap-2">
+            <LiveBadge />
+            <BrowserChrome url={domain.verificationUrl}>
+              <iframe
+                src={hostedPreviewPath(domain.verificationUrl)}
+                title={`Verify ${domain.domain}`}
+                className="h-72 w-full border-0"
+              />
             </BrowserChrome>
-          </>
-        ) : null,
+          </div>
+        </>
+      ) : null,
     },
     {
       id: 'verify',

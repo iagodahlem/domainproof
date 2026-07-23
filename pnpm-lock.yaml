@@ -153,6 +153,9 @@ importers:
       '@domainproof/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@domainproof/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@domainproof/ui':
         specifier: workspace:*
         version: link:../../packages/ui
