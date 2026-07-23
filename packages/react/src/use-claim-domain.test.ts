@@ -55,7 +55,9 @@ describe('useClaimDomain', () => {
   it('surfaces an http error without touching data', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse(
-        { error: { code: 'not_found', message: 'Component session not found' } },
+        {
+          error: { code: 'not_found', message: 'Component session not found' },
+        },
         404,
       ),
     )
@@ -88,11 +90,16 @@ describe('useClaimDomain', () => {
     })
 
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toEqual({ kind: 'network', message: 'offline' })
+    expect(result.current.error).toEqual({
+      kind: 'network',
+      message: 'offline',
+    })
   })
 
   it('reset clears status, data, and error back to idle', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(CLAIM_RESULT, 201))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(CLAIM_RESULT, 201),
+    )
 
     const { result } = renderHook(() => useClaimDomain('sess_123'))
     await act(async () => {

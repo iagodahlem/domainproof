@@ -27,7 +27,9 @@ to the browser.
    ```ts
    import { DomainProof } from '@domainproof/sdk'
 
-   const domainproof = new DomainProof({ apiKey: process.env.DOMAINPROOF_API_KEY! })
+   const domainproof = new DomainProof({
+     apiKey: process.env.DOMAINPROOF_API_KEY!,
+   })
    const { data, error } = await domainproof.componentSessions.create()
    if (error) throw error
 
@@ -45,7 +47,9 @@ to the browser.
      return (
        <DomainVerification
          sessionToken={sessionToken}
-         onVerified={(verification) => console.log(`${verification.domain} verified`)}
+         onVerified={(verification) =>
+           console.log(`${verification.domain} verified`)
+         }
        />
      )
    }
@@ -85,13 +89,13 @@ over markup and styling.
 Spends a component session to claim a domain —
 `POST /frontend/component-sessions/:sessionToken/claim`.
 
-| Field    | Type                                       | Notes                                                              |
-| -------- | ------------------------------------------- | ------------------------------------------------------------------- |
-| `status` | `'idle' \| 'claiming' \| 'success' \| 'error'` |                                                                       |
-| `data`   | `ClaimResult \| null`                       | Set on success. `data.frontendToken` feeds `useVerification` below.  |
-| `error`  | `DomainProofError \| null`                  | `{ kind: 'http', status, code, message }` or `{ kind: 'network', message }` |
-| `claim`  | `(domain: string) => Promise<ClaimResult \| null>` | Resolves to the result on success, `null` on failure.        |
-| `reset`  | `() => void`                                | Clears back to `idle` — the session itself is still spent, so this doesn't allow retrying. |
+| Field    | Type                                               | Notes                                                                                      |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `status` | `'idle' \| 'claiming' \| 'success' \| 'error'`     |                                                                                            |
+| `data`   | `ClaimResult \| null`                              | Set on success. `data.frontendToken` feeds `useVerification` below.                        |
+| `error`  | `DomainProofError \| null`                         | `{ kind: 'http', status, code, message }` or `{ kind: 'network', message }`                |
+| `claim`  | `(domain: string) => Promise<ClaimResult \| null>` | Resolves to the result on success, `null` on failure.                                      |
+| `reset`  | `() => void`                                       | Clears back to `idle` — the session itself is still spent, so this doesn't allow retrying. |
 
 A session is single-use: any claim attempt spends it, successfully or not
 — except a `429` (rate limited), which never reaches that far. A claim
@@ -104,14 +108,14 @@ Reads, and by default polls, a claim's status by its `frontendToken` (the
 one `useClaimDomain` returned, not the spent `sessionToken`). Pass `null`
 before a claim exists and it does nothing.
 
-| Field         | Type                                             | Notes                                                    |
-| ------------- | ------------------------------------------------- | ----------------------------------------------------------- |
-| `verification`| `Verification \| null`                            |                                                               |
-| `status`      | `'idle' \| 'loading' \| 'success' \| 'error'`     | Tracks the initial read and every poll tick, not `verify()`. |
-| `error`       | `DomainProofError \| null`                        |                                                               |
-| `isPolling`   | `boolean`                                          | Whether a background poll is currently scheduled.            |
-| `isVerifying` | `boolean`                                          | Whether a manual `verify()` call is in flight.               |
-| `verify`      | `() => Promise<void>`                             | Runs the check immediately instead of waiting for the next poll tick. Rate limited by the API: 1 per 15s, 20 per hour, per token. |
+| Field          | Type                                          | Notes                                                                                                                             |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `verification` | `Verification \| null`                        |                                                                                                                                   |
+| `status`       | `'idle' \| 'loading' \| 'success' \| 'error'` | Tracks the initial read and every poll tick, not `verify()`.                                                                      |
+| `error`        | `DomainProofError \| null`                    |                                                                                                                                   |
+| `isPolling`    | `boolean`                                     | Whether a background poll is currently scheduled.                                                                                 |
+| `isVerifying`  | `boolean`                                     | Whether a manual `verify()` call is in flight.                                                                                    |
+| `verify`       | `() => Promise<void>`                         | Runs the check immediately instead of waiting for the next poll tick. Rate limited by the API: 1 per 15s, 20 per hour, per token. |
 
 Polling uses the same bounded backoff as DomainProof's hosted verification
 page — quick at first, settling at 30s, capped at ~40 attempts — and stops
@@ -133,23 +137,23 @@ element:
 </div>
 ```
 
-| Variable                  | Default   |
-| -------------------------- | --------- |
-| `--dp-color-bg`             | `#ffffff` |
-| `--dp-color-bg-muted`       | `#f8fafc` |
-| `--dp-color-border`         | `#e2e8f0` |
-| `--dp-color-text`           | `#0f172a` |
-| `--dp-color-text-muted`     | `#64748b` |
-| `--dp-color-accent`         | `#2563eb` |
-| `--dp-color-accent-contrast`| `#ffffff` |
-| `--dp-color-success`        | `#15803d` |
-| `--dp-color-success-bg`     | `#f0fdf4` |
-| `--dp-color-warning`        | `#b45309` |
-| `--dp-color-warning-bg`     | `#fffbeb` |
-| `--dp-color-danger`         | `#b91c1c` |
-| `--dp-color-danger-bg`      | `#fef2f2` |
-| `--dp-radius`               | `10px`    |
-| `--dp-font`                 | system sans-serif stack |
+| Variable                     | Default                 |
+| ---------------------------- | ----------------------- |
+| `--dp-color-bg`              | `#ffffff`               |
+| `--dp-color-bg-muted`        | `#f8fafc`               |
+| `--dp-color-border`          | `#e2e8f0`               |
+| `--dp-color-text`            | `#0f172a`               |
+| `--dp-color-text-muted`      | `#64748b`               |
+| `--dp-color-accent`          | `#2563eb`               |
+| `--dp-color-accent-contrast` | `#ffffff`               |
+| `--dp-color-success`         | `#15803d`               |
+| `--dp-color-success-bg`      | `#f0fdf4`               |
+| `--dp-color-warning`         | `#b45309`               |
+| `--dp-color-warning-bg`      | `#fffbeb`               |
+| `--dp-color-danger`          | `#b91c1c`               |
+| `--dp-color-danger-bg`       | `#fef2f2`               |
+| `--dp-radius`                | `10px`                  |
+| `--dp-font`                  | system sans-serif stack |
 
 ## Test mode
 

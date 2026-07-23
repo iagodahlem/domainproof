@@ -37,7 +37,9 @@ describe('useVerification', () => {
   })
 
   it('fetches once on mount when a token is provided', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(verification()))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(verification()),
+    )
     const { result } = renderHook(() => useVerification('ft_123'))
 
     await waitFor(() => expect(result.current.status).toBe('success'))

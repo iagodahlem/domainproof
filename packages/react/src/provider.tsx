@@ -23,7 +23,9 @@ export function DomainProofProvider({
   children,
 }: DomainProofProviderProps) {
   return (
-    <BaseUrlContext.Provider value={baseUrl}>{children}</BaseUrlContext.Provider>
+    <BaseUrlContext.Provider value={baseUrl}>
+      {children}
+    </BaseUrlContext.Provider>
   )
 }
 

@@ -17,11 +17,7 @@
  *   with no passing check.
  */
 export type DomainStatus =
-  | 'not_started'
-  | 'pending'
-  | 'verified'
-  | 'temporarily_failed'
-  | 'failed'
+  'not_started' | 'pending' | 'verified' | 'temporarily_failed' | 'failed'
 
 /** The DNS provider detected for a claimed domain, from its nameservers — `'unknown'` for every provider that isn't Cloudflare, including every `.test` sandbox domain. */
 export type Provider = 'cloudflare' | 'unknown'

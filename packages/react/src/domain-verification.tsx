@@ -161,8 +161,8 @@ export function DomainVerification({
             <h3 className="dp-title">Verify a domain</h3>
           </div>
           <p className="dp-error-text">
-            This verification link has already been used. Ask for a new one
-            to try again.
+            This verification link has already been used. Ask for a new one to
+            try again.
           </p>
         </div>
       )

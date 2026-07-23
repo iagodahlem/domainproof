@@ -12,7 +12,8 @@ const TERMINAL_STATUSES = new Set<Verification['status']>([
   'failed',
 ])
 
-export type UseVerificationFetchStatus = 'idle' | 'loading' | 'success' | 'error'
+export type UseVerificationFetchStatus =
+  'idle' | 'loading' | 'success' | 'error'
 
 export interface UseVerificationOptions {
   /** Overrides `DomainProofProvider`'s `baseUrl` for this hook instance. */

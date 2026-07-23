@@ -58,10 +58,9 @@ describe('DomainVerification', () => {
   it('renders a domain input form before any claim', () => {
     render(<DomainVerification sessionToken="sess_123" />)
     expect(screen.getByLabelText('Domain')).toBeTruthy()
-    const button = screen.getByRole(
-      'button',
-      { name: /claim domain/i },
-    ) as HTMLButtonElement
+    const button = screen.getByRole('button', {
+      name: /claim domain/i,
+    }) as HTMLButtonElement
     expect(button.disabled).toBe(true)
   })
 
