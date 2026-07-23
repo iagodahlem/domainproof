@@ -34,7 +34,7 @@ export function DeleteConfirm({
   function handleConfirm() {
     setError(undefined)
     deleteDomain.mutate(undefined, {
-      onSuccess: () => router.push(`/dashboard/${projectId}/domains`),
+      onSuccess: () => router.push(`/${projectId}/domains`),
       onError: (err) => {
         setError(
           err instanceof ApiError

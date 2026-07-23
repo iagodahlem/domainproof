@@ -83,7 +83,7 @@ export default async function NewProjectPage({
           >
             {previousProject ? (
               <Button asChild variant="ghost" size="sm" className="self-start">
-                <Link href={`/dashboard/${previousProject.id}/domains`}>
+                <Link href={`/${previousProject.id}/domains`}>
                   <ArrowLeft aria-hidden="true" size={14} />
                   Back to {previousProject.name}
                 </Link>

@@ -28,10 +28,10 @@ export function Topbar({ projectId }: TopbarProps) {
   const pathname = usePathname()
   const slot = useTopbarSlotContent()
   const activeItem = DASHBOARD_NAV_ITEMS.find((item) =>
-    pathname.startsWith(`/dashboard/${projectId}/${item.segment}`),
+    pathname.startsWith(`/${projectId}/${item.segment}`),
   )
   const showModeToggle = MODE_TOGGLE_SEGMENTS.some((segment) =>
-    pathname.startsWith(`/dashboard/${projectId}/${segment}`),
+    pathname.startsWith(`/${projectId}/${segment}`),
   )
 
   return (

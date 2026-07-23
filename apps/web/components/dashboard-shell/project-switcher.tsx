@@ -81,9 +81,7 @@ export function ProjectSwitcher({
             active={project.id === activeProject.id}
             icon={<LayoutGrid aria-hidden="true" size={14} />}
           >
-            <Link href={`/dashboard/${project.id}/domains`}>
-              {project.name}
-            </Link>
+            <Link href={`/${project.id}/domains`}>{project.name}</Link>
           </MenuItem>
         ))}
         <MenuSeparator />

@@ -68,7 +68,7 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
   await expect(page.getByText(/^dp_live_/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Continue to dashboard' }).click()
-  await expect(page).toHaveURL(/\/dashboard\/[^/]+\/domains$/)
+  await expect(page).toHaveURL(/\/[^/]+\/domains$/)
   await expect(page.getByRole('heading', { name: 'Domains' })).toBeVisible()
 
   // Shell assertion: the project switcher lists the project just created.

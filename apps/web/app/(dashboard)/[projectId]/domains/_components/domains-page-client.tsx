@@ -50,7 +50,7 @@ export function DomainsPageClient({
   const listDomains = useListDomains(projectId, mode)
 
   function goToDomain(domainId: string) {
-    router.push(`/dashboard/${projectId}/domains/${domainId}`)
+    router.push(`/${projectId}/domains/${domainId}`)
   }
 
   function handleCreated(created: DomainDetail) {

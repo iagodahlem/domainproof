@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { Callout } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
-import { DomainDetailClient } from '@/components/dashboard/domains/domain-detail-client'
+import { DomainDetailClient } from '../_components/domain-detail-client'
 
 export const metadata: Metadata = {
   title: 'Domain — DomainProof',

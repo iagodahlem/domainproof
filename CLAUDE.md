@@ -10,12 +10,15 @@ agent-driven verification.
 ```txt
 apps/
   web/        # Next.js 15 (App Router) — the only Next app. Serves:
-              #   - landing + dashboard at the apex domain (domainproof.dev)
-              #   - hosted verification portal at /v/[token]
-              #   - docs (Fumadocs) on docs.domainproof.dev via host-based routing
-              #   - a demo consumer app on demo.domainproof.dev via host-based
-              #     routing, deliberately distinct branding, consumes only the
-              #     public SDK/API — never imports server internals
+              #   - landing + project dashboard at the apex domain
+              #     (domainproof.dev) — project routes live at the root
+              #     (/<projectId>/...), Vercel/Resend-style, not under a
+              #     /dashboard prefix
+              #   - hosted verification portal at /verify/[token]
+              #   - docs (Fumadocs) at /docs
+              #   - a demo consumer app at /demo, deliberately distinct
+              #     branding, consumes only the public SDK/API — never
+              #     imports server internals
   api/        # Hono REST API on api.domainproof.dev
 packages/
   core/       # Pure domain logic: state machine, verification checks, DNS
