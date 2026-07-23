@@ -94,7 +94,7 @@ export function describeStatus({
     case 'not_started':
       return {
         tone: 'pending',
-        badgeLabel: 'Not started',
+        badgeLabel: 'Pending',
         heading: "Verification hasn't started yet",
         body: 'Add the DNS record below at your provider, then check again.',
         showDiff: false,
@@ -149,7 +149,7 @@ export function describeStatus({
       if (outcome === 'expired') {
         return {
           tone: 'danger',
-          badgeLabel: 'Failed',
+          badgeLabel: 'Needs attention',
           heading: 'This verification link expired',
           body: `The verification window closed before we ever saw a correct record at ${domain}. Ask ${projectName} for a new verification link to try again.`,
           showDiff: false,
@@ -160,7 +160,7 @@ export function describeStatus({
       if (outcome === 'wrong_value') {
         return {
           tone: 'danger',
-          badgeLabel: 'Failed',
+          badgeLabel: 'Needs attention',
           heading: 'We found the wrong value',
           body: `The TXT record at ${domain} didn't match what we expected, so verification failed. Ask ${projectName} for a new verification link to try again.`,
           showDiff: true,
@@ -170,7 +170,7 @@ export function describeStatus({
       }
       return {
         tone: 'danger',
-        badgeLabel: 'Failed',
+        badgeLabel: 'Needs attention',
         heading: 'Your 72-hour window to fix this has closed',
         body: `This domain was verified, but the record went missing and wasn't restored in time. Ask ${projectName} for a new verification link to try again.`,
         showDiff: false,

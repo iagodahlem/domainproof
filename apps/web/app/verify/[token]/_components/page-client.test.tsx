@@ -26,11 +26,7 @@ function verification(overrides: Partial<Verification> = {}): Verification {
 }
 
 describe('VerificationPageClient', () => {
-  it('does not fire another verify check on mount when already verified, even with ?cloudflare=success in the URL', async () => {
-    vi.spyOn(frontendApi, 'listVerificationEvents').mockResolvedValue({
-      ok: true,
-      data: { events: [], nextCursor: null },
-    })
+  it('does not fire another verify check on mount when already verified, even with ?cloudflare=success in the URL', () => {
     const runCheck = vi
       .spyOn(frontendApi, 'runVerificationCheck')
       .mockResolvedValue({
@@ -46,18 +42,12 @@ describe('VerificationPageClient', () => {
       />,
     )
 
-    // Give any effect a chance to fire before asserting the negative.
-    await waitFor(() => {
-      expect(frontendApi.listVerificationEvents).toHaveBeenCalled()
-    })
+    // The guard is a synchronous check at effect time — no async work to
+    // await before asserting it never ran.
     expect(runCheck).not.toHaveBeenCalled()
   })
 
   it('still fires the optimistic verify check once for a not-yet-verified domain with ?cloudflare=success', async () => {
-    vi.spyOn(frontendApi, 'listVerificationEvents').mockResolvedValue({
-      ok: true,
-      data: { events: [], nextCursor: null },
-    })
     const runCheck = vi
       .spyOn(frontendApi, 'runVerificationCheck')
       .mockResolvedValue({

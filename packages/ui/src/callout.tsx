@@ -2,7 +2,8 @@ import type { HTMLAttributes } from 'react'
 import { cva } from 'class-variance-authority'
 import { cn } from './cn'
 
-export type CalloutTone = 'warning' | 'accent' | 'neutral' | 'danger'
+export type CalloutTone =
+  'warning' | 'accent' | 'neutral' | 'danger' | 'success'
 export type CalloutEmphasis = 'solid' | 'dashed'
 
 const calloutVariants = cva('text-sm text-muted-foreground', {
@@ -16,6 +17,7 @@ const calloutVariants = cva('text-sm text-muted-foreground', {
       accent: '',
       neutral: '',
       danger: '',
+      success: '',
     },
   },
   compoundVariants: [
@@ -39,6 +41,11 @@ const calloutVariants = cva('text-sm text-muted-foreground', {
       emphasis: 'solid',
       tone: 'danger',
       class: 'bg-danger-soft border-danger-tint [&_strong]:text-danger',
+    },
+    {
+      emphasis: 'solid',
+      tone: 'success',
+      class: 'bg-success-soft border-success-tint [&_strong]:text-success',
     },
   ],
   defaultVariants: {
