@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import { auth } from '@clerk/nextjs/server'
 import { Check, ChevronDown, ChevronRight, Copy, Moon, Sun } from 'lucide-react'
 import {
   Badge,
@@ -38,8 +37,6 @@ import {
   Select,
   Checkbox,
 } from '@domainproof/ui'
-import { MarketingActions } from '@/components/header/marketing-actions'
-import { resolveActiveProjectPath } from '@/lib/project-resolution'
 import { PathChooserDemo } from './_components/path-chooser-demo'
 
 export const metadata: Metadata = {
@@ -284,22 +281,13 @@ const { data, error } = await dp.domains.create({
   domain: "acme.co",
 });`
 
-export default async function DesignSystemPage() {
-  const { userId, getToken } = await auth()
-  const initialDashboardHref = userId
-    ? await resolveActiveProjectPath(await getToken())
-    : null
-
+export default function DesignSystemPage() {
   return (
     <div
       data-design-system-root
-      className="min-h-screen bg-background font-sans text-foreground"
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the (chrome) layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
+      className="min-h-[calc(100vh-4rem)] bg-background font-sans text-foreground"
     >
-      <Header
-        left={<Logo />}
-        right={<MarketingActions initialDashboardHref={initialDashboardHref} />}
-      />
-
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
         <section id="tokens">
           <SectionHead eyebrow="Foundations" title="Tokens" />

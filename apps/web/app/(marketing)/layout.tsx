@@ -1,13 +1,11 @@
 import type { ReactNode } from 'react'
 
 /**
- * The landing and design-system pages share the same Header composition
- * (`left={<Logo />}`, `right={<MarketingActions />}`), but `/sso-callback`
- * has none, so there's nothing visual to hoist into this layout without
- * adding chrome to a page that never had any. This group boundary exists
- * to keep the public routes physically separate from the auth'd dashboard
- * group; each chromed page still composes its own `Header` from
- * `@domainproof/ui`.
+ * The landing and design-system pages share the same Header, hoisted into
+ * `(chrome)`'s own nested layout; `/sso-callback` has none, so it's a
+ * sibling of that group rather than a child, and renders no chrome of its
+ * own here. This group boundary exists to keep the public routes physically
+ * separate from the auth'd dashboard group.
  */
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
