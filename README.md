@@ -261,9 +261,10 @@ claimed hostname — e.g. a middleware's "is acme.co verified for this
 project?" check).
 
 `GET /v1/domains/:id/events` returns a domain's full timeline, oldest
-first — every `domain.claimed`/`domain.check_passed`/`domain.check_failed`/
-`domain.verified`/`domain.temporarily_failed`/`domain.failed` event
-published for it:
+first — every `domain.claimed`/`domain.challenge_regenerated`/
+`domain.check_passed`/`domain.check_failed`/`domain.verified`/
+`domain.temporarily_failed`/`domain.failed`/`domain.dns_autoconfigured`
+event published for it:
 
 ```json
 {
