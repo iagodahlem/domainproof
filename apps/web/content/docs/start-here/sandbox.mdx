@@ -30,6 +30,10 @@ The first label of a sandbox domain (before any `.test` suffix) selects which jo
 
 Append `+<anything>` to a journey's label to get an independent domain that scripts the same journey without colliding with another claim — for example `verified+run1.test` and `verified+run2.test` behave identically but are separate claims. This is what lets a test suite (or two people demoing at once) each get their own sandbox domain per journey.
 
+## Only `.test` is sandboxed
+
+The magic only applies to the `.test` TLD, letter for letter. `pending-then-verified.txt` (or `.tst`, or any other suffix) isn't a sandbox domain — it's routed straight to the real DNS resolver like any other hostname, which reports `not_found` and keeps reporting it forever, since nobody has published anything at a hostname like that in real DNS. If a claim seems stuck in `pending` and its domain doesn't end in exactly `.test`, check for a typo in the TLD before anything else — that one-character mistake is the most common way a demo or test suite quietly hangs.
+
 ## Trying it
 
 Claim any of these the same way you'd claim a real domain — see the [Quickstart](/docs/quickstart) for the full request/response shapes, and [Claim and verify a domain](/docs/claim-and-verify) for the complete integration guide.
@@ -42,3 +46,7 @@ curl https://api.domainproof.dev/v1/domains \
 ```
 
 Then call `POST /v1/domains/:id/verify` a few times, roughly 30 seconds apart, and watch the outcome alternate between `unreachable` and `found`.
+
+## Why a sandbox verify can still feel slow
+
+A journey's own timing — 45 seconds for `pending-then-verified`, 30-second windows for `flaky` — is how fast the underlying DNS answer changes, not how often anything actually checks it. If you never call `/verify` yourself, the only thing checking is the same background recheck scheduler that watches real domains, on the same backoff ladder: the first automatic check lands 1 minute after the claim, then 5 minutes, then 15, then hourly (see [How verification works](/docs/how-verification-works#automatic-re-checking)). So a `pending-then-verified.test` domain whose record "appears" at 45 seconds can still show `pending` for several minutes longer than that if you're just watching passively, until the next scheduled check happens to land after the 45-second mark. Poll `/verify` yourself, like the [Quickstart](/docs/quickstart) does, any time you want the journey's own timing to be the only clock that matters.

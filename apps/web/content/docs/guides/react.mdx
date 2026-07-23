@@ -1,0 +1,156 @@
+---
+title: Verify domains from your React app
+description: The drop-in DomainVerification component and headless hooks for claiming and polling a domain straight from your frontend.
+section: Guides
+order: 5
+---
+
+# Verify domains from your React app
+
+`@domainproof/react` is an embeddable component and a set of headless hooks for [DomainProof](https://domainproof.dev) verification — claim a domain, show the DNS record to publish, and poll for verification, all from a component in your own frontend. `<DomainVerification />` renders DomainProof's own design system — the same record card, status pill, and stepper the hosted verification page and dashboard use — via a precompiled stylesheet, so it looks like part of the product rather than a generic embed. It talks directly to the Frontend API over native `fetch`, with no runtime dependency on `@domainproof/sdk` or any DomainProof workspace package at runtime, and peer-depends only on `react >=18`.
+
+```bash
+npm install @domainproof/react
+```
+
+## 1. Mint a session token from your backend
+
+A drop-in component needs a short-lived, single-use **session token** — never hand it your project's own API key. Mint one server-side with `@domainproof/sdk`:
+
+```ts
+import { DomainProof } from '@domainproof/sdk'
+
+const domainproof = new DomainProof({
+  apiKey: process.env.DOMAINPROOF_API_KEY!,
+})
+const { data, error } = await domainproof.componentSessions.create()
+if (error) throw error
+
+// Hand data.sessionToken to your frontend — single-use, expires in an hour.
+```
+
+Pass `externalId` to `create()` the same way you would to [`domains.claim`](/docs/claim-and-verify) if you want the resulting claim correlated with one of your own users.
+
+## 2. Render the component
+
+```tsx
+'use client'
+
+import { DomainVerification } from '@domainproof/react'
+import '@domainproof/react/styles.css'
+
+export function ConnectDomain({ sessionToken }: { sessionToken: string }) {
+  return (
+    <DomainVerification
+      sessionToken={sessionToken}
+      onVerified={(verification) =>
+        console.log(`${verification.domain} verified`)
+      }
+    />
+  )
+}
+```
+
+That's it — no Tailwind or build-step setup required in your app. The component takes a domain from the user, claims it, then renders the TXT record to publish (with copy buttons), a status pill and progress stepper, an auto-checking indicator, and the verified/failed outcome states.
+
+| Prop           | Type                                   | Notes                                                                 |
+| -------------- | -------------------------------------- | --------------------------------------------------------------------- |
+| `sessionToken` | `string`                               | Required — the token minted in step 1.                                |
+| `baseUrl`      | `string`                               | Overrides `DomainProofProvider`'s `baseUrl` for this instance.        |
+| `onVerified`   | `(verification: Verification) => void` | Called once, the first time this claim's status reaches `verified`.   |
+| `theme`        | `'light' \| 'dark'`                    | Selects the compiled token set. Defaults to `'dark'`.                 |
+| `style`        | `CSSProperties`                        | Applied to the component's own root — where its theme tokens resolve. |
+| `className`    | `string`                               |                                                                       |
+
+By default the component (and every hook below) talks to the production Frontend API (`https://frontend.api.domainproof.dev`). Point it at a local API during development, either per-component (`baseUrl`) or for a whole tree:
+
+```tsx
+import { DomainProofProvider } from '@domainproof/react'
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <DomainProofProvider baseUrl="http://localhost:3001">
+      {children}
+    </DomainProofProvider>
+  )
+}
+```
+
+`DomainProofProvider` is optional — every hook falls back to production on its own.
+
+## Headless hooks
+
+Compose these directly instead of `<DomainVerification />` for full control over markup and styling.
+
+### `useClaimDomain(sessionToken, options?)`
+
+Spends a component session to claim a domain — `POST /frontend/component-sessions/:sessionToken/claim`.
+
+| Field    | Type                                               | Notes                                                                                      |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `status` | `'idle' \| 'claiming' \| 'success' \| 'error'`     |                                                                                            |
+| `data`   | `ClaimResult \| null`                              | Set on success. `data.frontendToken` feeds `useVerification` below.                        |
+| `error`  | `DomainProofError \| null`                         | `{ kind: 'http', status, code, message }` or `{ kind: 'network', message }`.               |
+| `claim`  | `(domain: string) => Promise<ClaimResult \| null>` | Resolves to the result on success, `null` on failure.                                      |
+| `reset`  | `() => void`                                       | Clears back to `idle` — the session itself is still spent, so this doesn't allow retrying. |
+
+A session is single-use: any claim attempt spends it, successfully or not — except a `429` (rate limited), which never reaches that far. A claim that fails any other way (a bad domain, a conflict) can't be retried with the same `sessionToken`; mint a fresh one server-side.
+
+### `useVerification(token, options?)`
+
+Reads, and by default polls, a claim's status by its `frontendToken` (the one `useClaimDomain` returned, not the spent `sessionToken`). Pass `null` before a claim exists and it does nothing.
+
+| Field          | Type                                          | Notes                                                                                                                             |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `verification` | `Verification \| null`                        |                                                                                                                                   |
+| `status`       | `'idle' \| 'loading' \| 'success' \| 'error'` | Tracks the initial read and every poll tick, not `verify()`.                                                                      |
+| `error`        | `DomainProofError \| null`                    |                                                                                                                                   |
+| `isPolling`    | `boolean`                                     | Whether a background poll is currently scheduled.                                                                                 |
+| `isVerifying`  | `boolean`                                     | Whether a manual `verify()` call is in flight.                                                                                    |
+| `verify`       | `() => Promise<void>`                         | Runs the check immediately instead of waiting for the next poll tick. Rate limited by the API: 1 per 15s, 20 per hour, per token. |
+
+Polling uses the same bounded backoff as [the hosted verification page](/docs/hosted-verification-page) — quick at first, settling at 30 seconds, capped at around 40 attempts — and stops for good once `status` reaches a terminal state (`verified`/`failed`). Pass `autoPoll: false` to fetch once and drive everything through `verify()` yourself, or override `intervalsMs`/`maxAttempts`.
+
+## Theming
+
+The stylesheet imported in step 2 is precompiled at publish time by scanning this package's and `@domainproof/ui`'s (DomainProof's internal, unpublished design system) source for the classes `<DomainVerification />` actually uses — your app never needs Tailwind installed or configured, and every rule is scoped under the component's own root element so it can't collide with styles elsewhere on your page.
+
+It ships two color themes — the same tokens the rest of DomainProof themes with. Pick one with the `theme` prop (defaults to `'dark'`):
+
+```tsx
+<DomainVerification sessionToken={sessionToken} theme="light" />
+```
+
+For finer control, every token is a CSS custom property you can override via the `style` prop on the component itself — not an ancestor element, since the compiled stylesheet declares these directly on the component's own root, and a direct declaration always wins over one inherited from further up the tree:
+
+```tsx
+<DomainVerification
+  sessionToken={sessionToken}
+  style={{ '--accent': '#7c3aed' } as React.CSSProperties}
+/>
+```
+
+| Variable               | Dark (default)                   | Light                        |
+| ---------------------- | -------------------------------- | ---------------------------- |
+| `--bg`                 | `oklch(0.13 0.006 235)`          | `oklch(0.99 0.002 235)`      |
+| `--surface`            | `oklch(0.17 0.008 235)`          | `oklch(0.975 0.004 235)`     |
+| `--border`             | `oklch(1 0 0 / 8%)`              | `oklch(0.13 0.01 235 / 10%)` |
+| `--text`               | `oklch(0.96 0.004 235)`          | `oklch(0.18 0.01 235)`       |
+| `--text-muted`         | `oklch(0.66 0.01 235)`           | `oklch(0.42 0.012 235)`      |
+| `--accent`             | `oklch(0.76 0.16 152)`           | `oklch(0.52 0.15 152)`       |
+| `--success`            | `oklch(0.76 0.16 152)`           | `oklch(0.5 0.15 152)`        |
+| `--warning`            | `oklch(0.82 0.175 96)`           | `oklch(0.64 0.165 88)`       |
+| `--danger`             | `oklch(0.68 0.19 25)`            | `oklch(0.55 0.19 25)`        |
+| `--radius-sm/md/lg/xl` | `6px` / `10px` / `14px` / `20px` | same                         |
+
+See `@domainproof/ui`'s `tokens.css` for the complete list (border tints, type scale, shadows) — every value there is overridable the same way.
+
+## Test mode
+
+A session minted with a `dp_test_...` API key only accepts [`.test` sandbox domains](/docs/sandbox) — good for demos and end-to-end tests of your own integration. A live-mode session claiming a `.test` domain gets `sandbox_requires_test_mode`, surfaced through `error` the same as any other post-claim failure.
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — the alternative when you'd rather redirect than embed.
+- [Claim and verify a domain](/docs/claim-and-verify) — what `componentSessions.create` sits on top of, and the full server-side API.
+- [Sandbox: verify without a real domain](/docs/sandbox) — every `.test` journey you can point this component at during development.

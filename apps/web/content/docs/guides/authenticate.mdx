@@ -75,10 +75,10 @@ The rule that trips people up: **sandbox (`.test`) domains can only be claimed w
 
 DomainProof's API is split into three authentication planes by path prefix — everything on this page and the rest of the guides is about the Public API, the one you'll integrate against directly:
 
-| Plane         | Path prefix    | Authenticated by                           | Who calls it                                                                             |
-| ------------- | -------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Public API    | `/v1/*`        | Project API key (this page)                | Your backend, directly — this is what the rest of these guides cover.                    |
-| Frontend API  | `/frontend/*`  | A per-claim `frontendToken`, no key at all | The hosted verification page, and drop-in components — never your backend's own API key. |
-| Dashboard API | `/dashboard/*` | A signed-in session                        | The DomainProof dashboard itself — not meant to be called directly by an integration.    |
+| Plane         | Path prefix    | Authenticated by                           | Who calls it                                                                                            |
+| ------------- | -------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Public API    | `/v1/*`        | Project API key (this page)                | Your backend, directly — this is what the rest of these guides cover.                                   |
+| Frontend API  | `/frontend/*`  | A per-claim `frontendToken`, no key at all | The hosted verification page, and [drop-in components](/docs/react) — never your backend's own API key. |
+| Dashboard API | `/dashboard/*` | A signed-in session                        | The DomainProof dashboard itself — not meant to be called directly by an integration.                   |
 
 See the [API reference](/docs/api-reference) for the full plane/endpoint breakdown.

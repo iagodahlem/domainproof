@@ -5,16 +5,17 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
  * `/dashboard` prefix left to protect by — a project id is caller-generated
  * and unpredictable, so it can never be enumerated as an allowlist the way
  * the handful of public routes can. Protect by exception instead: the
- * marketing pages, the hosted verification portal (its own per-token
- * `frontendToken` auth, no Clerk session), and the sign-in callback are
- * public; everything else — `/app`, `/new`, and every `[projectId]` route —
- * requires a signed-in builder.
+ * marketing pages, the docs site, the hosted verification portal (its own
+ * per-token `frontendToken` auth, no Clerk session), and the sign-in
+ * callback are public; everything else — `/app`, `/new`, and every
+ * `[projectId]` route — requires a signed-in builder.
  */
 const isPublicRoute = createRouteMatcher([
   '/',
   '/design-system',
   '/sso-callback',
   '/verify(.*)',
+  '/docs(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
