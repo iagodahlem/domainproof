@@ -1,15 +1,26 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { Callout } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
-import { dashboardApi } from '@/lib/api/dashboard'
+import {
+  domainEventsQueryOptions,
+  domainQueryOptions,
+} from '@/lib/query/domains'
+import { getQueryClient } from '@/lib/query/query-client'
 import { DomainDetailClient } from '../_components/domain-detail-client'
 
 export const metadata: Metadata = {
   title: 'Domain — DomainProof',
 }
 
+/**
+ * The domain and its events timeline are the page's two primary queries,
+ * prefetched together so the first render has both — a 404 on the domain
+ * itself short-circuits before the events prefetch even starts, same as
+ * the original sequential awaits did.
+ */
 export default async function DomainDetailPage({
   params,
 }: {
@@ -17,11 +28,12 @@ export default async function DomainDetailPage({
 }) {
   const { projectId, domainId } = await params
   const { getToken } = await auth()
-  const token = await getToken()
 
-  let domain
+  const queryClient = getQueryClient()
   try {
-    ;({ domain } = await dashboardApi.getDomain(token, projectId, domainId))
+    await queryClient.fetchQuery(
+      domainQueryOptions(projectId, domainId, getToken),
+    )
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       notFound()
@@ -34,19 +46,13 @@ export default async function DomainDetailPage({
       </Callout>
     )
   }
-
-  const { events, nextCursor } = await dashboardApi.listDomainEvents(
-    token,
-    projectId,
-    domainId,
+  await queryClient.fetchQuery(
+    domainEventsQueryOptions(projectId, domainId, getToken),
   )
 
   return (
-    <DomainDetailClient
-      projectId={projectId}
-      initialDomain={domain}
-      initialEvents={events}
-      initialEventsNextCursor={nextCursor}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <DomainDetailClient projectId={projectId} domainId={domainId} />
+    </HydrationBoundary>
   )
 }

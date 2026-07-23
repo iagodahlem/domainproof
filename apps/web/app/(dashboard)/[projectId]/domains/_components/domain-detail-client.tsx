@@ -14,11 +14,7 @@ import {
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import { hostedVerificationUrl } from '@/lib/hosted-verification-url'
-import type {
-  DomainCheck,
-  DomainDetail,
-  DomainEvent,
-} from '@/lib/api/dashboard'
+import type { DomainCheck } from '@/lib/api/dashboard'
 import {
   domainEventsKey,
   domainKey,
@@ -42,9 +38,7 @@ import { DEFAULT_INTERVALS_MS, useBoundedPoll } from './use-bounded-poll'
 
 export interface DomainDetailClientProps {
   projectId: string
-  initialDomain: DomainDetail
-  initialEvents: DomainEvent[]
-  initialEventsNextCursor: string | null
+  domainId: string
 }
 
 function formatNextCheckDelay(ms: number): string {
@@ -54,16 +48,11 @@ function formatNextCheckDelay(ms: number): string {
 
 export function DomainDetailClient({
   projectId,
-  initialDomain,
-  initialEvents,
-  initialEventsNextCursor,
+  domainId,
 }: DomainDetailClientProps) {
   const queryClient = useQueryClient()
-  const { data: domain } = useDomain(projectId, initialDomain.id, initialDomain)
-  const { data: eventsPage } = useDomainEvents(projectId, initialDomain.id, {
-    events: initialEvents,
-    nextCursor: initialEventsNextCursor,
-  })
+  const { data: domain } = useDomain(projectId, domainId)
+  const { data: eventsPage } = useDomainEvents(projectId, domainId)
   const { events, nextCursor: eventsNextCursor } = eventsPage
 
   const [lastCheck, setLastCheck] = useState<DomainCheck | null>(null)

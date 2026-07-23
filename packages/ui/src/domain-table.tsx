@@ -4,6 +4,7 @@ import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Badge, dotVariants, type Tone } from './badge'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from './table'
+import { Skeleton } from './skeleton'
 import { cn } from './cn'
 
 // Bespoke grid-template-columns for this table's exact column shape — no
@@ -124,11 +125,11 @@ export function DomainTableRowSkeleton({
 }: HTMLAttributes<HTMLDivElement>) {
   return (
     <TableRow className={cn(GRID_COLS, className)} {...props}>
-      <span className="h-2 w-2 animate-pulse rounded-full bg-surface-3" />
-      <span className="h-4 w-2/3 animate-pulse rounded-sm bg-surface-3" />
-      <span className="h-4 w-16 animate-pulse rounded-sm bg-surface-3" />
-      <span className="h-5 w-20 animate-pulse rounded-sm bg-surface-3" />
-      <span className="h-4 w-14 animate-pulse rounded-sm bg-surface-3" />
+      <Skeleton className="h-2 w-2 rounded-full" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-4 w-14" />
       <span />
     </TableRow>
   )

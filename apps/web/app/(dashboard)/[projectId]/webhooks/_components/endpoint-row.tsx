@@ -25,8 +25,6 @@ import { DeliveryLog } from './delivery-log'
 export interface EndpointRowProps {
   projectId: string
   endpoint: WebhookEndpointSummary
-  onUpdated: (endpoint: WebhookEndpointSummary) => void
-  onDeleted: (endpointId: string) => void
 }
 
 export const ENDPOINT_GRID_COLS = 'grid-cols-[10px_1fr_170px_90px_16px] gap-x-4'
@@ -55,12 +53,7 @@ function eventsSummary(eventTypes: string[]): { label: string; extra: number } {
  * PR's description), and the endpoint's delivery log — rather than
  * navigating anywhere.
  */
-export function EndpointRow({
-  projectId,
-  endpoint,
-  onUpdated,
-  onDeleted,
-}: EndpointRowProps) {
+export function EndpointRow({ projectId, endpoint }: EndpointRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState<string>()
@@ -73,14 +66,13 @@ export function EndpointRow({
   }
 
   const toggleDisabled = useToggleWebhookEndpointDisabled(projectId, endpoint)
-  const deleteEndpoint = useDeleteWebhookEndpoint(projectId, endpoint.id)
+  const deleteEndpoint = useDeleteWebhookEndpoint(projectId, endpoint)
 
   const busy = toggleDisabled.isPending || deleteEndpoint.isPending
 
   function handleToggleDisabled() {
     setError(undefined)
     toggleDisabled.mutate(undefined, {
-      onSuccess: onUpdated,
       onError: (err) => {
         console.error('Failed to toggle webhook endpoint', err)
         setError(
@@ -95,7 +87,6 @@ export function EndpointRow({
   function handleDelete() {
     setError(undefined)
     deleteEndpoint.mutate(undefined, {
-      onSuccess: () => onDeleted(endpoint.id),
       onError: (err) => {
         console.error('Failed to delete webhook endpoint', err)
         setError(

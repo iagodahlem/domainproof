@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import type { Mode } from '@/lib/api/dashboard'
+import { webhookEndpointsQueryOptions } from '@/lib/query/webhooks'
+import { getQueryClient } from '@/lib/query/query-client'
 import { WebhooksView } from './_components/webhooks-view'
 
 export const metadata: Metadata = {
@@ -23,21 +25,17 @@ export default async function WebhooksPage({
   const { mode: rawMode } = await searchParams
   const mode = resolveMode(rawMode)
   const { getToken } = await auth()
-  const token = await getToken()
 
-  const { endpoints } = await dashboardApi.listWebhookEndpoints(
-    token,
-    projectId,
-    { mode },
+  const queryClient = getQueryClient()
+  await queryClient.fetchQuery(
+    webhookEndpointsQueryOptions(projectId, mode, getToken),
   )
 
   return (
-    // Remounts on mode change, same reasoning as DomainsPage/EventsPage's
-    // own `key={mode}`.
-    <WebhooksView
-      key={mode}
-      projectId={projectId}
-      initialEndpoints={endpoints}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      {/* Remounts on mode change, same reasoning as
+          DomainsPage/EventsPage's own `key={mode}`. */}
+      <WebhooksView key={mode} projectId={projectId} mode={mode} />
+    </HydrationBoundary>
   )
 }

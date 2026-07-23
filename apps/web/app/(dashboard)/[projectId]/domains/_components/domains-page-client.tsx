@@ -12,11 +12,7 @@ import {
   DomainTableRow,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
-import type {
-  DomainDetail,
-  DomainListItem,
-  DomainMode,
-} from '@/lib/api/dashboard'
+import type { DomainDetail, DomainMode } from '@/lib/api/dashboard'
 import type { DomainsListPage } from '@/lib/query/domains'
 import {
   domainsListKey,
@@ -35,22 +31,12 @@ const SANDBOX_DOMAIN_PREFILL = 'pending-then-verified.test'
 export interface DomainsPageClientProps {
   projectId: string
   mode: DomainMode
-  initialDomains: DomainListItem[]
-  initialNextCursor: string | null
 }
 
-export function DomainsPageClient({
-  projectId,
-  mode,
-  initialDomains,
-  initialNextCursor,
-}: DomainsPageClientProps) {
+export function DomainsPageClient({ projectId, mode }: DomainsPageClientProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data } = useDomainsList(projectId, mode, {
-    domains: initialDomains,
-    nextCursor: initialNextCursor,
-  })
+  const { data } = useDomainsList(projectId, mode)
   const { domains, nextCursor } = data
   const [loadMoreError, setLoadMoreError] = useState<string | undefined>()
   const [addFormState, setAddFormState] = useState<

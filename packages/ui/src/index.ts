@@ -118,4 +118,5 @@ export {
   DrawerBody,
   DrawerFooter,
 } from './drawer'
+export { Skeleton } from './skeleton'
 export { cn } from './cn'
