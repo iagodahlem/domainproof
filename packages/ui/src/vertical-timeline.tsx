@@ -95,7 +95,12 @@ export function VerticalTimeline({
                 <div
                   className={cn(
                     'mt-2 max-w-[54ch] text-sm leading-body text-muted-foreground',
-                    !isLast && 'mb-4',
+                    // Gap belongs between the description and whatever
+                    // content follows it, not between steps (that's the
+                    // wrapper's own `pb-8`) — gating this on `isLast`
+                    // instead of `step.content` used to flush the last
+                    // step's description straight against its content.
+                    step.content ? 'mb-4' : undefined,
                   )}
                 >
                   {step.description}

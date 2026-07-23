@@ -56,6 +56,26 @@ describe('VerticalTimeline', () => {
     expect(screen.getByText('✓').className).toContain('bg-success')
   })
 
+  it('keeps the description-to-content gap on the last step too', () => {
+    render(
+      <VerticalTimeline
+        steps={[
+          {
+            id: 'verify',
+            status: 'current',
+            node: '3',
+            title: 'Verify',
+            description: 'We check automatically.',
+            content: <span>Status pill</span>,
+          },
+        ]}
+      />,
+    )
+    expect(screen.getByText('We check automatically.').className).toContain(
+      'mb-4',
+    )
+  })
+
   it('omits the connector line after the last step', () => {
     render(
       <VerticalTimeline

@@ -27,54 +27,52 @@ export function PathChooser({
   ...props
 }: PathChooserProps) {
   return (
-    <div className="@container">
-      <div
-        role="tablist"
-        className={cn(
-          'mb-8 flex flex-nowrap gap-3 @max-[780px]:flex-col',
-          className,
-        )}
-        {...props}
-      >
-        {options.map((option) => {
-          const active = option.id === value
-          return (
-            <button
-              key={option.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onChange(option.id)}
+    <div
+      role="tablist"
+      className={cn(
+        'flex snap-x flex-nowrap gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        className,
+      )}
+      {...props}
+    >
+      {options.map((option) => {
+        const active = option.id === value
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(option.id)}
+            className={cn(
+              'flex w-44 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
+              active && 'border-accent bg-accent-soft',
+            )}
+          >
+            <span
               className={cn(
-                'flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors duration-150 hover:border-border-strong @max-[780px]:w-full',
-                active && 'border-accent bg-accent-soft',
+                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-faint-foreground transition-colors duration-150',
+                active && 'bg-accent text-accent-foreground',
               )}
             >
+              {option.icon}
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
               <span
                 className={cn(
-                  'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-faint-foreground transition-colors duration-150',
-                  active && 'bg-accent text-accent-foreground',
+                  'truncate text-sm font-heading',
+                  active && 'text-accent',
                 )}
               >
-                {option.icon}
+                {option.label}
               </span>
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span
-                  className={cn(
-                    'truncate text-sm font-heading',
-                    active && 'text-accent',
-                  )}
-                >
-                  {option.label}
-                </span>
-                <span className="truncate text-2xs leading-caption text-faint-foreground">
-                  {option.sub}
-                </span>
+              <span className="truncate text-2xs leading-caption text-faint-foreground">
+                {option.sub}
               </span>
-            </button>
-          )
-        })}
-      </div>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

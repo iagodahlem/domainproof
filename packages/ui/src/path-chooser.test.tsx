@@ -45,7 +45,7 @@ describe('PathChooser', () => {
     expect(onChange).toHaveBeenCalledWith('hosted')
   })
 
-  it('stacks into full-width cards under 780px of its own rendered width, not the viewport', () => {
+  it('never wraps or stacks — stays one row and scrolls horizontally instead', () => {
     render(
       <PathChooser
         options={OPTIONS}
@@ -56,16 +56,12 @@ describe('PathChooser', () => {
     )
     expect(screen.getByTestId('chooser').className).toContain('flex-nowrap')
     expect(screen.getByTestId('chooser').className).not.toContain('flex-wrap')
-    expect(screen.getByTestId('chooser').className).toContain(
-      '@max-[780px]:flex-col',
-    )
+    expect(screen.getByTestId('chooser').className).not.toContain('flex-col')
+    expect(screen.getByTestId('chooser').className).toContain('overflow-x-auto')
+    // Fixed-width, non-shrinking cards — the row scrolls instead of
+    // squeezing cards down to nothing at narrow widths.
     expect(screen.getByRole('tab', { name: /API/ }).className).toContain(
-      '@max-[780px]:w-full',
-    )
-    // A container query only applies once an ancestor declares the
-    // containment context — without this, `@max-[780px]` would never match.
-    expect(screen.getByTestId('chooser').parentElement?.className).toContain(
-      '@container',
+      'shrink-0',
     )
   })
 
