@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react'
 import type { DomainStatus } from '@domainproof/core'
 import type { StepperStep, StepperStepStatus } from '@domainproof/ui'
 import type { VerificationCheck } from '@/lib/api/frontend'
@@ -36,51 +35,22 @@ export function verificationSteps({
   const propagated = everCorrect || check?.outcome === 'found'
   const verified = status === 'verified'
 
-  // Still capable of automatic progress — a terminal `failed` is the only
-  // status with nothing left to check, matching `describeStatus`'s own
-  // `showRecheck` split.
-  const active = status !== 'failed'
-
   const done = [true, recordAdded, propagated, verified]
   const firstNotDoneIndex = done.indexOf(false)
 
+  // A terminal `failed` is the only status with nothing left to check
+  // (matching `describeStatus`'s own `showRecheck` split) — the step it
+  // stalled on renders as blocked rather than still-in-progress.
   function stepStatus(index: number): StepperStepStatus {
     if (done[index]) return 'done'
-    return index === firstNotDoneIndex && active ? 'current' : 'upcoming'
-  }
-
-  function node(index: number, fallback: string) {
-    return stepStatus(index) === 'done' ? (
-      <Check aria-hidden="true" size={10} />
-    ) : (
-      fallback
-    )
+    if (index !== firstNotDoneIndex) return 'upcoming'
+    return status === 'failed' ? 'failed' : 'current'
   }
 
   return [
-    {
-      id: 'claimed',
-      status: 'done',
-      node: <Check aria-hidden="true" size={10} />,
-      label: 'Claimed',
-    },
-    {
-      id: 'record-added',
-      status: stepStatus(1),
-      node: node(1, '2'),
-      label: 'Record added',
-    },
-    {
-      id: 'propagated',
-      status: stepStatus(2),
-      node: node(2, '3'),
-      label: 'Propagated',
-    },
-    {
-      id: 'verified',
-      status: stepStatus(3),
-      node: node(3, '4'),
-      label: 'Verified',
-    },
+    { id: 'claimed', status: 'done', label: 'Claimed' },
+    { id: 'record-added', status: stepStatus(1), label: 'Record added' },
+    { id: 'propagated', status: stepStatus(2), label: 'Propagated' },
+    { id: 'verified', status: stepStatus(3), label: 'Verified' },
   ]
 }

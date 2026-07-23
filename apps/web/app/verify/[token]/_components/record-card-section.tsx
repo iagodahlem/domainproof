@@ -1,10 +1,4 @@
-import {
-  Badge,
-  Callout,
-  CardRow,
-  RecordCard,
-  RecordField,
-} from '@domainproof/ui'
+import { Badge, CardRow, RecordCard, RecordField } from '@domainproof/ui'
 import type { VerificationRecord } from '@/lib/api/frontend'
 
 export interface RecordCardSectionProps {
@@ -27,21 +21,21 @@ export function RecordCardSection({ domain, records }: RecordCardSectionProps) {
             label="Host"
             value={record.label}
             copyable
-            explain="This subdomain is unique to this request. It doesn't touch your existing DNS, mail, or website — it only exists to answer one question."
+            truncateValue
           />
           <RecordField
             label="Value"
             value={record.value}
             copyable
-            explain="A one-time token, generated for this request only. Paste it exactly as shown."
+            truncateValue
           />
         </div>
       ))}
       <CardRow>
-        <Callout tone="warning" className="text-sm">
+        <p className="text-sm text-faint-foreground">
           Paste the value exactly as shown — some DNS providers add a trailing
           dot automatically. If verification keeps failing, check for one.
-        </Callout>
+        </p>
       </CardRow>
     </RecordCard>
   )

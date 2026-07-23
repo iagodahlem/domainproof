@@ -71,22 +71,22 @@ describe('verificationSteps', () => {
     expect(statusesOf(steps)).toEqual(['done', 'done', 'done', 'current'])
   })
 
-  it('marks "record added" done but everything after upcoming for a hard wrong_value failure', () => {
+  it('marks "record added" done but "propagated" failed for a hard wrong_value failure', () => {
     const steps = verificationSteps({
       status: 'failed',
       check: check('wrong_value', { expected: 'a', detected: ['b'] }),
     })
-    expect(statusesOf(steps)).toEqual(['done', 'done', 'upcoming', 'upcoming'])
+    expect(statusesOf(steps)).toEqual(['done', 'done', 'failed', 'upcoming'])
   })
 
-  it('marks everything after "claimed" upcoming for a domain that expired without ever finding a record', () => {
+  it('marks "record added" failed for a domain that expired without ever finding a record', () => {
     const steps = verificationSteps({
       status: 'failed',
       check: check('expired'),
     })
     expect(statusesOf(steps)).toEqual([
       'done',
-      'upcoming',
+      'failed',
       'upcoming',
       'upcoming',
     ])
@@ -106,6 +106,20 @@ describe('verificationSteps', () => {
         (status) => status === 'current',
       ).length
       expect(currentCount).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('never marks more than one step "failed" at once', () => {
+    const cases: Array<Parameters<typeof verificationSteps>[0]> = [
+      { status: 'failed', check: check('expired') },
+      { status: 'failed', check: check('wrong_value') },
+      { status: 'failed', check: null },
+    ]
+    for (const input of cases) {
+      const failedCount = statusesOf(verificationSteps(input)).filter(
+        (status) => status === 'failed',
+      ).length
+      expect(failedCount).toBeLessThanOrEqual(1)
     }
   })
 })

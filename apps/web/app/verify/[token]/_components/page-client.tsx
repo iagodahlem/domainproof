@@ -107,58 +107,71 @@ export function VerificationPageClient({
   const outcomeTone = view.tone === 'pending' ? null : view.tone
   const showTaskArea = view.showRecheck
   const showCloudflareFastpath = showTaskArea && data.provider === 'cloudflare'
+  const headerVariant =
+    data.status === 'verified'
+      ? 'verified'
+      : data.status === 'failed'
+        ? 'failed'
+        : 'active'
 
   return (
-    <main className="mx-auto flex max-w-140 flex-col gap-8 px-6 pb-12 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:pb-8">
-      <VerifyHeader
-        domain={data.domain}
-        projectName={data.projectName}
-        verified={data.status === 'verified'}
-      />
-
-      <div className="flex flex-col gap-6">
-        <VerificationProgress
-          steps={verificationSteps({ status: data.status, check: data.check })}
-          tone={view.tone}
-          badgeLabel={view.badgeLabel}
-          meta={isPolling ? 'Checking automatically, every 20s.' : null}
-          unreachableNote={view.unreachableNote}
+    <main className="mx-auto flex max-w-140 flex-col px-6 pb-12 max-[480px]:px-4 max-[480px]:pb-8">
+      <div className="flex flex-col gap-8 max-[480px]:gap-6">
+        <VerifyHeader
+          domain={data.domain}
+          projectName={data.projectName}
+          variant={headerVariant}
         />
 
-        {pollError ? <Callout tone="warning">{pollError}</Callout> : null}
-
-        {outcomeTone ? (
-          <OutcomeCard
-            tone={outcomeTone}
-            heading={view.heading}
-            body={view.body}
-            check={view.showDiff ? data.check : null}
+        <div className="flex flex-col gap-6">
+          <VerificationProgress
+            steps={verificationSteps({
+              status: data.status,
+              check: data.check,
+            })}
+            tone={view.tone}
+            badgeLabel={view.badgeLabel}
+            meta={isPolling ? 'Checking automatically, every 20s.' : null}
+            unreachableNote={view.unreachableNote}
           />
-        ) : null}
 
-        {showTaskArea ? (
-          <>
-            {showCloudflareFastpath ? (
-              <>
-                <CloudflareFastpathCard
-                  token={token}
-                  domain={data.domain}
-                  cloudflareOutcome={cloudflareOutcome}
-                />
-                <div className="flex items-center gap-3 text-xs text-faint-foreground">
-                  <span className="h-px flex-1 bg-border" />
-                  or add it yourself
-                  <span className="h-px flex-1 bg-border" />
-                </div>
-              </>
-            ) : null}
-            <RecordCardSection domain={data.domain} records={data.records} />
-            <AgentReveal domain={data.domain} records={data.records} />
-          </>
-        ) : null}
+          {pollError ? <Callout tone="warning">{pollError}</Callout> : null}
+
+          {outcomeTone ? (
+            <OutcomeCard
+              tone={outcomeTone}
+              heading={view.heading}
+              body={view.body}
+              check={view.showDiff ? data.check : null}
+            />
+          ) : null}
+
+          {showTaskArea ? (
+            <>
+              {showCloudflareFastpath ? (
+                <>
+                  <CloudflareFastpathCard
+                    token={token}
+                    domain={data.domain}
+                    cloudflareOutcome={cloudflareOutcome}
+                  />
+                  <div className="flex items-center gap-3 text-xs text-faint-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or add it yourself
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                </>
+              ) : null}
+              <RecordCardSection domain={data.domain} records={data.records} />
+              <AgentReveal domain={data.domain} records={data.records} />
+            </>
+          ) : null}
+        </div>
       </div>
 
-      <p className="text-center text-xs text-faint-foreground">
+      {/* Matches `pb-12`/`max-[480px]:pb-8` below exactly, so "Secured by
+          DomainProof" sits centered between two equal gaps. */}
+      <p className="mt-12 text-center text-xs text-faint-foreground max-[480px]:mt-8">
         Secured by DomainProof
       </p>
     </main>

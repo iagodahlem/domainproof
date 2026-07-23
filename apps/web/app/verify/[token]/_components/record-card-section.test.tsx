@@ -11,12 +11,10 @@ const RECORDS = [
 ]
 
 describe('RecordCardSection', () => {
-  it('renders the host and value fields with their explain copy', () => {
+  it('renders the host and value fields, truncating instead of wrapping', () => {
     render(<RecordCardSection domain="acme.co" records={RECORDS} />)
     expect(screen.getByText('_acme-challenge.example.com')).toBeTruthy()
     expect(screen.getByText('acme-verify=abc123')).toBeTruthy()
-    expect(screen.getByText(/unique to this request/i)).toBeTruthy()
-    expect(screen.getByText(/one-time token/i)).toBeTruthy()
   })
 
   it('addresses the reader directly, naming the domain in question', () => {

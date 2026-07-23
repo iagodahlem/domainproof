@@ -1,16 +1,18 @@
 import { Logo } from '@domainproof/ui'
 
+export type VerifyHeaderVariant = 'active' | 'verified' | 'failed'
+
 export interface VerifyHeaderProps {
   domain: string
   projectName: string
-  /** Swaps to the completed statement once the domain is verified — every other state (instructions, pending, needs attention) shares this same "asks you to verify" sentence, so a visitor who reloads mid-flow never loses track of who's asking or for what. */
-  verified: boolean
+  /** 'active' (not started, pending, or needs attention but still checkable) shares one context sentence, since there's still a record to add. 'verified' and 'failed' are terminal — each gets its own sentence, since neither has a record left to add. */
+  variant: VerifyHeaderVariant
 }
 
 export function VerifyHeader({
   domain,
   projectName,
-  verified,
+  variant,
 }: VerifyHeaderProps) {
   return (
     <header className="flex flex-col">
@@ -19,21 +21,29 @@ export function VerifyHeader({
       </div>
 
       <div className="flex flex-col gap-3">
-        {verified ? (
+        {variant === 'verified' ? (
           <h1 className="text-2xl leading-heading font-heading text-balance">
             <span className="break-all">{domain}</span> is verified
           </h1>
+        ) : variant === 'failed' ? (
+          <h1 className="text-2xl leading-heading font-heading text-balance">
+            Verification of{' '}
+            <span className="break-all text-accent">{domain}</span> didn&rsquo;t
+            go through
+          </h1>
         ) : (
           <h1 className="text-2xl leading-heading font-heading text-balance">
-            {projectName} asks you to verify ownership of{' '}
+            Verify ownership of{' '}
             <span className="break-all text-accent">{domain}</span>
           </h1>
         )}
 
         <p className="max-w-[52ch] text-sm leading-body text-muted-foreground">
-          {verified
+          {variant === 'verified'
             ? `You're done — you can close this tab. ${projectName}'s been notified and will take it from here.`
-            : `This confirms ${domain} is under your control before ${projectName} turns on domain-based features for it — takes about two minutes.`}
+            : variant === 'failed'
+              ? `Requested by ${projectName} — ask them for a new verification link to try again.`
+              : `Requested by ${projectName} — add one DNS record and you're done.`}
         </p>
       </div>
     </header>
