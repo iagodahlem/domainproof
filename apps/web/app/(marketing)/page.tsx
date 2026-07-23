@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
 import { AuthCta } from '@/components/header/auth-cta'
-import { MarketingFooter } from '@/components/footer/marketing-footer'
 
 export const metadata: Metadata = {
   title: 'DomainProof',
@@ -38,8 +37,6 @@ export default async function LandingPage() {
           </div>
         </div>
       </main>
-
-      <MarketingFooter />
     </div>
   )
 }

@@ -4,8 +4,8 @@ import { GithubIcon } from './github-icon'
 const GITHUB_URL = 'https://github.com/iagodahlem/domainproof'
 
 /**
- * The marketing pages' shared footer — landing and design-system both
- * render it as the last thing on the page. Product links plus the repo,
+ * The marketing pages' shared footer — rendered once by the `(marketing)`
+ * layout as the last thing on the page. Product links plus the repo,
  * nothing that needs upkeep (no newsletter form, no invented pages).
  */
 export function MarketingFooter() {

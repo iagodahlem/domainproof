@@ -38,7 +38,6 @@ import {
   Checkbox,
 } from '@domainproof/ui'
 import { PathChooserDemo } from './_components/path-chooser-demo'
-import { MarketingFooter } from '@/components/footer/marketing-footer'
 
 export const metadata: Metadata = {
   title: 'Design system — DomainProof',
@@ -1210,7 +1209,6 @@ export default function DesignSystemPage() {
           </div>
         </section>
       </main>
-      <MarketingFooter />
     </div>
   )
 }

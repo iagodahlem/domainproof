@@ -40,7 +40,7 @@ apps/web/
 
   components/                       # APP-LEVEL SHARED — used by 2+ routes; a closed set, not a dumping ground
     header/                            #   auth-cta.tsx, google-icon.tsx, marketing-actions.tsx, marketing-brand.tsx — the marketing Header's left/right-slot content
-    footer/                            #   marketing-footer.tsx — shared by the landing and design-system pages
+    footer/                            #   marketing-footer.tsx — rendered once by the (marketing) layout
     dashboard-shell/                   #   every dashboard route's chrome
       shell.tsx, sidebar.tsx, topbar.tsx, user-menu.tsx, project-switcher.tsx,
       sign-out-button.tsx, reload-button.tsx, shell-skeleton.tsx, nav-items.ts
@@ -64,9 +64,9 @@ theme-toggle + CTA cluster — and `MarketingBrand` — the logo + Docs link
 pair), promoted out of route-private status because it's the natural
 companion to every route's own `<Header left=... right=... />`
 composition. `components/footer/` holds `MarketingFooter` for the same
-reason — the landing and design-system pages render the identical footer
-as the last thing on the page, so it earns app-level status rather than
-living in either route's own `_components/`.
+reason — the `(marketing)` layout renders it once as the last thing on
+every marketing page, so it earns app-level status rather than living in
+either route's own `_components/`.
 
 ## Where does X go?
 

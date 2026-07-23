@@ -3,12 +3,14 @@ import { auth } from '@clerk/nextjs/server'
 import { Header } from '@domainproof/ui'
 import { MarketingActions } from '@/components/header/marketing-actions'
 import { MarketingBrand } from '@/components/header/marketing-brand'
+import { MarketingFooter } from '@/components/footer/marketing-footer'
 
 /**
- * The landing page and the design system share this header — resolved once
- * here so neither page calls `auth()` just to paint its chrome. `/sso-callback`
+ * The landing page and the design system share this header and footer —
+ * resolved/rendered once here so neither page calls `auth()` just to paint
+ * its chrome, and neither page renders its own footer. `/sso-callback`
  * lives in its own `(auth)` group, not under here, so it never inherits
- * this header.
+ * either.
  */
 export default async function MarketingLayout({
   children,
@@ -24,6 +26,7 @@ export default async function MarketingLayout({
         right={<MarketingActions isSignedIn={Boolean(userId)} />}
       />
       {children}
+      <MarketingFooter />
     </>
   )
 }
