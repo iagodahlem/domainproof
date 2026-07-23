@@ -10,8 +10,8 @@ const GITHUB_URL = 'https://github.com/iagodahlem/domainproof'
  */
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-border px-6 py-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6 text-sm sm:flex-row sm:justify-between">
+    <footer className="border-t border-border py-10">
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6 px-6 text-sm sm:flex-row sm:justify-between">
         <p className="text-faint-foreground">
           DomainProof · domain ownership as a service
         </p>
