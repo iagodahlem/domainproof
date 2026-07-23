@@ -58,7 +58,7 @@ export function VerificationPageClient({
     !TERMINAL_STATUSES.has(data.status),
   )
 
-  // FD-023: a successful Cloudflare one-click setup writes the record
+  // A successful Cloudflare one-click setup writes the record
   // server-side and triggers a verify there too, but this page's own view
   // of `data` is still whatever the initial SSR fetch saw *before* that —
   // force one immediate check so the optimistic "checking now…" callout

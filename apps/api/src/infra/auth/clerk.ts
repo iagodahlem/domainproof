@@ -40,7 +40,7 @@ export function createClerkSessionVerifier(
         return { ok: false, reason: 'missing_subject' }
       }
 
-      // Confirmed empirically (FD-021 A2's e2e signup-flow suite, which
+      // Confirmed empirically (the e2e signup-flow suite, which
       // decodes a real dev-instance session token): this instance's v2
       // session token already carries an `email` key by default — no
       // custom claim config needed. It's `null` rather than a string for
