@@ -11,4 +11,8 @@ export default defineConfig({
   banner: {
     js: "'use client'",
   },
+  // `@domainproof/ui` is private/unpublished — its component source is
+  // compiled straight into this package's bundle rather than left as an
+  // external import, since consumers never have it installed.
+  noExternal: ['@domainproof/ui'],
 })

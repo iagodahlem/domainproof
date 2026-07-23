@@ -121,7 +121,11 @@ describe('DomainVerification', () => {
     )
     await claimDomain(user)
 
-    await waitFor(() => expect(screen.getByText('Verified')).toBeTruthy())
+    // The stepper's last step is always labeled "Verified", even before
+    // the domain actually is — wait for the status pill's own "Verified"
+    // to join it (2 matches) rather than the stepper's alone (1), or this
+    // resolves before the real status transition does.
+    await waitFor(() => expect(screen.getAllByText('Verified').length).toBe(2))
     expect(onVerified).toHaveBeenCalledTimes(1)
     expect(onVerified.mock.calls[0]![0]).toMatchObject({ status: 'verified' })
     // No "Check now" button once terminal.
