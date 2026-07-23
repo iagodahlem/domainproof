@@ -20,12 +20,15 @@ import type {
   DomainEvent,
 } from '@/lib/api/dashboard'
 import {
+  domainEventsKey,
   domainKey,
   useDomain,
+  useDomainEvents,
   useListDomainEvents,
   useRegenerateDomain,
   useVerifyDomain,
 } from '@/lib/query/domains'
+import type { DomainEventsPage } from '@/lib/query/domains'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { formatRelativeTime } from '@/lib/format-relative-time'
@@ -49,10 +52,11 @@ export function DomainDetailClient({
 }: DomainDetailClientProps) {
   const queryClient = useQueryClient()
   const { data: domain } = useDomain(projectId, initialDomain.id, initialDomain)
-  const [events, setEvents] = useState(initialEvents)
-  const [eventsNextCursor, setEventsNextCursor] = useState(
-    initialEventsNextCursor,
-  )
+  const { data: eventsPage } = useDomainEvents(projectId, initialDomain.id, {
+    events: initialEvents,
+    nextCursor: initialEventsNextCursor,
+  })
+  const { events, nextCursor: eventsNextCursor } = eventsPage
 
   const [lastCheck, setLastCheck] = useState<DomainCheck | null>(null)
   const [verifyError, setVerifyError] = useState<string | undefined>()
@@ -73,9 +77,11 @@ export function DomainDetailClient({
     verifyDomain.mutate(undefined, {
       onSuccess: (result) => {
         queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
+        queryClient.setQueryData(domainEventsKey(projectId, domain.id), {
+          events: result.events,
+          nextCursor: result.nextCursor,
+        })
         setLastCheck(result.check)
-        setEvents(result.events)
-        setEventsNextCursor(result.nextCursor)
       },
       onError: (error) => {
         setVerifyError(
@@ -92,9 +98,11 @@ export function DomainDetailClient({
     regenerateDomain.mutate(undefined, {
       onSuccess: (result) => {
         queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
+        queryClient.setQueryData(domainEventsKey(projectId, domain.id), {
+          events: result.events,
+          nextCursor: result.nextCursor,
+        })
         setLastCheck(null)
-        setEvents(result.events)
-        setEventsNextCursor(result.nextCursor)
       },
       onError: (error) => {
         setRegenerateError(
@@ -110,8 +118,13 @@ export function DomainDetailClient({
     if (!eventsNextCursor) return
     loadMoreEvents.mutate(eventsNextCursor, {
       onSuccess: (result) => {
-        setEvents((current) => [...current, ...result.events])
-        setEventsNextCursor(result.nextCursor)
+        queryClient.setQueryData<DomainEventsPage>(
+          domainEventsKey(projectId, domain.id),
+          (current) => ({
+            events: [...(current?.events ?? []), ...result.events],
+            nextCursor: result.nextCursor,
+          }),
+        )
       },
     })
   }
