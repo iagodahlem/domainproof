@@ -2,13 +2,38 @@
 
 import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
+import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './cn'
 
 type Theme = 'dark' | 'light'
 
 const STORAGE_KEY = 'dp-theme'
 
-export interface ThemeToggleProps {
+const themeToggleVariants = cva(
+  // `focus-ring` (the bare utility, not `focus-visible:`) paints
+  // unconditionally per its own compiled rule — it's meant for a
+  // non-focusable wrapper standing in for a real focusable descendant, not
+  // a real `<button>` like this one, which the universal `:focus-visible`
+  // rule in focus-ring.css already covers on its own.
+  'group relative inline-flex items-center justify-center border border-border-strong bg-surface text-foreground transition-colors hover:bg-surface-2',
+  {
+    variants: {
+      variant: {
+        /** Bordered pill, label visible at `sm`+ — the dashboard's own mode-toggle rhythm. */
+        pill: 'gap-2 rounded-full px-3 py-1 text-xs font-semibold',
+        /** Circular, icon-only at every width — label moves to a hover/focus tooltip instead. */
+        icon: 'h-8 w-8 rounded-full',
+      },
+    },
+    defaultVariants: {
+      variant: 'pill',
+    },
+  },
+)
+
+export interface ThemeToggleProps extends VariantProps<
+  typeof themeToggleVariants
+> {
   className?: string
 }
 
@@ -18,7 +43,7 @@ export interface ThemeToggleProps {
  * the default (dark) rather than leaving an orphaned override for pages
  * that never opted into a toggle at all.
  */
-export function ThemeToggle({ className }: ThemeToggleProps) {
+export function ThemeToggle({ variant, className }: ThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>('dark')
 
   useEffect(() => {
@@ -34,17 +59,18 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     }
   }, [theme])
 
+  const label = theme === 'dark' ? 'View light' : 'View dark'
+  const isIcon = variant === 'icon'
+
   return (
     <button
       type="button"
       aria-pressed={theme === 'light'}
+      aria-label={isIcon ? label : undefined}
       onClick={() =>
         setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
       }
-      className={cn(
-        'focus-ring inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-surface-2',
-        className,
-      )}
+      className={cn(themeToggleVariants({ variant }), className)}
     >
       {/* Fixed-height slot (matches the label's line-height) so the button
           is the same height icon-only below `sm` as it is with the label
@@ -56,11 +82,20 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
           <Sun aria-hidden="true" size={13} />
         )}
       </span>
-      {/* Icon-only below sm — the label stays in the DOM (sr-only) so the
-          accessible name doesn't depend on viewport width. */}
-      <span className="sr-only sm:not-sr-only">
-        {theme === 'dark' ? 'View light' : 'View dark'}
-      </span>
+      {isIcon ? (
+        // Decorative — the button's own aria-label already announces this
+        // to screen readers, so the hover/focus tooltip stays presentation-only.
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-full left-1/2 z-10 mt-2 -translate-x-1/2 scale-95 rounded-md border border-border-strong bg-surface-3 px-2 py-1 text-2xs font-semibold whitespace-nowrap text-foreground opacity-0 shadow-card transition-[opacity,transform] duration-150 ease-out group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100"
+        >
+          {label}
+        </span>
+      ) : (
+        // Icon-only below sm — the label stays in the DOM (sr-only) so the
+        // accessible name doesn't depend on viewport width.
+        <span className="sr-only sm:not-sr-only">{label}</span>
+      )}
     </button>
   )
 }

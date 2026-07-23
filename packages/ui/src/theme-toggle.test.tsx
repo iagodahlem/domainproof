@@ -78,3 +78,20 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button').className).toContain('ml-2')
   })
 })
+
+describe('ThemeToggle variant="icon"', () => {
+  it('exposes the accessible name via aria-label instead of visible text', () => {
+    render(<ThemeToggle variant="icon" />)
+    const button = screen.getByRole('button', { name: 'View light' })
+    expect(button.getAttribute('aria-label')).toBe('View light')
+  })
+
+  it('still toggles the theme on click', async () => {
+    const user = userEvent.setup()
+    render(<ThemeToggle variant="icon" />)
+
+    await user.click(screen.getByRole('button', { name: 'View light' }))
+    expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy()
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+})

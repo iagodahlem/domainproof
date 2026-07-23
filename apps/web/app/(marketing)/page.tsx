@@ -37,10 +37,6 @@ export default async function LandingPage() {
           </div>
         </div>
       </main>
-
-      <footer className="px-6 py-12 text-center text-sm text-faint-foreground">
-        DomainProof · domain ownership as a service
-      </footer>
     </div>
   )
 }
