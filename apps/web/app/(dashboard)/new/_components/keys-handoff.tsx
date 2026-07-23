@@ -20,8 +20,8 @@ export interface KeysHandoffProps {
 /**
  * Show-once handoff for the test/live keys `POST /dashboard/projects`
  * returns — the only response where a project's bootstrap keys are ever
- * shown together. A placeholder for tomorrow's onboarding build (FD-022
- * B2); kept self-contained so it's trivial to replace.
+ * shown together. A placeholder for tomorrow's onboarding build; kept
+ * self-contained so it's trivial to replace.
  */
 export function KeysHandoff({ result, onContinue }: KeysHandoffProps) {
   const [liveRevealed, setLiveRevealed] = useState(false)

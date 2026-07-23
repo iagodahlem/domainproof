@@ -24,8 +24,8 @@ export interface CloudflareOutcomeView {
 /**
  * Honest, next-action-oriented copy for each outcome the Cloudflare callback
  * can redirect back with — every branch still points at the manual
- * instructions right below it (FD-023: "an honest callout beside the manual
- * instructions"), since none of these failures leave the record written.
+ * instructions right below it (an honest callout beside the manual
+ * instructions), since none of these failures leave the record written.
  * An unrecognized string falls back to a generic message rather than
  * throwing — this reads straight off a URL query param, which anyone can
  * edit by hand.

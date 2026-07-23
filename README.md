@@ -6,16 +6,21 @@ Prove ownership of a domain — domain verification as an API-first product.
 
 ## Monorepo
 
-pnpm workspaces + Turborepo. Planned layout:
+pnpm workspaces + Turborepo, `catalog:` version pins in the root
+`package.json`.
 
-- `apps/web` — Next.js App Router dashboard (coming up)
-- `apps/api` — Node/TS API server, Hono (coming up)
-- `apps/docs` — public API docs, Fumadocs (coming up)
-- `apps/demo` — interactive demo app (coming up)
-- `packages/core` — domain verification core logic (coming up)
-- `packages/sdk` — client SDK for the DomainProof API (coming up)
-- `packages/cli` — command-line interface (coming up)
-- `packages/mcp` — MCP server for agent integrations (coming up)
+- `apps/web` — Next.js 15 (App Router). Serves the landing page and project
+  dashboard at the apex domain (project routes live at the root, e.g.
+  `/<projectId>/...`, not under a `/dashboard` prefix), the hosted
+  verification portal at `/verify/[token]`, and docs (Fumadocs) at `/docs`
+- `apps/api` — Hono REST API on `api.domainproof.dev`
+- `packages/core` — pure domain logic: state machine, verification checks,
+  DNS resolver interfaces. Consumed by `apps/api`
+- `packages/sdk` — typed public-API client
+- `packages/cli` — command-line interface
+- `packages/mcp` — MCP server for agent integrations
+- `packages/ui` — shared design-system primitives (tokens, components)
+  consumed by `apps/web`
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the layer map and dependency
 rules.
