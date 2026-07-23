@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
@@ -19,6 +19,22 @@ export interface DeleteDomainDialogProps {
  * a modal rather than `ConfirmBar`'s inline expansion, since a menu item
  * has no natural inline slot below it to expand into. Owns the delete call
  * itself so the trigger only needs to toggle whether this is open.
+ *
+ * `isNavigating` keeps the dialog in its pending state across the gap
+ * between the delete request resolving and `router.push` actually landing
+ * on the domains list — otherwise the mutation's own `isPending` flips back
+ * to false the instant the request succeeds, the confirm button pops back
+ * to its idle, clickable state, and the dialog just sits there doing
+ * nothing for however long the navigation takes. The dialog unmounts with
+ * the page once the navigation completes, so nothing ever resets it back to
+ * false on the happy path.
+ *
+ * The dialog stays mounted (just hidden) between opens rather than
+ * unmounting, so a failed attempt's `error` would otherwise still be
+ * sitting in state the next time this reopens — reset it whenever `open`
+ * flips true, rather than trying to catch that in `onOpenChange` (which
+ * only fires for Radix-driven dismissal, never for the parent flipping its
+ * own `open` prop back on).
  */
 export function DeleteDomainDialog({
   projectId,
@@ -29,13 +45,22 @@ export function DeleteDomainDialog({
 }: DeleteDomainDialogProps) {
   const router = useRouter()
   const [error, setError] = useState<string | undefined>()
+  const [isNavigating, setIsNavigating] = useState(false)
 
   const deleteDomain = useDeleteDomain(projectId, domainId)
+  const pending = deleteDomain.isPending || isNavigating
+
+  useEffect(() => {
+    if (open) setError(undefined)
+  }, [open])
 
   function handleConfirm() {
     setError(undefined)
     deleteDomain.mutate(undefined, {
-      onSuccess: () => router.push(`/${projectId}/domains`),
+      onSuccess: () => {
+        setIsNavigating(true)
+        router.push(`/${projectId}/domains`)
+      },
       onError: (err) => {
         setError(
           err instanceof ApiError
@@ -49,10 +74,7 @@ export function DeleteDomainDialog({
   return (
     <ConfirmDialog
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next)
-        if (next) setError(undefined)
-      }}
+      onOpenChange={onOpenChange}
       title={`Delete ${domainName}?`}
       description={
         <>
@@ -63,7 +85,7 @@ export function DeleteDomainDialog({
         </>
       }
       confirmLabel="Confirm delete"
-      pending={deleteDomain.isPending}
+      pending={pending}
       error={error}
       onConfirm={handleConfirm}
     />
