@@ -72,6 +72,16 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     path: path.join(ARTIFACTS, '03-pending-laptop-collapsed.png'),
     fullPage: true,
   })
+
+  // --- Phone-width icon-only collapse (below the 420px breakpoint) ---
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(
+    page.getByRole('button', { name: 'Copy verification link' }),
+  ).toBeVisible()
+  await page.screenshot({
+    path: path.join(ARTIFACTS, '03b-pending-phone-icon-collapse.png'),
+    fullPage: true,
+  })
   await page.setViewportSize({ width: 1440, height: 900 })
 
   // --- Light theme ---
@@ -116,7 +126,19 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   await page.getByRole('button', { name: 'Add domain' }).click()
   await expect(page).toHaveURL(/\/domains\/[^/]+$/)
 
+  // A delay on the verify request gives the "Check now" button's loading
+  // state a window to be screenshotted — proving the spinner *replaces*
+  // the RefreshCw icon rather than rendering alongside it.
+  await page.route('**/domains/*/verify', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    return route.fallback()
+  })
   await page.getByRole('button', { name: 'Check now' }).click()
+  await expect(page.getByRole('button', { name: 'Check now' })).toBeDisabled()
+  await page.screenshot({
+    path: path.join(ARTIFACTS, '05c-check-now-spinner-only.png'),
+  })
+  await page.unroute('**/domains/*/verify')
   await expect(page.getByText('Mismatch')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Needs attention')).toBeVisible()
   await page.screenshot({
@@ -136,7 +158,20 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     fullPage: true,
   })
 
+  // Same icon/spinner-swap check as "Check now" above, for the "Check
+  // again" button in the "What we found" card — it shares the same
+  // `handleVerify`/`loading` wiring, so the same double-render bug would
+  // hit it too if the primitive fix ever regressed.
+  await page.route('**/domains/*/verify', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    return route.fallback()
+  })
   await page.getByRole('button', { name: 'Check again' }).click()
+  await expect(page.getByRole('button', { name: 'Check again' })).toBeDisabled()
+  await page.screenshot({
+    path: path.join(ARTIFACTS, '07b-check-again-spinner-only.png'),
+  })
+  await page.unroute('**/domains/*/verify')
   // Specifically the "What we found" card's own Mismatch badge — proves
   // the retry actually repopulated a fresh expected/found diff, not just
   // that the (already-present, minutes-old) vlog history still says so.
@@ -146,6 +181,46 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     path: path.join(ARTIFACTS, '08-failed-check-again-full-diff.png'),
     fullPage: true,
   })
+
+  // --- Delete dialog failure path: a mocked 500 on the DELETE request must
+  // return the dialog to an actionable state (spinner gone, error shown,
+  // Confirm re-enabled) rather than leaving it stuck loading or silently
+  // closing as if the delete had succeeded.
+  await page.route('**/dashboard/projects/*/domains/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback()
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'internal_error',
+          message: 'Simulated failure for e2e verification.',
+        },
+      }),
+    })
+  })
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Delete domain' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm delete' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Confirm delete' }),
+  ).toBeDisabled()
+  await expect(
+    page.getByText('Simulated failure for e2e verification.'),
+  ).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Confirm delete' }),
+  ).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+  await page.screenshot({
+    path: path.join(ARTIFACTS, '08b-delete-failure-actionable.png'),
+  })
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.unroute('**/dashboard/projects/*/domains/*')
 
   // --- Webhook delete dialog ---
   await page.goto(page.url().replace(/\/domains\/.*/, '/webhooks'))
@@ -180,9 +255,24 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     fullPage: true,
   })
 
-  // --- Real delete, end to end ---
+  // --- Real delete, end to end — an artificial delay on the DELETE
+  // request gives the spinner-holds-until-navigation behavior a window to
+  // actually be observed instead of the redirect outrunning the assertion.
+  await page.route('**/dashboard/projects/*/domains/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback()
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    return route.fallback()
+  })
   await page.getByRole('button', { name: 'More actions' }).click()
   await page.getByRole('menuitem', { name: 'Delete domain' }).click()
   await page.getByRole('button', { name: 'Confirm delete' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Confirm delete' }),
+  ).toBeDisabled()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.screenshot({
+    path: path.join(ARTIFACTS, '11-delete-spinner-holds.png'),
+  })
   await expect(page).toHaveURL(/\/domains$/)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })
