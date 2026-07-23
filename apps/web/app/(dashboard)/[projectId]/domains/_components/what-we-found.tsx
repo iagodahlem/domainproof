@@ -85,8 +85,8 @@ export function WhatWeFound({
         className="mt-4"
         onClick={onRetry}
         loading={retrying}
+        icon={<RefreshCw aria-hidden="true" size={13} />}
       >
-        <RefreshCw aria-hidden="true" size={13} />
         Check again
       </Button>
     </div>

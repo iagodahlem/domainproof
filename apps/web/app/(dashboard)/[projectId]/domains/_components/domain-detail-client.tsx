@@ -222,8 +222,8 @@ export function DomainDetailClient({
           size="sm"
           onClick={handleVerify}
           loading={verifyDomain.isPending}
+          icon={<RefreshCw aria-hidden="true" size={13} />}
         >
-          <RefreshCw aria-hidden="true" size={13} />
           <span className="max-[420px]:sr-only">Check now</span>
         </Button>
         <Menu>

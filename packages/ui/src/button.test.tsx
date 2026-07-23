@@ -79,6 +79,21 @@ describe('Button', () => {
     expect(el.getAttribute('aria-busy')).toBe('true')
   })
 
+  it('renders the icon alongside children when not loading', () => {
+    render(<Button icon={<svg data-testid="icon" />}>Recheck now</Button>)
+    expect(screen.getByTestId('icon')).toBeTruthy()
+  })
+
+  it('replaces the icon with the spinner while loading, instead of showing both', () => {
+    render(
+      <Button loading icon={<svg data-testid="icon" />}>
+        Recheck now
+      </Button>,
+    )
+    expect(screen.queryByTestId('icon')).toBeNull()
+    expect(screen.getByRole('button').querySelector('svg')).toBeTruthy()
+  })
+
   it('merges a custom className with the variant classes', () => {
     render(<Button className="my-custom-class">Click</Button>)
     expect(screen.getByRole('button').className).toContain('my-custom-class')
