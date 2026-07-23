@@ -71,7 +71,7 @@ export function EventRow({ event }: EventRowProps) {
       </TableRow>
 
       {expanded ? (
-        <div className="border-b border-border bg-surface-2 pt-4 pr-4 pb-5 pl-11 last:border-b-0">
+        <div className="border-b border-border bg-surface-2 px-4 pt-4 pb-5 last:border-b-0">
           <div className="mb-3 flex items-center justify-between gap-3">
             <Badge tone="neutral">Payload</Badge>
             <CopyButton value={payloadText} size="sm">
