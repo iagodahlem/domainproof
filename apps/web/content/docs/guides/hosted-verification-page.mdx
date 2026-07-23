@@ -78,4 +78,4 @@ The `authorize` route is token-scoped like the rest of this plane; `callback` is
 
 ## Which one should you use?
 
-Redirecting to `verificationUrl` is the fastest way to ship — nothing to build, and it stays current as the page evolves. Build directly on the Frontend API when you want the verification step to feel native inside your own product instead of a redirect. Both read from the same data, so you can start with the redirect and move to your own UI later without changing anything about how domains are claimed or checked.
+Redirecting to `verificationUrl` is the fastest way to ship — nothing to build, and it stays current as the page evolves. Build directly on the Frontend API when you want the verification step to feel native inside your own product instead of a redirect — or, if you're building in React, [`@domainproof/react`](/docs/react) gives you that same native feel as a drop-in `<DomainVerification />` component instead of hand-rolled calls to this plane. All three read from the same data, so you can start with the redirect and move to your own UI later without changing anything about how domains are claimed or checked.

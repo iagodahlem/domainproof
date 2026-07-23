@@ -1,0 +1,75 @@
+---
+title: Let an AI agent manage verification
+description: Set up @domainproof/mcp so an agent can claim, verify, and monitor domains through tool calls — the 7 tools, example prompts, and the one thing it can't do.
+section: Guides
+order: 6
+---
+
+# Let an AI agent manage verification
+
+`@domainproof/mcp` is an [MCP](https://modelcontextprotocol.io) server that lets an AI agent claim, verify, and monitor domains through DomainProof — no browser, no dashboard, just tool calls. It's a thin stdio wrapper around [`@domainproof/sdk`](/docs/authenticate#using-the-sdk): every tool call maps to one SDK method, and every SDK error becomes a tool error with an actionable message (bad key, not found, rate limit, ...).
+
+## Install
+
+For Claude Code:
+
+```bash
+claude mcp add domainproof -e DOMAINPROOF_API_KEY=dp_test_... -- npx -y @domainproof/mcp
+```
+
+Or by hand, in any client that reads an MCP servers JSON config:
+
+```json
+{
+  "mcpServers": {
+    "domainproof": {
+      "command": "npx",
+      "args": ["-y", "@domainproof/mcp"],
+      "env": {
+        "DOMAINPROOF_API_KEY": "dp_test_..."
+      }
+    }
+  }
+}
+```
+
+| Env var                | Required? | For                                                                                   |
+| ---------------------- | --------- | ------------------------------------------------------------------------------------- |
+| `DOMAINPROOF_API_KEY`  | Yes       | Fails fast with a setup message on startup if missing.                                |
+| `DOMAINPROOF_BASE_URL` | No        | Defaults to the production API. Override for local dev, e.g. `http://localhost:3001`. |
+
+## Test vs. live keys
+
+Use a `dp_test_...` key while you or your agent are getting the flow right — test-mode keys only work against [`.test` sandbox domains](/docs/sandbox), which never touch real DNS, so an agent can claim, verify, and regenerate freely without publishing anything for real. Switch to a `dp_live_...` key once you're pointing it at a real domain — see [Authenticate with an API key](/docs/authenticate) for the full test/live rule.
+
+## Tools
+
+| Tool                     | Read-only? | Description                                                                                               |
+| ------------------------ | ---------- | --------------------------------------------------------------------------------------------------------- |
+| `claim_domain`           | No         | Claim a hostname for this project and issue its verification challenge.                                   |
+| `list_domains`           | Yes        | List domains claimed under this project; filter by `externalId`/`domain`, paginate with `limit`/`cursor`. |
+| `get_domain`             | Yes        | Get a single claimed domain by id.                                                                        |
+| `verify_domain`          | No         | Trigger a fresh verification check; safe to poll until `status` leaves `pending`.                         |
+| `regenerate_challenge`   | No         | Issue a fresh challenge and DNS record for a `pending`/`failed` domain.                                   |
+| `list_domain_events`     | Yes        | A domain's event timeline (claimed, verified, failed, ...).                                               |
+| `get_setup_instructions` | Yes        | The DNS record (type/host/value), current status, and hosted verification link for one domain.            |
+
+Every tool returns concise JSON in its text content — no prose padding — and every tool is annotated (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so a client can reason about which calls are safe to run without confirmation. `claim_domain` and `verify_domain` aren't read-only but aren't destructive either; `regenerate_challenge` is marked destructive, since it invalidates the domain's current challenge and record.
+
+## Example prompts
+
+- "Claim acme.com for the onboarding flow and give me the DNS record to hand the customer."
+- "Is acme.com verified yet? If not, tell me what's wrong and what to do about it."
+- "List every domain claimed under external id customer_123."
+- "acme.com has been pending for two days — regenerate its challenge and get me a fresh link to send them."
+- "Why did staging.acme.com end up `failed`?" — the agent can read `list_domain_events`'s timeline back to you instead of guessing.
+
+## What it can't do
+
+The MCP server only talks to DomainProof — it claims, reads, and verifies through the API, but it never touches your DNS provider. Publishing the TXT record that `claim_domain`/`get_setup_instructions` return is still a separate step: by hand, through the [hosted verification page](/docs/hosted-verification-page)'s Cloudflare one-click flow, or through whatever DNS-provider access your agent has on its own (a separate tool or MCP server, not this one). If you want an agent that claims a domain, publishes the record, and verifies it end to end, pair this server with one that has write access to your DNS provider.
+
+## Where to next
+
+- [Claim and verify a domain](/docs/claim-and-verify) — the full SDK/API surface this server wraps.
+- [Sandbox: verify without a real domain](/docs/sandbox) — every `.test` journey to point an agent at while you're testing.
+- [How verification works](/docs/how-verification-works) — what an agent is actually waiting on when a domain sits in `pending`.
