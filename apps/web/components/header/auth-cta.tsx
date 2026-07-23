@@ -12,12 +12,15 @@ export interface AuthCtaProps extends Pick<ButtonProps, 'size' | 'className'> {
   iconSize?: number
   /** Hides the label below the `sm` breakpoint, leaving only the icon — for the marketing header's actions cluster, where the toggle beside it does the same so the pair stays on one row down to the smallest screens. The label stays in the DOM as `sr-only`, so the accessible name is unaffected. */
   compact?: boolean
+  /** Auth state resolved server-side (`auth()`, same pattern as the dashboard layout and `DocsHeader`) by the page rendering this CTA. Drives the first paint so a signed-in visitor sees "Dashboard" immediately instead of a flash of "Continue with Google" while Clerk's client SDK loads. */
+  initialIsSignedIn: boolean
 }
 
 /**
  * The one CTA slot on the landing page: "Continue with Google" for a
- * signed-out visitor, "Dashboard" for a signed-in one. Renders the
- * signed-out shape (disabled) until Clerk reports its loaded state, so
+ * signed-out visitor, "Dashboard" for a signed-in one. Before Clerk's
+ * client SDK reports its loaded state, trusts `initialIsSignedIn` (resolved
+ * server-side by the caller) instead of defaulting to signed-out, so
  * there's never a flash of the wrong action.
  */
 export function AuthCta({
@@ -25,14 +28,16 @@ export function AuthCta({
   className,
   iconSize = 15,
   compact = false,
+  initialIsSignedIn,
 }: AuthCtaProps) {
-  const { isLoaded, isSignedIn } = useUser()
+  const { isLoaded, isSignedIn: liveIsSignedIn } = useUser()
+  const isSignedIn = isLoaded ? liveIsSignedIn : initialIsSignedIn
   const { signIn } = useSignIn()
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const labelClassName = compact ? 'sr-only sm:not-sr-only' : undefined
 
-  if (isLoaded && isSignedIn) {
+  if (isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
         <Link href="/dashboard">

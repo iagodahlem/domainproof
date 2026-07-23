@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { auth } from '@clerk/nextjs/server'
 import { Header, Logo } from '@domainproof/ui'
 import { AuthCta } from '@/components/header/auth-cta'
 import { MarketingActions } from '@/components/header/marketing-actions'
@@ -8,10 +9,16 @@ export const metadata: Metadata = {
   description: 'Prove ownership of a domain.',
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { userId } = await auth()
+  const isSignedIn = Boolean(userId)
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header left={<Logo />} right={<MarketingActions />} />
+      <Header
+        left={<Logo />}
+        right={<MarketingActions isSignedIn={isSignedIn} />}
+      />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
         <div className="flex max-w-[62ch] flex-col gap-4">
@@ -27,7 +34,11 @@ export default function LandingPage() {
               and explained in plain language. You get a webhook the moment
               it&rsquo;s true.
             </p>
-            <AuthCta className="self-start" iconSize={15} />
+            <AuthCta
+              className="self-start"
+              iconSize={15}
+              initialIsSignedIn={isSignedIn}
+            />
           </div>
         </div>
       </main>

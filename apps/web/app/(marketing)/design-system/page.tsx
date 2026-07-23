@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { auth } from '@clerk/nextjs/server'
 import { Check, ChevronDown, ChevronRight, Copy, Moon, Sun } from 'lucide-react'
 import {
   Badge,
@@ -282,13 +283,19 @@ const { data, error } = await dp.domains.create({
   domain: "acme.co",
 });`
 
-export default function DesignSystemPage() {
+export default async function DesignSystemPage() {
+  const { userId } = await auth()
+  const isSignedIn = Boolean(userId)
+
   return (
     <div
       data-design-system-root
       className="min-h-screen bg-background font-sans text-foreground"
     >
-      <Header left={<Logo />} right={<MarketingActions />} />
+      <Header
+        left={<Logo />}
+        right={<MarketingActions isSignedIn={isSignedIn} />}
+      />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
         <section id="tokens">
