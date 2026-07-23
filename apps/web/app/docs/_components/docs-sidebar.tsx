@@ -82,9 +82,12 @@ function DocsNavLink({
       href={`/docs/${slug}`}
       aria-current={active ? 'page' : undefined}
       className={cn(
+        // font-weight stays fixed across active/inactive (only color + bg
+        // shift) so selecting an item never changes its text metrics and
+        // reflows it onto more lines — see docs-toc.tsx's identical note.
         'rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground',
         active &&
-          'bg-accent-soft font-semibold text-accent hover:bg-accent-soft hover:text-accent',
+          'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent',
         className,
       )}
     >

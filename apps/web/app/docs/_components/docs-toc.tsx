@@ -50,9 +50,13 @@ export function DocsToc({ entries }: DocsTocProps) {
             key={entry.id}
             href={`#${entry.id}`}
             className={cn(
+              // font-weight stays fixed across active/inactive (only the
+              // border + text color shift) — the reference page's endpoint
+              // entries are long enough to wrap, and a weight change would
+              // reflow them onto a different number of lines on selection,
+              // same bug docs-sidebar.tsx's active state had.
               'block border-l-2 border-transparent py-1 pl-3 text-xs leading-caption text-muted-foreground transition-colors duration-150 hover:text-foreground',
-              entry.id === activeId &&
-                'border-accent font-semibold text-accent',
+              entry.id === activeId && 'border-accent text-accent',
             )}
           >
             {entry.text}
