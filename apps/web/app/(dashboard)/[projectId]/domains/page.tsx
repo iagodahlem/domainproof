@@ -4,7 +4,7 @@ import { Callout } from '@domainproof/ui'
 import { ApiError } from '@/lib/api/request'
 import { dashboardApi } from '@/lib/api/dashboard'
 import type { DomainMode } from '@/lib/api/dashboard'
-import { DomainsPageClient } from '@/components/dashboard/domains/domains-page-client'
+import { DomainsPageClient } from './_components/domains-page-client'
 
 export const metadata: Metadata = {
   title: 'Domains — DomainProof',

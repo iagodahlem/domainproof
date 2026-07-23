@@ -17,7 +17,8 @@ export const metadata: Metadata = {
  * `projectId` URL segment (there's no `/me` route) and renders the shared
  * sidebar/topbar shell around every nav route below it. A fresh account
  * with no projects goes to `/new`; an unknown/placeholder segment (e.g.
- * `/dashboard/active/...`) redirects to the caller's first project.
+ * `/active/...`, from the `/dashboard` redirect stub) redirects to the
+ * caller's first project.
  */
 export default async function DashboardProjectLayout({
   children,
@@ -59,7 +60,7 @@ export default async function DashboardProjectLayout({
     projects.find((project) => project.id === projectId) ?? firstProject
 
   if (activeProject.id !== projectId) {
-    redirect(`/dashboard/${activeProject.id}/domains`)
+    redirect(`/${activeProject.id}/domains`)
   }
 
   const user = await currentUser()

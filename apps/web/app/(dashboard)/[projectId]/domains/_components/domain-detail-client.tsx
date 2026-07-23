@@ -114,7 +114,7 @@ export function DomainDetailClient({
 
   useTopbarSlot({
     back: {
-      href: `/dashboard/${projectId}/domains`,
+      href: `/${projectId}/domains`,
       label: 'Back to domains',
     },
     title: (

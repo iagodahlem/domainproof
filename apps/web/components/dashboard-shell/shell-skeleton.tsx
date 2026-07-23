@@ -1,4 +1,4 @@
-/** Loading fallback for the dashboard shell route (`app/dashboard/loading.tsx`) — shown while the active project resolves. Mirrors the real shell's layout so nothing jumps once data lands. */
+/** Loading fallback for the dashboard shell route (`app/(dashboard)/[projectId]/loading.tsx`) — shown while the active project resolves. Mirrors the real shell's layout so nothing jumps once data lands. */
 export function ShellSkeleton() {
   return (
     <div

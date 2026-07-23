@@ -27,14 +27,14 @@ apps/web/
         _components/                     #   private to /new — never imported from any other route
           create-project-flow.tsx, keys-handoff.tsx, api-error-state.tsx
       dashboard/
-        page.tsx                          #   redirects to the caller's active project
+        page.tsx                          #   thin redirect stub (old bookmarks, post-signin redirect) — hands off to [projectId]'s own active-project resolution
+      [projectId]/                      # project routes live at the root (Vercel/Resend-style), not nested under /dashboard
+        layout.tsx                        #   resolves active project, mounts <DashboardShell>
         loading.tsx
-        [projectId]/
-          layout.tsx                        #   resolves active project, mounts <DashboardShell>
-          domains/_components/
-          events/_components/                  #   events-view.tsx, event-row.tsx
-          settings/_components/                #   settings-view.tsx, api-keys-card.tsx, project-name-card.tsx
-          webhooks/_components/                #   webhooks-view.tsx, create-endpoint-form.tsx, delivery-log.tsx, endpoint-row.tsx
+        domains/_components/             #   domains-page-client.tsx, domain-detail-client.tsx, add-domain-form.tsx, delete-confirm.tsx, domain-empty-state.tsx, domain-provider.tsx, domain-status.ts, domain-status-steps.tsx, domain-check-outcome.ts, domain-event-log.ts, format-relative-time.ts
+        events/_components/                  #   events-view.tsx, event-row.tsx
+        settings/_components/                #   settings-view.tsx, api-keys-card.tsx, project-name-card.tsx
+        webhooks/_components/                #   webhooks-view.tsx, create-endpoint-form.tsx, delivery-log.tsx, endpoint-row.tsx
       layout.tsx
     layout.tsx                        # root layout — <html>, Clerk provider only, no visible chrome of its own
 

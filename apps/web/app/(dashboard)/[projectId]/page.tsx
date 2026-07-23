@@ -6,5 +6,5 @@ export default async function ProjectRootPage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
-  redirect(`/dashboard/${projectId}/domains`)
+  redirect(`/${projectId}/domains`)
 }

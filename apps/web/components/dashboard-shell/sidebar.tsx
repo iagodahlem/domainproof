@@ -35,7 +35,7 @@ export interface SidebarProps {
  */
 export function Sidebar({ projects, activeProject, email }: SidebarProps) {
   const pathname = usePathname()
-  const domainsHref = `/dashboard/${activeProject.id}/domains`
+  const domainsHref = `/${activeProject.id}/domains`
 
   return (
     <nav
@@ -79,7 +79,7 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
 
       <ul className="flex flex-col gap-0.5 p-3 max-[760px]:flex-row max-[760px]:justify-self-center max-[760px]:p-0">
         {DASHBOARD_NAV_ITEMS.map((item) => {
-          const href = `/dashboard/${activeProject.id}/${item.segment}`
+          const href = `/${activeProject.id}/${item.segment}`
           const active = pathname.startsWith(href)
           const Icon = item.icon
 
