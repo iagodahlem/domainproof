@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { VerificationLogEntry } from '@domainproof/ui'
 import type { DomainEvent } from '@/lib/api/dashboard'
+import { formatRelativeTime } from '@/lib/format-relative-time'
 import { checkOutcomePresentation } from './domain-check-outcome'
-import { formatRelativeTime } from './format-relative-time'
 
 function extractOutcome(payload: unknown): string | undefined {
   if (payload && typeof payload === 'object' && 'outcome' in payload) {

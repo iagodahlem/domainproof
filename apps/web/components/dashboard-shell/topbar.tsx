@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { Header } from '@domainproof/ui'
-import { DASHBOARD_NAV_ITEMS, MODE_TOGGLE_SEGMENTS } from './nav-items'
+import {
+  DASHBOARD_NAV_ITEMS,
+  isNavItemActive,
+  MODE_TOGGLE_SEGMENTS,
+} from './nav-items'
 import { ModeSwitch } from './mode-switch'
 import { useTopbarSlotContent } from './topbar-slot'
 
@@ -28,7 +32,7 @@ export function Topbar({ projectId }: TopbarProps) {
   const pathname = usePathname()
   const slot = useTopbarSlotContent()
   const activeItem = DASHBOARD_NAV_ITEMS.find((item) =>
-    pathname.startsWith(`/${projectId}/${item.segment}`),
+    isNavItemActive(pathname, projectId, item.segment),
   )
   const showModeToggle = MODE_TOGGLE_SEGMENTS.some((segment) =>
     pathname.startsWith(`/${projectId}/${segment}`),

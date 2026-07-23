@@ -1,10 +1,62 @@
-import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { auth } from '@clerk/nextjs/server'
+import { Callout } from '@domainproof/ui'
+import { ApiError } from '@/lib/api/request'
+import { dashboardApi } from '@/lib/api/dashboard'
+import { ProjectOverviewView } from './_components/project-overview-view'
 
-export default async function ProjectRootPage({
+export const metadata: Metadata = {
+  title: 'Overview — DomainProof',
+}
+
+// A snapshot for the health-check summary below, not exhaustive pagination —
+// the max page size the dashboard API allows in one call.
+const OVERVIEW_DOMAINS_LIMIT = 100
+
+/**
+ * `[projectId]/layout.tsx` already resolves and validates `projectId`
+ * against the caller's own projects (redirecting otherwise), so the
+ * `listProjects` call below — deduped by Next's request memoization
+ * against the layout's identical call — is guaranteed to contain it, same
+ * reasoning as `SettingsPage`.
+ */
+export default async function ProjectOverviewPage({
   params,
 }: {
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
-  redirect(`/${projectId}/domains`)
+  const { getToken } = await auth()
+  const token = await getToken()
+
+  const { projects } = await dashboardApi.listProjects(token)
+  const project = projects.find((candidate) => candidate.id === projectId)
+  if (!project) {
+    notFound()
+  }
+
+  try {
+    const { domains, nextCursor } = await dashboardApi.listDomains(
+      token,
+      projectId,
+      { limit: OVERVIEW_DOMAINS_LIMIT },
+    )
+
+    return (
+      <ProjectOverviewView
+        project={project}
+        domains={domains}
+        truncated={nextCursor !== null}
+      />
+    )
+  } catch (error) {
+    return (
+      <Callout tone="warning">
+        {error instanceof ApiError
+          ? error.message
+          : "We couldn't load your domains. Please try again."}
+      </Callout>
+    )
+  }
 }
