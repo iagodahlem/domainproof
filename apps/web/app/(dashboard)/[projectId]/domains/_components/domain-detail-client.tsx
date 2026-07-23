@@ -24,11 +24,11 @@ import {
   useVerifyDomain,
 } from '@/lib/query/domains'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
-import { domainStatusPresentation } from './domain-status'
+import { domainStatusPresentation } from '@/lib/domain-status'
+import { formatRelativeTime } from '@/lib/format-relative-time'
 import { domainStatusSteps } from './domain-status-steps'
 import { checkOutcomePresentation } from './domain-check-outcome'
 import { toVerificationLogEntries } from './domain-event-log'
-import { formatRelativeTime } from './format-relative-time'
 import { DeleteConfirm } from './delete-confirm'
 
 export interface DomainDetailClientProps {

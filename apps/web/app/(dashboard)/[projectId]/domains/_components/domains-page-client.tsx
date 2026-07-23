@@ -18,9 +18,9 @@ import type {
 } from '@/lib/api/dashboard'
 import { useListDomains } from '@/lib/query/domains'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
-import { domainStatusPresentation } from './domain-status'
+import { domainStatusPresentation } from '@/lib/domain-status'
+import { formatRelativeTime } from '@/lib/format-relative-time'
 import { domainProviderBadge } from './domain-provider'
-import { formatRelativeTime } from './format-relative-time'
 import { AddDomainForm } from './add-domain-form'
 import { DomainEmptyState } from './domain-empty-state'
 

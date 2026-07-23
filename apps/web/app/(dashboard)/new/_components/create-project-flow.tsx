@@ -38,7 +38,7 @@ export function CreateProjectFlow({
     return (
       <KeysHandoff
         result={result}
-        onContinue={() => router.push(`/${result.project.id}/domains`)}
+        onContinue={() => router.push(`/${result.project.id}`)}
       />
     )
   }

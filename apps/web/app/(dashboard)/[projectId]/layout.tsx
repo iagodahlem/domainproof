@@ -60,7 +60,7 @@ export default async function DashboardProjectLayout({
     projects.find((project) => project.id === projectId) ?? firstProject
 
   if (activeProject.id !== projectId) {
-    redirect(`/${activeProject.id}/domains`)
+    redirect(`/${activeProject.id}`)
   }
 
   const user = await currentUser()

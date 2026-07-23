@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 import type { StepperStep } from '@domainproof/ui'
 import type { DomainDetail } from '@/lib/api/dashboard'
-import { formatRelativeTime } from './format-relative-time'
+import { formatRelativeTime } from '@/lib/format-relative-time'
 
 /**
  * Collapses the board's 4-step "Claimed / Record added / Propagated /

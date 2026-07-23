@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Header, Logo, cn } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
-import { DASHBOARD_NAV_ITEMS } from './nav-items'
+import { DASHBOARD_NAV_ITEMS, isNavItemActive, navItemHref } from './nav-items'
 import { ProjectSwitcher } from './project-switcher'
 import { UserMenu } from './user-menu'
 
@@ -35,7 +35,7 @@ export interface SidebarProps {
  */
 export function Sidebar({ projects, activeProject, email }: SidebarProps) {
   const pathname = usePathname()
-  const domainsHref = `/${activeProject.id}/domains`
+  const overviewHref = navItemHref(activeProject.id, '')
 
   return (
     <nav
@@ -46,7 +46,7 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
         <Header
           variant="solid"
           left={
-            <Link href={domainsHref} className="shrink-0">
+            <Link href={overviewHref} className="shrink-0">
               <Logo />
             </Link>
           }
@@ -67,7 +67,7 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
       </div>
 
       <div className="hidden items-center gap-2 max-[760px]:flex max-[760px]:justify-self-start">
-        <Link href={domainsHref} className="shrink-0">
+        <Link href={overviewHref} className="shrink-0">
           <Logo iconOnly />
         </Link>
         <ProjectSwitcher
@@ -79,8 +79,12 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
 
       <ul className="flex flex-col gap-0.5 p-3 max-[760px]:flex-row max-[760px]:justify-self-center max-[760px]:p-0">
         {DASHBOARD_NAV_ITEMS.map((item) => {
-          const href = `/${activeProject.id}/${item.segment}`
-          const active = pathname.startsWith(href)
+          const href = navItemHref(activeProject.id, item.segment)
+          const active = isNavItemActive(
+            pathname,
+            activeProject.id,
+            item.segment,
+          )
           const Icon = item.icon
 
           return (

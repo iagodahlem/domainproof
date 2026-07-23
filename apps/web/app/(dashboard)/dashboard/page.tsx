@@ -11,5 +11,5 @@ import { redirect } from 'next/navigation'
  * error handling in that one place instead of duplicating it here.
  */
 export default function DashboardPage() {
-  redirect('/active/domains')
+  redirect('/active')
 }

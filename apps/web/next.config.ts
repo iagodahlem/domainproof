@@ -4,12 +4,11 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@domainproof/ui', '@domainproof/core'],
   async redirects() {
     return [
-      // Bare `/dashboard/:projectId` (no sub-path) skips the extra hop
-      // through the `[projectId]` index route's own redirect — straight to
-      // the tab it would have landed on anyway.
+      // Bare `/dashboard/:projectId` (no sub-path) maps straight to the
+      // project root, same as `/:path*` below would for an empty path.
       {
         source: '/dashboard/:projectId',
-        destination: '/:projectId/domains',
+        destination: '/:projectId',
         permanent: true,
       },
       {
