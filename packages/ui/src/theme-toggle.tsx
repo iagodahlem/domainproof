@@ -54,7 +54,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       {/* Icon-only below sm — the label stays in the DOM (sr-only) so the
           accessible name doesn't depend on viewport width. */}
       <span className="sr-only sm:not-sr-only">
-        {theme === 'dark' ? 'Dark theme' : 'Light theme'}
+        {theme === 'dark' ? 'View light' : 'View dark'}
       </span>
     </button>
   )

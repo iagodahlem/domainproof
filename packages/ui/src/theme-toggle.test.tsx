@@ -31,7 +31,7 @@ afterEach(() => {
 describe('ThemeToggle', () => {
   it('defaults to the dark theme', () => {
     render(<ThemeToggle />)
-    expect(screen.getByRole('button', { name: 'Dark theme' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View light' })).toBeTruthy()
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
   })
 
@@ -39,12 +39,12 @@ describe('ThemeToggle', () => {
     const user = userEvent.setup()
     render(<ThemeToggle />)
 
-    await user.click(screen.getByRole('button', { name: 'Dark theme' }))
-    expect(screen.getByRole('button', { name: 'Light theme' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'View light' }))
+    expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy()
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
 
-    await user.click(screen.getByRole('button', { name: 'Light theme' }))
-    expect(screen.getByRole('button', { name: 'Dark theme' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'View dark' }))
+    expect(screen.getByRole('button', { name: 'View light' })).toBeTruthy()
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
   })
 
@@ -52,13 +52,13 @@ describe('ThemeToggle', () => {
     const user = userEvent.setup()
     const { unmount } = render(<ThemeToggle />)
 
-    await user.click(screen.getByRole('button', { name: 'Dark theme' }))
+    await user.click(screen.getByRole('button', { name: 'View light' }))
     expect(window.localStorage.getItem('dp-theme')).toBe('light')
     unmount()
 
     render(<ThemeToggle />)
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Light theme' })).toBeTruthy(),
+      expect(screen.getByRole('button', { name: 'View dark' })).toBeTruthy(),
     )
   })
 
@@ -66,7 +66,7 @@ describe('ThemeToggle', () => {
     const user = userEvent.setup()
     const { unmount } = render(<ThemeToggle />)
 
-    await user.click(screen.getByRole('button', { name: 'Dark theme' }))
+    await user.click(screen.getByRole('button', { name: 'View light' }))
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
 
     unmount()
