@@ -77,7 +77,7 @@ Use a `dp_test_...` key while you or your agent are getting the flow right — t
 | `claim_domain`           | No         | Claim a hostname for this project and issue its verification challenge.                                   |
 | `list_domains`           | Yes        | List domains claimed under this project; filter by `externalId`/`domain`, paginate with `limit`/`cursor`. |
 | `get_domain`             | Yes        | Get a single claimed domain by id.                                                                        |
-| `verify_domain`          | No         | Trigger a fresh verification check; safe to poll until `status` leaves `pending`.                         |
+| `verify_domain`          | No         | Trigger a fresh verification check; poll every 20-30s until `status` leaves `pending`.                    |
 | `regenerate_challenge`   | No         | Issue a fresh challenge and DNS record for a `pending`/`failed` domain.                                   |
 | `list_domain_events`     | Yes        | A domain's event timeline (claimed, verified, failed, ...).                                               |
 | `get_setup_instructions` | Yes        | The DNS record (type/host/value), current status, and hosted verification link for one domain.            |

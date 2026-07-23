@@ -1,6 +1,6 @@
 {
   "name": "@domainproof/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for DomainProof domain-ownership verification — lets AI agents claim, verify, and monitor domains.",
   "keywords": [
     "domainproof",

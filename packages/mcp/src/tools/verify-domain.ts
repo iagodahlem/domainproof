@@ -9,7 +9,8 @@ export const description =
   "Trigger a fresh verification check against a domain's current challenge " +
   'record and return the (possibly updated) domain alongside the check that ' +
   'produced it. Safe to call repeatedly — poll it after claim_domain until ' +
-  "domain.status leaves 'pending'."
+  "domain.status leaves 'pending'. DNS checks don't change second-to-second — " +
+  'wait at least 20-30 seconds between calls rather than polling back-to-back.'
 
 export const inputSchema = { domainId }
 

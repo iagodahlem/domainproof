@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DomainProofApiError } from '@domainproof/sdk'
 import type { DomainProof, VerifyDomainResult } from '@domainproof/sdk'
-import { handler } from './verify-domain'
+import { description, handler } from './verify-domain'
 
 const RESULT: VerifyDomainResult = {
   domain: {
@@ -22,6 +22,12 @@ const RESULT: VerifyDomainResult = {
 function makeClient(verify: DomainProof['domains']['verify']): DomainProof {
   return { domains: { verify } } as unknown as DomainProof
 }
+
+describe('verify_domain description', () => {
+  it('tells agents to pace polling instead of calling back-to-back', () => {
+    expect(description).toMatch(/wait at least 20-30 seconds/)
+  })
+})
 
 describe('verify_domain handler', () => {
   it('triggers a check and returns the domain and check as structured JSON', async () => {
