@@ -16,9 +16,9 @@ export function pickActiveProject(
  * Where a signed-in caller with no project context yet should land: their
  * active project, or `/new` if they have none. Swallows fetch failures
  * (falls back to `/new`, which renders its own retry state) rather than
- * throwing, since every caller of this — the docs header, the landing CTA,
- * the sso-callback redirect — needs a link/navigation target, not an error
- * boundary.
+ * throwing, since `/app` — the sole caller, every "Dashboard" link and the
+ * post sign-in/sign-up flow's resolver — needs a redirect target, not an
+ * error boundary.
  */
 export async function resolveActiveProjectPath(
   token: string | null,

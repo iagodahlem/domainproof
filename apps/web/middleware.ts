@@ -7,7 +7,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
  * the handful of public routes can. Protect by exception instead: the
  * marketing pages, the hosted verification portal (its own per-token
  * `frontendToken` auth, no Clerk session), and the sign-in callback are
- * public; everything else — `/new` and every `[projectId]` route —
+ * public; everything else — `/app`, `/new`, and every `[projectId]` route —
  * requires a signed-in builder.
  */
 const isPublicRoute = createRouteMatcher([

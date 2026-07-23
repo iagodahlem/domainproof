@@ -12,45 +12,36 @@ export interface AuthCtaProps extends Pick<ButtonProps, 'size' | 'className'> {
   iconSize?: number
   /** Hides the label below the `sm` breakpoint, leaving only the icon — for the marketing header's actions cluster, where the toggle beside it does the same so the pair stays on one row down to the smallest screens. The label stays in the DOM as `sr-only`, so the accessible name is unaffected. */
   compact?: boolean
-  /**
-   * The signed-in visitor's dashboard link, resolved server-side by the
-   * page rendering this CTA (`auth()` + `resolveActiveProjectPath`, the
-   * same rule `[projectId]/layout.tsx` falls back to) — `null` when the
-   * server saw no session. Drives both the first paint (before Clerk's
-   * client SDK reports its loaded state) and, once loaded, a live
-   * signed-in visitor the server didn't know about yet (e.g. a session
-   * that started in another tab) — that case falls back to `/new` rather
-   * than blocking on a client-side fetch.
-   */
-  initialDashboardHref: string | null
+  /** Auth state resolved server-side (`auth()`) by the page rendering this CTA. Drives the first paint so a signed-in visitor sees "Dashboard" immediately instead of a flash of "Continue with Google" while Clerk's client SDK loads. */
+  initialIsSignedIn: boolean
 }
 
 /**
  * The one CTA slot on the landing page: "Continue with Google" for a
- * signed-out visitor, "Dashboard" (linking straight to their project) for
- * a signed-in one. Trusts `initialDashboardHref` for the first paint
- * instead of defaulting to signed-out, so there's never a flash of the
- * wrong action, and once Clerk's client SDK loads, trusts its live
- * signed-in state instead.
+ * signed-out visitor, "Dashboard" (linking to `/app`, the single resolver
+ * route that lands on the caller's active project) for a signed-in one.
+ * Trusts `initialIsSignedIn` for the first paint instead of defaulting to
+ * signed-out, so there's never a flash of the wrong action, and once
+ * Clerk's client SDK loads, trusts its live signed-in state instead.
  */
 export function AuthCta({
   size,
   className,
   iconSize = 15,
   compact = false,
-  initialDashboardHref,
+  initialIsSignedIn,
 }: AuthCtaProps) {
   const { isLoaded, isSignedIn: liveIsSignedIn } = useUser()
   const { signIn } = useSignIn()
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const labelClassName = compact ? 'sr-only sm:not-sr-only' : undefined
-  const isSignedIn = isLoaded ? liveIsSignedIn : initialDashboardHref !== null
+  const isSignedIn = isLoaded ? liveIsSignedIn : initialIsSignedIn
 
   if (isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
-        <Link href={initialDashboardHref ?? '/new'}>
+        <Link href="/app">
           <LayoutGrid aria-hidden="true" size={iconSize} />
           <span className={labelClassName}>Dashboard</span>
         </Link>
@@ -66,10 +57,7 @@ export function AuthCta({
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/sso-callback',
-        // `/sso-callback` resolves the caller's real project itself and
-        // navigates there imperatively — this is the required static
-        // fallback, never the URL a visitor actually lands on.
-        redirectUrlComplete: '/',
+        redirectUrlComplete: '/app',
       })
     } catch (err) {
       setStarting(false)

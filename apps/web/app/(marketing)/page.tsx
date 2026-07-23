@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { resolveActiveProjectPath } from '@/lib/project-resolution'
 import { AuthCta } from '@/components/header/auth-cta'
 
 export const metadata: Metadata = {
@@ -9,14 +8,11 @@ export const metadata: Metadata = {
 }
 
 export default async function LandingPage() {
-  const { userId, getToken } = await auth()
-  const initialDashboardHref = userId
-    ? await resolveActiveProjectPath(await getToken())
-    : null
+  const { userId } = await auth()
 
   return (
     <div
-      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the (chrome) layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the marketing layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
       className="flex min-h-[calc(100vh-4rem)] flex-col bg-background"
     >
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
@@ -36,7 +32,7 @@ export default async function LandingPage() {
             <AuthCta
               className="self-start"
               iconSize={15}
-              initialDashboardHref={initialDashboardHref}
+              initialIsSignedIn={Boolean(userId)}
             />
           </div>
         </div>

@@ -285,7 +285,7 @@ export default function DesignSystemPage() {
   return (
     <div
       data-design-system-root
-      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the (chrome) layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the marketing layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
       className="min-h-[calc(100vh-4rem)] bg-background font-sans text-foreground"
     >
       <main className="mx-auto flex max-w-5xl flex-col gap-16 px-6 py-12">
