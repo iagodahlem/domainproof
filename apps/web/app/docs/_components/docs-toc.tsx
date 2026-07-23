@@ -38,8 +38,8 @@ export function DocsToc({ entries }: DocsTocProps) {
   return (
     <nav
       aria-label="On this page"
-      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- matches board-docs.html's .docs-toc width (188px); no spacing/width token this specific
-      className="w-[188px] flex-shrink-0 border-l border-border px-5 py-8 max-[1000px]:hidden"
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- w-[188px] matches board-docs.html's .docs-toc width (no spacing/width token this specific); h-[calc(100vh-4rem)]/top-16 pin the rail below the 4rem-tall sticky Header (its min-h-16), same treatment as the sidebar, so it stays put instead of scrolling away with the content
+      className="sticky top-16 h-[calc(100vh-4rem)] w-[188px] flex-shrink-0 overflow-y-auto border-l border-border px-5 py-8 max-[1000px]:hidden"
     >
       <div className="mb-3 font-mono text-2xs font-semibold tracking-label text-faint-foreground uppercase">
         On this page

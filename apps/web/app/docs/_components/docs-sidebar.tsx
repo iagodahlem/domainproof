@@ -24,8 +24,8 @@ export function DocsSidebar({ groups, activeSlug }: DocsSidebarProps) {
     <>
       <nav
         aria-label="Docs"
-        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- matches board-docs.html's .docs-sidebar width (216px); no spacing/width token this specific
-        className="w-[216px] flex-shrink-0 border-r border-border bg-surface px-4 py-6 max-[900px]:hidden"
+        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- w-[216px] matches board-docs.html's .docs-sidebar width (no spacing/width token this specific); h-[calc(100vh-4rem)]/top-16 pin the rail below the 4rem-tall sticky Header (its min-h-16) so it fills the remaining viewport height and scrolls independently of the page
+        className="sticky top-16 h-[calc(100vh-4rem)] w-[216px] flex-shrink-0 overflow-y-auto border-r border-border bg-surface px-4 py-6 max-[900px]:hidden"
       >
         {groups.map((group) => (
           <div key={group.section} className="mb-6 last:mb-0">
