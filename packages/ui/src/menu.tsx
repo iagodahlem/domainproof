@@ -53,7 +53,7 @@ const menuItemVariants = cva(
         accent:
           'text-accent data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
         danger:
-          'data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger',
+          'text-danger data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger',
       },
       active: {
         true: 'bg-surface-2 text-foreground',
@@ -108,7 +108,7 @@ export const MenuItem = forwardRef<
         tone === 'accent'
           ? 'text-accent'
           : tone === 'danger'
-            ? 'text-faint-foreground group-data-[highlighted]:text-danger'
+            ? 'text-danger'
             : 'text-faint-foreground',
       )}
     >

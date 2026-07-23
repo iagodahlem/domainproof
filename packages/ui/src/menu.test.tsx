@@ -15,6 +15,7 @@ function renderMenu(onSelect = vi.fn()) {
         <MenuItem onSelect={onSelect}>Beta Labs</MenuItem>
         <MenuSeparator />
         <MenuItem tone="accent">New project</MenuItem>
+        <MenuItem tone="danger">Delete domain</MenuItem>
       </MenuContent>
     </Menu>,
   )
@@ -55,6 +56,14 @@ describe('Menu', () => {
     await user.click(screen.getByRole('button', { name: 'Acme App' }))
     const item = screen.getByRole('menuitem', { name: 'New project' })
     expect(item.className).toContain('text-accent')
+  })
+
+  it('applies the danger tone classes to a destructive item', async () => {
+    const user = userEvent.setup()
+    renderMenu()
+    await user.click(screen.getByRole('button', { name: 'Acme App' }))
+    const item = screen.getByRole('menuitem', { name: 'Delete domain' })
+    expect(item.className).toContain('text-danger')
   })
 
   it('renders an asChild item with an icon and active check without crashing (Radix Slot requires a single element child)', async () => {

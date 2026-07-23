@@ -3,7 +3,7 @@ import { cva } from 'class-variance-authority'
 import { CardHead } from './card'
 import { cn } from './cn'
 
-export type RecordCardStepTone = 'accent' | 'success'
+export type RecordCardStepTone = 'accent' | 'success' | 'danger'
 
 const stepChipVariants = cva(
   // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- one-off step-chip radius, between rounded-sm (6px) and no smaller token; single use
@@ -13,6 +13,7 @@ const stepChipVariants = cva(
       tone: {
         accent: 'bg-accent-soft text-accent',
         success: 'bg-success-soft text-success',
+        danger: 'bg-danger-soft text-danger',
       },
     },
     defaultVariants: {
