@@ -25,6 +25,12 @@ const MODE_OPTIONS = [
   { value: 'live', label: 'Live' },
 ]
 
+/** Pre-checked so the common case — get notified when a domain settles, either way — takes zero clicks; every other event stays opt-in. */
+const DEFAULT_EVENT_TYPES: WebhookEventType[] = [
+  'domain.verified',
+  'domain.failed',
+]
+
 /**
  * Inline expanding panel (dashed border, no modal in this design system —
  * see `ConfirmBar`'s doc comment for the same convention) for adding a
@@ -38,7 +44,9 @@ export function CreateEndpointForm({
 }: CreateEndpointFormProps) {
   const [url, setUrl] = useState('')
   const [mode, setMode] = useState<Mode>('test')
-  const [eventTypes, setEventTypes] = useState<Set<WebhookEventType>>(new Set())
+  const [eventTypes, setEventTypes] = useState<Set<WebhookEventType>>(
+    new Set(DEFAULT_EVENT_TYPES),
+  )
   const [urlError, setUrlError] = useState<string>()
   const [formError, setFormError] = useState<string>()
 

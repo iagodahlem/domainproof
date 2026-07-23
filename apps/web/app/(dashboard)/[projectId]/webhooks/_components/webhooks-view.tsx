@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Zap } from 'lucide-react'
+import { TriangleAlert, Zap } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -75,10 +75,17 @@ export function WebhooksView({
     <div>
       {revealed ? (
         <div className="mb-6 flex flex-col gap-3">
-          <Callout tone="warning">
-            <strong>Save this now.</strong> The signing secret is shown exactly
-            once — copy it somewhere safe. You won&rsquo;t be able to see it
-            again after you dismiss this.
+          <Callout tone="warning" className="flex items-start gap-3">
+            <TriangleAlert
+              aria-hidden="true"
+              size={16}
+              className="mt-0.5 shrink-0 text-warning-strong"
+            />
+            <p>
+              <strong>Save this now.</strong> The signing secret is shown
+              exactly once — copy it somewhere safe. You won&rsquo;t be able to
+              see it again after you dismiss this.
+            </p>
           </Callout>
           <RecordCard
             title="New endpoint"
@@ -110,21 +117,27 @@ export function WebhooksView({
       ) : null}
 
       {endpoints.length === 0 ? (
-        <div className="rounded-lg border border-border p-12 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <Zap aria-hidden="true" size={18} />
+        showForm ? null : (
+          <div className="rounded-lg border border-border p-12 text-center">
+            <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <Zap aria-hidden="true" size={18} />
+            </div>
+            <h3 className="mb-2 text-lg font-heading text-foreground">
+              No endpoints yet
+            </h3>
+            <p className="mx-auto mb-5 max-w-[44ch] text-sm text-muted-foreground">
+              Add an endpoint to start receiving domain.verified and other
+              state-change events.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowForm(true)}
+            >
+              + Add endpoint
+            </Button>
           </div>
-          <h3 className="mb-2 text-lg font-heading text-foreground">
-            No endpoints yet
-          </h3>
-          <p className="mx-auto mb-5 max-w-[44ch] text-sm text-muted-foreground">
-            Add an endpoint to start receiving domain.verified and other
-            state-change events.
-          </p>
-          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
-            + Add endpoint
-          </Button>
-        </div>
+        )
       ) : (
         <Table>
           <TableBody>
