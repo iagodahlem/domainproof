@@ -60,7 +60,15 @@ export default function RootLayout({
               it sets, which the server can't know in advance. */}
           <script dangerouslySetInnerHTML={{ __html: NO_FOUC_THEME_SCRIPT }} />
         </head>
-        <body className="antialiased">{children}</body>
+        <body className="antialiased">
+          {children}
+          {/* Clerk's Smart CAPTCHA widget mount — must exist in the DOM
+              before authenticateWithRedirect() runs from any page that can
+              start a sign-up, or bot-protected sign-ups fall back to an
+              invisible check that can reject real users. Zero-height;
+              global here so every page has it without a per-page mount. */}
+          <div id="clerk-captcha" />
+        </body>
       </html>
     </ClerkProvider>
   )

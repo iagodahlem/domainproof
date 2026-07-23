@@ -50,9 +50,16 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
     description: `email claim present by default: ${emailClaimPresent}`,
   })
 
-  // Fresh account, no projects yet: /dashboard redirects to the locked
-  // create-project screen (routing is derived from the projects list).
-  await page.goto('/dashboard')
+  // Fresh account, no projects yet: Clerk's live client update after
+  // clerk.signIn() flips the hero CTA to "Dashboard" in place (same path a
+  // same-tab session pickup hits in production), and it resolves straight
+  // to the locked create-project screen (routing is derived from the
+  // projects list) — no intermediate placeholder route.
+  const dashboardLink = page
+    .getByRole('main')
+    .getByRole('link', { name: /dashboard/i })
+  await expect(dashboardLink).toBeVisible()
+  await dashboardLink.click()
   await expect(page).toHaveURL(/\/new$/)
   await expect(
     page.getByRole('heading', { name: 'Name your project' }),
@@ -81,4 +88,51 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
   await expect(
     page.getByRole('menuitem', { name: 'E2E Test Project' }),
   ).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const projectPath = new URL(page.url()).pathname
+
+  // Same session, now with a project: /app — every "Dashboard" link's
+  // static target — resolves straight to it server-side, no intermediate
+  // route ever rendered.
+  await page.goto('/app')
+  await expect(page).toHaveURL(new RegExp(`${projectPath}$`))
+
+  // The docs header's Dashboard link points at the same resolver.
+  await page.goto('/docs')
+  await page
+    .getByRole('banner')
+    .getByRole('link', { name: /dashboard/i })
+    .click()
+  await expect(page).toHaveURL(new RegExp(`${projectPath}$`))
+
+  // The old /dashboard/:projectId bookmarked URLs are gone — 404, same as
+  // any other route that doesn't exist.
+  const staleBookmark = await page.goto(`/dashboard${projectPath}`)
+  expect(staleBookmark?.status()).toBe(404)
+})
+
+/**
+ * A signed-out visitor never reaches a resolved project: the landing CTA
+ * stays "Continue with Google" and a direct hit on the protected `/app`
+ * resolver bounces to sign-in via middleware — the same
+ * `auth.protect()`-to-Clerk's-hosted-sign-in behavior every other
+ * protected route (`/new`, `/[projectId]`) already has, unchanged by this
+ * route existing.
+ */
+test('signed-out visitors see the sign-in CTA and /app bounces to sign-in', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('button', { name: /continue with google/i }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('main').getByRole('link', { name: /dashboard/i }),
+  ).toHaveCount(0)
+
+  await page.goto('/app')
+  await expect(page).toHaveURL(/\/sign-in/)
 })

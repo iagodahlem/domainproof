@@ -32,11 +32,12 @@ function loaded(isSignedIn: boolean) {
 }
 
 describe('AuthCta', () => {
-  it('renders Dashboard on first paint for a signed-in visitor, before Clerk has loaded client-side', () => {
+  it('renders Dashboard linking to /app on first paint, before Clerk has loaded client-side', () => {
     notLoaded()
     render(<AuthCta initialIsSignedIn={true} />)
 
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeTruthy()
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect(link.getAttribute('href')).toBe('/app')
     expect(
       screen.queryByRole('button', { name: /continue with google/i }),
     ).toBeNull()
@@ -54,11 +55,12 @@ describe('AuthCta', () => {
     expect(screen.queryByRole('link', { name: /dashboard/i })).toBeNull()
   })
 
-  it('trusts the live Clerk state once loaded, even if it differs from the initial server-resolved value', () => {
+  it('trusts the live Clerk state once loaded, linking to /app', () => {
     loaded(true)
     render(<AuthCta initialIsSignedIn={false} />)
 
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeTruthy()
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect(link.getAttribute('href')).toBe('/app')
   })
 
   it('renders an enabled Continue with Google once Clerk has loaded for a signed-out visitor', () => {

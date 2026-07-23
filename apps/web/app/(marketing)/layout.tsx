@@ -1,24 +1,28 @@
 import type { ReactNode } from 'react'
+import { auth } from '@clerk/nextjs/server'
+import { Header, Logo } from '@domainproof/ui'
+import { MarketingActions } from '@/components/header/marketing-actions'
 
 /**
- * The landing and design-system pages share the same Header composition
- * (`left={<Logo />}`, `right={<MarketingActions />}`), but `/sso-callback`
- * has none, so there's nothing visual to hoist into this layout without
- * adding chrome to a page that never had any. This group boundary exists
- * to keep the public routes physically separate from the auth'd dashboard
- * group; each chromed page still composes its own `Header` from
- * `@domainproof/ui`.
+ * The landing page and the design system share this header — resolved once
+ * here so neither page calls `auth()` just to paint its chrome. `/sso-callback`
+ * lives in its own `(auth)` group, not under here, so it never inherits
+ * this header.
  */
-export default function MarketingLayout({ children }: { children: ReactNode }) {
+export default async function MarketingLayout({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const { userId } = await auth()
+
   return (
     <>
+      <Header
+        left={<Logo />}
+        right={<MarketingActions isSignedIn={Boolean(userId)} />}
+      />
       {children}
-      {/* Clerk's Smart CAPTCHA widget mount — must exist in the DOM before
-          authenticateWithRedirect() runs from any marketing-page CTA, or
-          bot-protected sign-ups fall back to an invisible check that can
-          reject real users. Zero-height; lives here so every public page
-          that can start a sign-up has it. */}
-      <div id="clerk-captcha" />
     </>
   )
 }

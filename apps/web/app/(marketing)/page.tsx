@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { Header, Logo } from '@domainproof/ui'
 import { AuthCta } from '@/components/header/auth-cta'
-import { MarketingActions } from '@/components/header/marketing-actions'
 
 export const metadata: Metadata = {
   title: 'DomainProof',
@@ -11,15 +9,12 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   const { userId } = await auth()
-  const isSignedIn = Boolean(userId)
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header
-        left={<Logo />}
-        right={<MarketingActions isSignedIn={isSignedIn} />}
-      />
-
+    <div
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the marketing layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
+      className="flex min-h-[calc(100vh-4rem)] flex-col bg-background"
+    >
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
         <div className="flex max-w-[62ch] flex-col gap-4">
           <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
@@ -37,7 +32,7 @@ export default async function LandingPage() {
             <AuthCta
               className="self-start"
               iconSize={15}
-              initialIsSignedIn={isSignedIn}
+              initialIsSignedIn={Boolean(userId)}
             />
           </div>
         </div>

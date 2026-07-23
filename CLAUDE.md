@@ -15,7 +15,8 @@ apps/
               #     (/<projectId>/...), Vercel/Resend-style, not under a
               #     /dashboard prefix
               #   - hosted verification portal at /verify/[token]
-              #   - docs (Fumadocs) at /docs
+              #   - docs (hand-built on next-mdx-remote + remark-gfm, our
+              #     own components) at /docs
               #   - a demo consumer app at /demo, deliberately distinct
               #     branding, consumes only the public SDK/API — never
               #     imports server internals

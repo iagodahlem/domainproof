@@ -1,14 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 /**
- * Project routes now live at the root (`/<projectId>/...`), so there's no
+ * Project routes live at the root (`/<projectId>/...`), so there's no
  * `/dashboard` prefix left to protect by — a project id is caller-generated
  * and unpredictable, so it can never be enumerated as an allowlist the way
  * the handful of public routes can. Protect by exception instead: the
  * marketing pages, the hosted verification portal (its own per-token
  * `frontendToken` auth, no Clerk session), and the sign-in callback are
- * public; everything else — the `/dashboard` redirect stub, `/new`, and
- * every `[projectId]` route — requires a signed-in builder.
+ * public; everything else — `/app`, `/new`, and every `[projectId]` route —
+ * requires a signed-in builder.
  */
 const isPublicRoute = createRouteMatcher([
   '/',
