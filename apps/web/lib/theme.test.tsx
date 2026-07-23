@@ -18,6 +18,21 @@ function installLocalStorageStub() {
   })
 }
 
+// jsdom doesn't implement window.matchMedia either, and the script's own
+// try/catch would otherwise swallow that as a silent no-op — stubbed here
+// so the device-preference and default-dark paths are actually exercised.
+function installMatchMediaStub(prefersLight: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    value: (query: string) => ({
+      matches: prefersLight,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+    configurable: true,
+  })
+}
+
 function runNoFoucScript() {
   new Function(NO_FOUC_THEME_SCRIPT)()
 }
@@ -36,27 +51,21 @@ describe('NO_FOUC_THEME_SCRIPT', () => {
     expect(NO_FOUC_THEME_SCRIPT).toContain(`'${THEME_STORAGE_KEY}'`)
   })
 
-  it('applies an already-migrated theme with no legacy key present', () => {
+  it('applies a stored theme choice', () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, 'light')
     runNoFoucScript()
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
   })
 
-  it('migrates a legacy dp_theme value into the canonical key and removes the legacy key', () => {
-    window.localStorage.setItem('dp_theme', 'light')
+  it('falls back to the device preference when no theme is stored', () => {
+    installMatchMediaStub(true)
     runNoFoucScript()
-
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
-    expect(window.localStorage.getItem('dp_theme')).toBeNull()
   })
 
-  it('prefers the canonical key over a stale legacy value when both are present', () => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark')
-    window.localStorage.setItem('dp_theme', 'light')
+  it('defaults to dark when no theme is stored and the device has no light preference', () => {
+    installMatchMediaStub(false)
     runNoFoucScript()
-
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
   })
 })
