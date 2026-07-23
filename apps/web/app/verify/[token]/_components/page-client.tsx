@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Badge, Logo } from '@domainproof/ui'
+import { Callout } from '@domainproof/ui'
 import type { Verification } from '@/lib/api/frontend'
 // This route mounts no QueryProvider (D-029: the hosted verification page
 // is anonymous, with no auth/session context) — converting these calls to
@@ -12,9 +12,15 @@ import type { Verification } from '@/lib/api/frontend'
 // eslint-disable-next-line no-restricted-imports -- see note above
 import { getVerification, runVerificationCheck } from '@/lib/api/frontend'
 import { useBoundedPoll } from '../_lib/use-bounded-poll'
+import { describeStatus } from '../_lib/status-view'
+import { verificationSteps } from '../_lib/verification-steps'
+import { AgentReveal } from './agent-reveal'
+import { CloudflareFastpathCard } from './cloudflare-fastpath-card'
+import { ExpiredLinkCard } from './expired-link-card'
+import { OutcomeCard } from './outcome-card'
 import { RecordCardSection } from './record-card-section'
-import { StatusSection } from './status-section'
-import { TimelineSection } from './timeline-section'
+import { VerificationProgress } from './verification-progress'
+import { VerifyHeader } from './verify-header'
 
 /** No further status change is possible without external action this page can't take on its own (a project regenerating the challenge) — polling stops here. */
 const TERMINAL_STATUSES = new Set<Verification['status']>([
@@ -50,7 +56,7 @@ export function VerificationPageClient({
     }
     // An http error here (e.g. a 404 for a claim released mid-session) is
     // left alone rather than tearing down an otherwise-working page out
-    // from under a live background poll; "Recheck now" surfaces it instead.
+    // from under a live background poll.
   }, [token])
 
   const { isPolling } = useBoundedPoll(
@@ -82,42 +88,82 @@ export function VerificationPageClient({
     })
   }, [cloudflareOutcome, initialData.status, token])
 
+  const view = describeStatus({
+    status: data.status,
+    check: data.check,
+    domain: data.domain,
+    projectName: data.projectName,
+  })
+
+  // Expired and invalid links get the same treatment: there's no live claim
+  // left to anchor a context header or stepper to, so both stay a single
+  // centered card rather than showing "record added" progress for a link
+  // that can no longer progress. An invalid token never reaches this
+  // component at all (page.tsx 404s it before render).
+  if (data.status === 'failed' && data.check?.outcome === 'expired') {
+    return <ExpiredLinkCard projectName={data.projectName} />
+  }
+
+  const outcomeTone = view.tone === 'pending' ? null : view.tone
+  const showTaskArea = view.showRecheck
+  const showCloudflareFastpath = showTaskArea && data.provider === 'cloudflare'
+
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12 max-[640px]:px-4 max-[640px]:py-8">
-      <header className="flex flex-col gap-2">
-        <Logo />
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-heading break-all">
-            Verify {data.domain}
-          </h1>
-          {data.mode === 'test' ? (
-            <Badge tone="warning" mode>
-              Test mode
-            </Badge>
-          ) : null}
-        </div>
-        <p className="text-sm text-text-muted">
-          Requested by {data.projectName}
-        </p>
-      </header>
-
-      <StatusSection
-        token={token}
-        data={data}
-        onDataChange={setData}
-        isPolling={isPolling}
-        pollError={pollError}
+    <main
+      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- the design board's approved hosted-page container is a fixed 560px, narrower than any existing max-w-* token; matches loading.tsx's skeleton
+      className="mx-auto flex max-w-[560px] flex-col gap-8 px-6 py-12 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:py-8"
+    >
+      <VerifyHeader
+        domain={data.domain}
+        projectName={data.projectName}
+        verified={data.status === 'verified'}
       />
 
-      <RecordCardSection
-        token={token}
-        records={data.records}
-        provider={data.provider}
-        status={data.status}
-        cloudflareOutcome={cloudflareOutcome}
-      />
+      <div className="flex flex-col gap-5">
+        <VerificationProgress
+          steps={verificationSteps({ status: data.status, check: data.check })}
+          tone={view.tone}
+          badgeLabel={view.badgeLabel}
+          meta={isPolling ? 'Checking automatically, every 20s.' : null}
+          unreachableNote={view.unreachableNote}
+        />
 
-      <TimelineSection token={token} refreshKey={data.updatedAt} />
+        {pollError ? <Callout tone="warning">{pollError}</Callout> : null}
+
+        {outcomeTone ? (
+          <OutcomeCard
+            tone={outcomeTone}
+            heading={view.heading}
+            body={view.body}
+            check={view.showDiff ? data.check : null}
+          />
+        ) : null}
+
+        {showTaskArea ? (
+          <>
+            {showCloudflareFastpath ? (
+              <>
+                <CloudflareFastpathCard
+                  token={token}
+                  domain={data.domain}
+                  cloudflareOutcome={cloudflareOutcome}
+                />
+                <div className="flex items-center gap-3 text-xs text-faint-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or add it yourself
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </>
+            ) : null}
+            <RecordCardSection domain={data.domain} records={data.records} />
+            <AgentReveal domain={data.domain} records={data.records} />
+          </>
+        ) : null}
+      </div>
+
+      <p className="text-center text-xs text-faint-foreground">
+        Secured by DomainProof
+      </p>
     </main>
   )
 }

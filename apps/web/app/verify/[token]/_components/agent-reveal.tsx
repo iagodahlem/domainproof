@@ -1,0 +1,64 @@
+import { ChevronDown, Sparkles } from 'lucide-react'
+import { CopyButton } from '@domainproof/ui'
+import type { VerificationRecord } from '@/lib/api/frontend'
+
+export interface AgentRevealProps {
+  domain: string
+  records: VerificationRecord[]
+}
+
+/**
+ * A collapsible "have an AI agent do it" reveal — deliberately MCP-free.
+ * This audience has no DomainProof account or API key to hand an agent, and
+ * our MCP server can't write DNS on anyone's behalf, so the only honest
+ * on-ramp is a copy-ready prompt with this claim's real record values baked
+ * in, for an agent that already has the visitor's own DNS provider access.
+ * Native `<details>`/`<summary>` needs no JS to open and is keyboard-operable
+ * out of the box.
+ */
+export function AgentReveal({ domain, records }: AgentRevealProps) {
+  const record = records[0]
+  if (!record) return null
+
+  const prompt = `Add this TXT record to ${domain}: host ${record.label}, value ${record.value} — use my DNS provider access.`
+
+  return (
+    <details className="group overflow-hidden rounded-lg border border-border bg-surface">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        <Sparkles
+          aria-hidden="true"
+          size={16}
+          className="shrink-0 text-accent"
+        />
+        Have an AI agent do it
+        <ChevronDown
+          aria-hidden="true"
+          size={14}
+          className="ml-auto shrink-0 text-faint-foreground transition-transform duration-150 group-open:rotate-180"
+        />
+      </summary>
+      <div className="flex flex-col gap-3 border-t border-border px-5 pt-4 pb-5">
+        <div className="overflow-hidden rounded-lg border border-border bg-background">
+          <div className="border-b border-border bg-surface-2 px-3 py-2 font-mono text-2xs text-faint-foreground">
+            Copy-ready prompt
+          </div>
+          <div className="relative p-4 pr-16">
+            <p className="font-mono text-xs leading-code whitespace-pre-wrap break-words text-muted-foreground">
+              {prompt}
+            </p>
+            <CopyButton
+              value={prompt}
+              size="sm"
+              className="absolute top-3 right-3"
+            />
+          </div>
+        </div>
+        <p className="text-2xs text-faint-foreground">
+          Paste this to any AI agent or assistant that already has access to{' '}
+          {domain}&apos;s DNS provider. It only shares the record above — not
+          your DomainProof account.
+        </p>
+      </div>
+    </details>
+  )
+}

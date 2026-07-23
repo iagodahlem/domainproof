@@ -29,7 +29,7 @@ export function CloudflareButton({ authorizeUrl }: CloudflareButtonProps) {
       onClick={handleClick}
       className="w-fit"
     >
-      Add this record for me
+      Connect Cloudflare
     </Button>
   )
 }
