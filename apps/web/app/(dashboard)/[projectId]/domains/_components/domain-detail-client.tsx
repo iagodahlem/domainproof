@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, RefreshCw, RotateCw, Trash2 } from 'lucide-react'
 import {
   Badge,
@@ -19,6 +20,8 @@ import type {
   DomainEvent,
 } from '@/lib/api/dashboard'
 import {
+  domainKey,
+  useDomain,
   useListDomainEvents,
   useRegenerateDomain,
   useVerifyDomain,
@@ -44,7 +47,8 @@ export function DomainDetailClient({
   initialEvents,
   initialEventsNextCursor,
 }: DomainDetailClientProps) {
-  const [domain, setDomain] = useState(initialDomain)
+  const queryClient = useQueryClient()
+  const { data: domain } = useDomain(projectId, initialDomain.id, initialDomain)
   const [events, setEvents] = useState(initialEvents)
   const [eventsNextCursor, setEventsNextCursor] = useState(
     initialEventsNextCursor,
@@ -68,7 +72,7 @@ export function DomainDetailClient({
     setVerifyError(undefined)
     verifyDomain.mutate(undefined, {
       onSuccess: (result) => {
-        setDomain(result.domain)
+        queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
         setLastCheck(result.check)
         setEvents(result.events)
         setEventsNextCursor(result.nextCursor)
@@ -87,7 +91,7 @@ export function DomainDetailClient({
     setRegenerateError(undefined)
     regenerateDomain.mutate(undefined, {
       onSuccess: (result) => {
-        setDomain(result.domain)
+        queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
         setLastCheck(null)
         setEvents(result.events)
         setEventsNextCursor(result.nextCursor)

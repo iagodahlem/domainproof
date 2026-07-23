@@ -1,9 +1,13 @@
 'use client'
 
 import { useAuth } from '@clerk/nextjs'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dashboardApi } from '@/lib/api/dashboard'
-import type { DomainMode } from '@/lib/api/dashboard'
+import type {
+  DomainDetail,
+  DomainMode,
+  DomainStatus,
+} from '@/lib/api/dashboard'
 
 export function domainsKey(projectId: string) {
   return ['domains', projectId] as const
@@ -11,6 +15,49 @@ export function domainsKey(projectId: string) {
 
 export function domainKey(projectId: string, domainId: string) {
   return ['domains', projectId, domainId] as const
+}
+
+/** No further status change is possible without the caller re-verifying — same terminal set as the hosted page's own bounded poll. */
+const TERMINAL_DOMAIN_STATUSES = new Set<DomainStatus>(['verified', 'failed'])
+
+/** Same escalating backoff ladder and attempt cap as the hosted verification page's `useBoundedPoll` (quick at first, settling at a steady 30s, ~20 minutes total) — can't import that route-private hook across routes, so the schedule is mirrored here instead. */
+const POLL_INTERVALS_MS = [3_000, 5_000, 8_000, 13_000, 20_000, 30_000] as const
+const MAX_POLL_ATTEMPTS = 40
+
+/**
+ * Wraps `GET /dashboard/projects/:id/domains/:domainId` — seeded with the
+ * server-rendered detail so there's no loading flash, then polls on the
+ * schedule above while the domain hasn't reached a terminal status yet.
+ */
+export function useDomain(
+  projectId: string,
+  domainId: string,
+  initialData: DomainDetail,
+) {
+  const { getToken } = useAuth()
+  return useQuery({
+    queryKey: domainKey(projectId, domainId),
+    queryFn: async () => {
+      const token = await getToken()
+      const { domain } = await dashboardApi.getDomain(
+        token,
+        projectId,
+        domainId,
+      )
+      return domain
+    },
+    initialData,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (!status || TERMINAL_DOMAIN_STATUSES.has(status)) return false
+      if (query.state.dataUpdateCount > MAX_POLL_ATTEMPTS) return false
+      const index = Math.min(
+        query.state.dataUpdateCount,
+        POLL_INTERVALS_MS.length - 1,
+      )
+      return POLL_INTERVALS_MS[index]
+    },
+  })
 }
 
 /** Wraps `POST /dashboard/projects/:id/domains` — the add-domain panel's submit handler. */
