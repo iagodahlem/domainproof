@@ -39,7 +39,8 @@ apps/web/
     layout.tsx                        # root layout — <html>, Clerk provider only, no visible chrome of its own
 
   components/                       # APP-LEVEL SHARED — used by 2+ routes; a closed set, not a dumping ground
-    header/                            #   auth-cta.tsx, google-icon.tsx, marketing-actions.tsx — the marketing Header's right-slot content
+    header/                            #   auth-cta.tsx, google-icon.tsx, marketing-actions.tsx, marketing-brand.tsx — the marketing Header's left/right-slot content
+    footer/                            #   marketing-footer.tsx — shared by the landing and design-system pages
     dashboard-shell/                   #   every dashboard route's chrome
       shell.tsx, sidebar.tsx, topbar.tsx, user-menu.tsx, project-switcher.tsx,
       sign-out-button.tsx, reload-button.tsx, shell-skeleton.tsx, nav-items.ts
@@ -58,11 +59,14 @@ apps/web/
 `Header` itself is a generic primitive in `packages/ui` (it takes arbitrary
 `left`/`right` slots) — there's no app-level Header wrapper to maintain in
 `apps/web`. `components/header/` holds the marketing pages' own slot
-content (`AuthCta`, the `GoogleIcon` it renders, and `MarketingActions`,
-the theme-toggle + CTA cluster shared by the landing and design-system
-headers), promoted out of route-private status because it's the natural
+content (`AuthCta`, the `GoogleIcon` it renders, `MarketingActions` — the
+theme-toggle + CTA cluster — and `MarketingBrand` — the logo + Docs link
+pair), promoted out of route-private status because it's the natural
 companion to every route's own `<Header left=... right=... />`
-composition.
+composition. `components/footer/` holds `MarketingFooter` for the same
+reason — the landing and design-system pages render the identical footer
+as the last thing on the page, so it earns app-level status rather than
+living in either route's own `_components/`.
 
 ## Where does X go?
 
@@ -73,6 +77,7 @@ composition.
 | New component you're building for one route today but expect another route to need soon           | Still that route's `_components/` — promote it to `apps/web/components/` the day a second real call site appears, not before                    |
 | New piece of the dashboard shell (nav item, topbar affordance, sidebar element)                   | `apps/web/components/dashboard-shell/<name>.tsx`                                                                                                |
 | New piece of the shared Header's slot content (a marketing-only or dashboard-only CTA)            | `apps/web/components/header/<name>.tsx`                                                                                                         |
+| New piece of the shared marketing footer's content                                                | `apps/web/components/footer/<name>.tsx`                                                                                                         |
 | New dashboard API endpoint the web app needs to call                                              | A new method on `apps/web/lib/api/dashboard.ts` (or a new `lib/api/<plane>.ts` file if it's a different plane)                                  |
 | New client-side data need (fetch/refetch/mutate from a `'use client'` component)                  | A new hook in `apps/web/lib/query/<resource>.ts`, wrapping the matching `lib/api` call — the component calls the hook, never `lib/api` directly |
 | Initial-render data a server component/layout/page needs                                          | Call `lib/api` directly, same as today — no hook needed, there's no client cache to seed                                                        |

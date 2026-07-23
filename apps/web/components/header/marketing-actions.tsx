@@ -1,6 +1,5 @@
 import { ThemeToggle } from '@domainproof/ui'
 import { AuthCta } from './auth-cta'
-import { DocsLink } from './docs-link'
 
 export interface MarketingActionsProps {
   /** Forwarded to `AuthCta`'s `initialIsSignedIn` — the caller resolves this server-side via `auth()` so the CTA's first paint is correct. */
@@ -9,25 +8,16 @@ export interface MarketingActionsProps {
 
 /**
  * The marketing Header's right-slot cluster — shared by every chromed
- * public page (landing, design system) so the toggle, docs link, and CTA
- * line up the same way everywhere they appear. Same pill-beside-button
- * rhythm as the dashboard topbar's mode toggle + action button: fixed
- * `gap-3`, every control the same height, and the group never wraps onto
- * its own line — the docs link and CTA both drop to icon-only below `sm`,
- * same as the toggle already does, so the row reads as one composed group
- * at every width. Docs sits as the ghost-styled quiet sibling next to the
- * CTA, which stays the loudest element in the cluster.
+ * public page (landing, design system) so the toggle and CTA line up the
+ * same way everywhere they appear. The toggle is icon-only at every width
+ * (its label lives in a hover/focus tooltip instead), and the CTA drops to
+ * icon-only below `sm`, so the pair stays on one row down to the smallest
+ * screens with the CTA as the loudest element in the cluster.
  */
 export function MarketingActions({ isSignedIn }: MarketingActionsProps) {
   return (
-    <div className="flex items-center justify-end gap-3">
-      <ThemeToggle className="shrink-0" />
-      <DocsLink
-        size="sm"
-        iconSize={13}
-        compact
-        className="shrink-0 whitespace-nowrap"
-      />
+    <div className="flex items-center gap-3">
+      <ThemeToggle variant="icon" className="shrink-0" />
       <AuthCta
         size="sm"
         iconSize={13}

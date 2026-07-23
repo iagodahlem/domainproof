@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
-import { Header, Logo } from '@domainproof/ui'
+import { Header } from '@domainproof/ui'
 import { MarketingActions } from '@/components/header/marketing-actions'
+import { MarketingBrand } from '@/components/header/marketing-brand'
 
 /**
  * The landing page and the design system share this header — resolved once
@@ -19,7 +20,7 @@ export default async function MarketingLayout({
   return (
     <>
       <Header
-        left={<Logo />}
+        left={<MarketingBrand />}
         right={<MarketingActions isSignedIn={Boolean(userId)} />}
       />
       {children}
