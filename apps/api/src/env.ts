@@ -22,13 +22,25 @@ const envSchema = z.object({
   // refusing to boot before Clerk is wired up everywhere.
   CLERK_JWKS_URL: z.string().url().optional(),
   CLERK_ISSUER: z.string().min(1).optional(),
-  // Both optional: unset means no host restriction, which is what keeps
-  // local dev, tests, and the Railway service domain unrestricted (both
-  // planes reachable on one origin). See
-  // `shared/middlewares/host-restriction.ts`.
+  // All optional: unset means no host restriction, which is what keeps
+  // local dev, tests, and the Railway service domain unrestricted (every
+  // plane reachable on one origin). See
+  // `shared/middlewares/host-restriction.ts`. `MCP_API_HOST` restricts
+  // the hosted MCP endpoint (`/mcp`, see `apis/mcp/router.ts`) to its own
+  // host, `mcp.domainproof.dev` in production — a peer of the three API
+  // planes for host-restriction purposes, even though it isn't an
+  // authentication plane itself (see ARCHITECTURE.md's Route planes).
   PUBLIC_API_HOST: bareHostname.optional(),
   DASHBOARD_API_HOST: bareHostname.optional(),
   FRONTEND_API_HOST: bareHostname.optional(),
+  MCP_API_HOST: bareHostname.optional(),
+  // Optional. Base URL the hosted MCP endpoint's per-request
+  // `@domainproof/sdk` client sends tool-call requests to — this same
+  // service's own public `/v1` plane. Unset defaults to the SDK's own
+  // production default (`https://api.domainproof.dev`), correct for this
+  // service's production deploy; override for local dev/staging, where
+  // this service doesn't answer on that hostname yet.
+  DOMAINPROOF_BASE_URL: z.string().url().optional(),
   // Optional: the dashboard web app's origin, for the dashboard plane's
   // CORS policy (see apis/dashboard/router.ts) — the only plane a browser
   // calls directly. Unset means any origin is allowed, which is what
