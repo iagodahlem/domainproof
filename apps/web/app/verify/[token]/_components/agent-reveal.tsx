@@ -48,9 +48,13 @@ export function AgentReveal({ domain, records }: AgentRevealProps) {
             </p>
             <CopyButton
               value={prompt}
-              size="sm"
+              size="icon"
+              iconOnly
+              aria-label="Copy prompt"
               className="absolute top-3 right-3"
-            />
+            >
+              Copy
+            </CopyButton>
           </div>
         </div>
         <p className="text-2xs text-faint-foreground">
