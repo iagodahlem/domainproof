@@ -17,6 +17,7 @@ import type {
   CreateWebhookEndpointResult,
   WebhookEndpointSummary,
 } from '@/lib/api/dashboard'
+import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { CreateEndpointForm } from './create-endpoint-form'
 import { EndpointRow, ENDPOINT_GRID_COLS } from './endpoint-row'
 
@@ -58,18 +59,20 @@ export function WebhooksView({
     setEndpoints((prev) => prev.filter((item) => item.id !== endpointId))
   }
 
+  useTopbarSlot({
+    action: (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => setShowForm((value) => !value)}
+      >
+        {showForm ? 'Cancel' : '+ Add endpoint'}
+      </Button>
+    ),
+  })
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-end">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setShowForm((value) => !value)}
-        >
-          {showForm ? 'Cancel' : '+ Add endpoint'}
-        </Button>
-      </div>
-
       {revealed ? (
         <div className="mb-6 flex flex-col gap-3">
           <Callout tone="warning">

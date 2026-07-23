@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Plus } from 'lucide-react'
 import {
-  Badge,
   Button,
   Callout,
   DomainTable,
@@ -12,9 +11,15 @@ import {
   DomainTableRow,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
-import type { DomainDetail, DomainSummary } from '@/lib/api/dashboard'
+import type {
+  DomainDetail,
+  DomainListItem,
+  DomainMode,
+} from '@/lib/api/dashboard'
 import { useListDomains } from '@/lib/query/domains'
+import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { domainStatusPresentation } from './domain-status'
+import { domainProviderBadge } from './domain-provider'
 import { formatRelativeTime } from './format-relative-time'
 import { AddDomainForm } from './add-domain-form'
 import { DomainEmptyState } from './domain-empty-state'
@@ -23,16 +28,14 @@ const SANDBOX_DOMAIN_PREFILL = 'pending-then-verified.test'
 
 export interface DomainsPageClientProps {
   projectId: string
-  initialDomains: DomainSummary[]
+  mode: DomainMode
+  initialDomains: DomainListItem[]
   initialNextCursor: string | null
-}
-
-function modePillTone(mode: DomainSummary['mode']) {
-  return mode === 'live' ? ('success' as const) : ('warning' as const)
 }
 
 export function DomainsPageClient({
   projectId,
+  mode,
   initialDomains,
   initialNextCursor,
 }: DomainsPageClientProps) {
@@ -44,14 +47,18 @@ export function DomainsPageClient({
     { open: false } | { open: true; prefill?: string }
   >({ open: false })
 
-  const listDomains = useListDomains(projectId)
+  const listDomains = useListDomains(projectId, mode)
 
   function goToDomain(domainId: string) {
     router.push(`/dashboard/${projectId}/domains/${domainId}`)
   }
 
   function handleCreated(created: DomainDetail) {
-    setDomains((current) => [created, ...current])
+    // The create response has no `provider` (see `lib/api/dashboard.ts`'s
+    // `DomainListItem` doc comment) — defaulted to 'unknown' here since
+    // `handleCreated` navigates straight to the new domain's own detail
+    // page, so this row is never actually seen in the table.
+    setDomains((current) => [{ ...created, provider: 'unknown' }, ...current])
     setAddFormState({ open: false })
     goToDomain(created.id)
   }
@@ -74,22 +81,21 @@ export function DomainsPageClient({
     })
   }
 
+  useTopbarSlot({
+    action: !addFormState.open ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => setAddFormState({ open: true })}
+      >
+        <Plus aria-hidden="true" size={13} />
+        Add domain
+      </Button>
+    ) : undefined,
+  })
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-heading text-foreground">Domains</h1>
-        {!addFormState.open ? (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setAddFormState({ open: true })}
-          >
-            <Plus aria-hidden="true" size={13} />
-            Add domain
-          </Button>
-        ) : null}
-      </div>
-
       {addFormState.open ? (
         <AddDomainForm
           projectId={projectId}
@@ -116,11 +122,7 @@ export function DomainsPageClient({
                 statusTone={presentation.tone}
                 statusLabel={presentation.label}
                 name={domain.domain}
-                provider={
-                  <Badge tone={modePillTone(domain.mode)} mode>
-                    {domain.mode === 'live' ? 'Live' : 'Test'}
-                  </Badge>
-                }
+                provider={domainProviderBadge(domain.domain, domain.provider)}
                 lastChecked={formatRelativeTime(domain.updatedAt)}
                 onSelect={() => goToDomain(domain.id)}
               />

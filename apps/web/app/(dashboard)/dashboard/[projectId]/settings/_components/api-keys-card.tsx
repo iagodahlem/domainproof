@@ -137,7 +137,18 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
             const nodes = [
               <RecordField
                 key={`${key.keyId}-field`}
-                label={keyLabel(key)}
+                label={
+                  <span className="inline-flex items-center gap-1.5">
+                    {keyLabel(key)}
+                    <Badge
+                      tone={key.mode === 'live' ? 'success' : 'warning'}
+                      mode
+                    >
+                      {key.mode === 'live' ? 'Live' : 'Test'}
+                    </Badge>
+                  </span>
+                }
+                labelWidth="content"
                 value={key.maskedKey}
                 explain={
                   <>
@@ -147,12 +158,6 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
                 }
                 action={
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      tone={key.mode === 'live' ? 'success' : 'warning'}
-                      mode
-                    >
-                      {key.mode === 'live' ? 'Live' : 'Test'}
-                    </Badge>
                     {key.revokedAt ? (
                       <Badge tone="neutral">Revoked</Badge>
                     ) : (

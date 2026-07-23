@@ -16,11 +16,13 @@ export interface SidebarProps {
 
 /**
  * Board-conformant order: logo, then project switcher at the top, nav links
- * below it, account menu pinned to the bottom. The logo and switcher each
- * sit in their own `Header` (`variant="solid"`, same as the topbar) rather
- * than hand-rolled markup, so their height and bottom border line up
- * exactly with the topbar's — together they read as one continuous header
- * band across the page.
+ * below that, account menu pinned to the bottom. The test/live mode switch
+ * lives in the shell's topbar instead (each page's own header, next to that
+ * page's action button) — the board's own placement, not a sidebar
+ * deviation. The logo and switcher each sit in their own `Header`
+ * (`variant="solid"`, same as the topbar) rather than hand-rolled markup, so
+ * their height and bottom border line up exactly with the topbar's —
+ * together they read as one continuous header band across the page.
  *
  * Below 760px this collapses to a 3-column grid strip (`1fr auto 1fr`) so
  * the nav icons stay truly centered regardless of how wide the flanking

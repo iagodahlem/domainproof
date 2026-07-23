@@ -70,6 +70,11 @@ export {
   type VerificationLogEntry,
   VerificationLogStatus,
 } from './verification-log'
+export {
+  SegmentedControl,
+  type SegmentedControlProps,
+  type SegmentedControlOption,
+} from './segmented-control'
 export { TextField, type TextFieldProps } from './text-field'
 export { Select, type SelectProps, type SelectOption } from './select'
 export { Checkbox, type CheckboxProps } from './checkbox'

@@ -34,6 +34,14 @@ export interface DomainSummary {
   verifiedAt: string | null
 }
 
+/** DNS providers the dashboard can recognize and show in the domains table's Provider column — mirrors `@domainproof/core`'s `Provider`. `'unknown'` covers both a real but undetected provider and a `.test` sandbox domain (see `domain-provider.tsx`, which tells those apart from the domain name itself). */
+export type Provider = 'cloudflare' | 'unknown'
+
+/** A domains-list row: `DomainSummary` plus the Provider column's own data — only the list route resolves this (a domain-detail fetch has no table cell to fill), so it's kept separate rather than added to `DomainSummary` itself. */
+export interface DomainListItem extends DomainSummary {
+  provider: Provider
+}
+
 export interface DomainRecord {
   type: string
   name: string
@@ -190,10 +198,15 @@ export const dashboardApi = {
   listDomains(
     token: string | null,
     projectId: string,
-    options?: ListPageOptions,
+    options: ListPageOptions & { mode?: DomainMode } = {},
   ) {
-    return request<{ domains: DomainSummary[]; nextCursor: string | null }>(
-      withQuery(`/dashboard/projects/${projectId}/domains`, options),
+    const query = toQueryString({
+      limit: options.limit?.toString(),
+      cursor: options.cursor,
+      mode: options.mode,
+    })
+    return request<{ domains: DomainListItem[]; nextCursor: string | null }>(
+      `/dashboard/projects/${projectId}/domains${query}`,
       token,
     )
   },
@@ -287,9 +300,14 @@ export const dashboardApi = {
     )
   },
 
-  listWebhookEndpoints(token: string | null, projectId: string) {
+  listWebhookEndpoints(
+    token: string | null,
+    projectId: string,
+    options: { mode?: Mode } = {},
+  ) {
+    const query = toQueryString({ mode: options.mode })
     return request<{ endpoints: WebhookEndpointSummary[] }>(
-      `/dashboard/projects/${projectId}/webhooks`,
+      `/dashboard/projects/${projectId}/webhooks${query}`,
       token,
     )
   },
@@ -374,11 +392,12 @@ export const dashboardApi = {
   listProjectEvents(
     token: string | null,
     projectId: string,
-    options: { limit?: number; cursor?: string } = {},
+    options: { limit?: number; cursor?: string; mode?: Mode } = {},
   ) {
     const query = toQueryString({
       limit: options.limit?.toString(),
       cursor: options.cursor,
+      mode: options.mode,
     })
     return request<ListProjectEventsResult>(
       `/dashboard/projects/${projectId}/events${query}`,
