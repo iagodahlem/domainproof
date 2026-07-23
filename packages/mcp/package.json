@@ -1,15 +1,39 @@
 {
   "name": "@domainproof/mcp",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "MCP server for DomainProof domain-ownership verification — lets AI agents claim, verify, and monitor domains.",
+  "keywords": [
+    "domainproof",
+    "mcp",
+    "model-context-protocol",
+    "domain-verification",
+    "domain-ownership",
+    "dns"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iagodahlem/domainproof.git",
+    "directory": "packages/mcp"
+  },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "bin": {
+    "domainproof-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint ."
+  },
+  "dependencies": {
+    "@domainproof/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
