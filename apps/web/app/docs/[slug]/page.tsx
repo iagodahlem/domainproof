@@ -6,7 +6,7 @@ import { DocsShell } from '../_components/docs-shell'
 import { DocsToc } from '../_components/docs-toc'
 import { createMdxComponents } from '../_components/mdx-components'
 import { getAllDocs, getDocBySlug, getNavGroups } from '../_lib/content'
-import { extractH2Toc } from '../_lib/slug'
+import { extractToc } from '../_lib/slug'
 
 export function generateStaticParams() {
   return getAllDocs().map((doc) => ({ slug: doc.slug }))
@@ -36,15 +36,18 @@ export default async function DocPage({
   if (!doc) notFound()
 
   const groups = getNavGroups()
-  // The reference page skips the on-page TOC, same as board-docs.html's
-  // API reference section (03) — every other page pattern (02) gets one.
-  const showToc = doc.section !== 'Reference'
+  // The reference page's h3s are one per documented endpoint — a real nav
+  // target, unlike a guide's h3 (the repeated "Using the SDK" subsection),
+  // so only this page collects them into its TOC.
+  const isReference = doc.slug === 'api-reference'
 
   return (
     <DocsShell
       groups={groups}
       activeSlug={doc.slug}
-      toc={showToc ? <DocsToc entries={extractH2Toc(doc.body)} /> : undefined}
+      toc={
+        <DocsToc entries={extractToc(doc.body, { includeH3: isReference })} />
+      }
     >
       <div className="mb-2 font-mono text-xs font-semibold tracking-widest text-accent uppercase">
         {doc.section}

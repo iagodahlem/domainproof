@@ -7,7 +7,7 @@ order: 1
 
 # API reference
 
-Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://frontend.api.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below.
+Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://frontend.api.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below. This document is generated from the api's own OpenAPI 3.1 schema (`GET /v1/openapi.json`); the summary tables below link out to a full parameters + response breakdown for each endpoint.
 
 ## Public API (`/v1/*`)
 
@@ -26,6 +26,189 @@ Authenticated with a project API key (`Authorization: Bearer dp_test_...` / `dp_
 
 See [Claim and verify a domain](/docs/claim-and-verify) for the full walkthrough, and [How verification works](/docs/how-verification-works) for what each status and check outcome means.
 
+**`Domain`** — the object every endpoint below returns, either alone (`{ domain: Domain }`) or as a page (`{ domains: Domain[], nextCursor }`):
+
+| Field             | Type             | Description                                                                                                                               |
+| ----------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `string`         | The claim's unique id — the value every `:id` path parameter below expects.                                                               |
+| `domain`          | `string`         | The claimed hostname.                                                                                                                     |
+| `mode`            | `string`         | `test` or `live`.                                                                                                                         |
+| `status`          | `string`         | One of `not_started`, `pending`, `verified`, `temporarily_failed`, `failed` — see [How verification works](/docs/how-verification-works). |
+| `external_id`     | `string \| null` | The id passed to `POST /v1/domains`, or `null` if none was set.                                                                           |
+| `createdAt`       | `string`         | ISO 8601 timestamp of the claim.                                                                                                          |
+| `updatedAt`       | `string`         | ISO 8601 timestamp of the domain's last change.                                                                                           |
+| `verifiedAt`      | `string \| null` | ISO 8601 timestamp of the last passing check, or `null` if never verified. Updates on every passing check, not just the first.            |
+| `verificationUrl` | `string`         | The hosted verification page URL for this claim — embeds its `frontendToken`.                                                             |
+| `records`         | `array`          | The DNS record(s) that prove ownership — see `Domain.records[]` below.                                                                    |
+
+**`Domain.records[]`** — one entry per record to add (currently always exactly one, the ownership TXT record):
+
+| Field         | Type     | Description                                        |
+| ------------- | -------- | -------------------------------------------------- |
+| `type`        | `string` | The DNS record type, e.g. `TXT`.                   |
+| `name`        | `string` | The record name/host to create.                    |
+| `value`       | `string` | The record value/content.                          |
+| `purpose`     | `string` | Always `"ownership"`.                              |
+| `description` | `string` | Plain-language instructions for adding the record. |
+| `status`      | `string` | Mirrors the parent domain's `status`.              |
+
+**`Check`** — one verification attempt, returned as `check` alongside `domain` by `POST /v1/domains/:id/verify`:
+
+| Field         | Type       | Description                                                                                                           |
+| ------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `outcome`     | `string`   | One of `found`, `wrong_value`, `not_found`, `unreachable`, `expired`.                                                 |
+| `checkedAt`   | `string`   | ISO 8601 timestamp of this check.                                                                                     |
+| `expected`    | `string`   | Present only on `wrong_value` — the record value DomainProof expected to find.                                        |
+| `detected`    | `string[]` | Present only on `wrong_value` — the value(s) actually found at the record name.                                       |
+| `explanation` | `string`   | Present on `not_found`, `unreachable`, and `expired` — plain-language copy safe to show whoever published the record. |
+
+**`Event`** — one entry in a domain's timeline, returned by `GET /v1/domains/:id/events`:
+
+| Field       | Type     | Description                                                                                                 |
+| ----------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `id`        | `string` | The event's unique id.                                                                                      |
+| `type`      | `string` | e.g. `domain.claimed`, `domain.verified` — see [Event types](/docs/webhooks#event-types) for the full list. |
+| `mode`      | `string` | `test` or `live`.                                                                                           |
+| `payload`   | `object` | Event-specific detail — see [Delivery payload](/docs/webhooks#delivery-payload) for its shape.              |
+| `createdAt` | `string` | ISO 8601 timestamp.                                                                                         |
+
+### `POST` `/v1/domains`
+
+Claims a domain for the authenticated key's project and mode, issuing a fresh verification challenge.
+
+| Name          | In   | Type     | Required | Description                                                     |
+| ------------- | ---- | -------- | -------- | --------------------------------------------------------------- |
+| `domain`      | body | `string` | Yes      | The hostname to claim (1–253 characters).                       |
+| `external_id` | body | `string` | No       | Correlates the claim with your own end user (1–256 characters). |
+
+Returns `201` with `{ domain: Domain }`.
+
+| Status | Code                                            |
+| ------ | ----------------------------------------------- |
+| `400`  | `invalid_request`, `sandbox_requires_test_mode` |
+| `401`  | `invalid_api_key`                               |
+| `409`  | `domain_already_claimed`                        |
+| `429`  | `rate_limited`                                  |
+
+### `GET` `/v1/domains`
+
+Cursor-paginated list of domains claimed by the key's project and mode. Filterable by `external_id` and/or `domain`.
+
+| Name          | In    | Type      | Required | Description                                                                        |
+| ------------- | ----- | --------- | -------- | ---------------------------------------------------------------------------------- |
+| `limit`       | query | `integer` | No       | Max results per page, 1–100 (default 20) — see [Pagination](#pagination).          |
+| `cursor`      | query | `string`  | No       | Opaque cursor from a previous page's `nextCursor` — see [Pagination](#pagination). |
+| `external_id` | query | `string`  | No       | Filter to domains claimed under this id (1–256 characters).                        |
+| `domain`      | query | `string`  | No       | Filter to an exact hostname match (1–253 characters).                              |
+
+Returns `200` with `{ domains: Domain[], nextCursor: string \| null }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `400`  | `invalid_request` |
+| `401`  | `invalid_api_key` |
+| `429`  | `rate_limited`    |
+
+### `GET` `/v1/domains/:id`
+
+Gets a claimed domain and its current verification record instructions.
+
+| Name | In   | Type     | Required | Description            |
+| ---- | ---- | -------- | -------- | ---------------------- |
+| `id` | path | `string` | Yes      | The domain claim's id. |
+
+Returns `200` with `{ domain: Domain }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `401`  | `invalid_api_key` |
+| `404`  | `not_found`       |
+| `429`  | `rate_limited`    |
+
+### `DELETE` `/v1/domains/:id`
+
+Releases a domain claim.
+
+| Name | In   | Type     | Required | Description            |
+| ---- | ---- | -------- | -------- | ---------------------- |
+| `id` | path | `string` | Yes      | The domain claim's id. |
+
+Returns `200` with `{ domain: Domain }` — the now-released domain.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `401`  | `invalid_api_key` |
+| `404`  | `not_found`       |
+| `429`  | `rate_limited`    |
+
+### `POST` `/v1/domains/:id/verify`
+
+Runs the DNS check for a claim and returns the updated domain plus the check's outcome. Safe to poll — re-runs the check every time it's called.
+
+| Name | In   | Type     | Required | Description            |
+| ---- | ---- | -------- | -------- | ---------------------- |
+| `id` | path | `string` | Yes      | The domain claim's id. |
+
+Returns `200` with `{ domain: Domain, check: Check }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `401`  | `invalid_api_key` |
+| `404`  | `not_found`       |
+| `429`  | `rate_limited`    |
+
+### `POST` `/v1/domains/:id/regenerate`
+
+Issues a fresh challenge for a `pending` or `failed` domain, restarting verification.
+
+| Name | In   | Type     | Required | Description            |
+| ---- | ---- | -------- | -------- | ---------------------- |
+| `id` | path | `string` | Yes      | The domain claim's id. |
+
+Returns `200` with `{ domain: Domain }` — carrying the fresh challenge.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `401`  | `invalid_api_key` |
+| `404`  | `not_found`       |
+| `409`  | `invalid_status`  |
+| `429`  | `rate_limited`    |
+
+### `GET` `/v1/domains/:id/events`
+
+Cursor-paginated timeline of events published for a domain (claimed, checks, transitions), oldest first.
+
+| Name     | In    | Type      | Required | Description                                                                        |
+| -------- | ----- | --------- | -------- | ---------------------------------------------------------------------------------- |
+| `id`     | path  | `string`  | Yes      | The domain claim's id.                                                             |
+| `limit`  | query | `integer` | No       | Max results per page, 1–100 (default 20) — see [Pagination](#pagination).          |
+| `cursor` | query | `string`  | No       | Opaque cursor from a previous page's `nextCursor` — see [Pagination](#pagination). |
+
+Returns `200` with `{ events: Event[], nextCursor: string \| null }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `400`  | `invalid_request` |
+| `401`  | `invalid_api_key` |
+| `404`  | `not_found`       |
+| `429`  | `rate_limited`    |
+
+### `POST` `/v1/component-sessions`
+
+Mints a short-lived, single-use session token (expires in an hour if never spent) for a drop-in component to claim one domain on the caller's behalf, without handing the component the api key itself. The component spends it once against `POST /frontend/component-sessions/:sessionToken/claim` below.
+
+| Name         | In   | Type     | Required | Description                                                                     |
+| ------------ | ---- | -------- | -------- | ------------------------------------------------------------------------------- |
+| `externalId` | body | `string` | No       | The end user about to claim a domain, in your own id scheme (1–255 characters). |
+
+Returns `201` with `{ sessionToken: string, expiresAt: string }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `400`  | `invalid_request` |
+| `401`  | `invalid_api_key` |
+| `429`  | `rate_limited`    |
+
 ## Frontend API (`/frontend/*`)
 
 No session, no API key — each domain claim carries its own unguessable `frontendToken` (embedded in `verificationUrl`) that authorizes exactly these routes for that one claim. See [The hosted verification page](/docs/hosted-verification-page).
@@ -39,9 +222,133 @@ No session, no API key — each domain claim carries its own unguessable `fronte
 | `GET`  | `/frontend/cloudflare/callback`                       | The Cloudflare OAuth callback; redirects back to the hosted verification page with an outcome.                                               |
 | `POST` | `/frontend/component-sessions/:sessionToken/claim`    | Spends a component session (rate limited: 10 per hour, per session token) to claim a domain; returns the claim plus its own `frontendToken`. |
 
+**`Verification`** — the object every endpoint below returns, the hosted page's own view of a claim (no account id, project id, or key material):
+
+| Field         | Type             | Description                                                                                                                                                                  |
+| ------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `domain`      | `string`         | The claimed hostname.                                                                                                                                                        |
+| `mode`        | `string`         | `test` or `live`.                                                                                                                                                            |
+| `status`      | `string`         | One of `not_started`, `pending`, `verified`, `temporarily_failed`, `failed`.                                                                                                 |
+| `projectName` | `string`         | The claiming project's display name.                                                                                                                                         |
+| `provider`    | `string`         | `cloudflare` or `unknown` — the DNS provider detected from the domain's nameservers; gates the one-click setup button.                                                       |
+| `records`     | `array`          | `{ label, type, value }[]` — the DNS record(s) to add.                                                                                                                       |
+| `check`       | `object \| null` | `null` until the first check ever runs; otherwise `{ outcome, checkedAt, expected?, detected? }` — the same outcomes as the Public API's `Check`, but without `explanation`. |
+| `updatedAt`   | `string`         | ISO 8601 timestamp.                                                                                                                                                          |
+
+**`ClaimResult`** — every `Verification` field above, plus:
+
+| Field           | Type     | Description                                                                      |
+| --------------- | -------- | -------------------------------------------------------------------------------- |
+| `frontendToken` | `string` | The new claim's token — the credential for every other Frontend API route above. |
+
+**`FrontendEvent`** — one entry in a domain's timeline, the Frontend API's stripped-down view of `Event` above:
+
+| Field       | Type     | Description                                   |
+| ----------- | -------- | --------------------------------------------- |
+| `id`        | `string` | The event's unique id.                        |
+| `type`      | `string` | e.g. `domain.claimed`, `domain.verified`.     |
+| `mode`      | `string` | `test` or `live`.                             |
+| `createdAt` | `string` | ISO 8601 timestamp.                           |
+| `outcome`   | `string` | Present only on `domain.check_failed` events. |
+
+### `GET` `/frontend/verifications/:token`
+
+Reads a claim's status, record instructions, detected DNS provider, and last check outcome by its `frontendToken`.
+
+| Name    | In   | Type     | Required | Description                                                              |
+| ------- | ---- | -------- | -------- | ------------------------------------------------------------------------ |
+| `token` | path | `string` | Yes      | The domain claim's `frontendToken` — the sole credential for this plane. |
+
+Returns `200` with a `Verification`.
+
+| Status | Code        |
+| ------ | ----------- |
+| `404`  | `not_found` |
+
+### `POST` `/frontend/verifications/:token/check`
+
+Runs the DNS check for a claim (rate limited: 1 per 15 seconds, 20 per hour, per token) and returns the same shape as the `GET` above.
+
+| Name    | In   | Type     | Required | Description                                                              |
+| ------- | ---- | -------- | -------- | ------------------------------------------------------------------------ |
+| `token` | path | `string` | Yes      | The domain claim's `frontendToken` — the sole credential for this plane. |
+
+Returns `200` with a `Verification`, after the check runs.
+
+| Status | Code           |
+| ------ | -------------- |
+| `404`  | `not_found`    |
+| `429`  | `rate_limited` |
+
+### `GET` `/frontend/verifications/:token/cloudflare/authorize`
+
+Redirects to Cloudflare's OAuth consent screen with a PKCE `code_challenge` and a signed `state` binding the request to this one claim — see [Cloudflare one-click DNS setup](/docs/hosted-verification-page#cloudflare-one-click-dns-setup).
+
+| Name    | In   | Type     | Required | Description                                                              |
+| ------- | ---- | -------- | -------- | ------------------------------------------------------------------------ |
+| `token` | path | `string` | Yes      | The domain claim's `frontendToken` — the sole credential for this plane. |
+
+Returns `302`, redirecting to Cloudflare's consent screen — no JSON body on success.
+
+| Status | Code                          |
+| ------ | ----------------------------- |
+| `404`  | `not_found`, `not_configured` |
+
+### `GET` `/frontend/verifications/:token/events`
+
+Cursor-paginated timeline of events published for a domain, with no account/project ids in the payload.
+
+| Name     | In    | Type      | Required | Description                                                                        |
+| -------- | ----- | --------- | -------- | ---------------------------------------------------------------------------------- |
+| `token`  | path  | `string`  | Yes      | The domain claim's `frontendToken` — the sole credential for this plane.           |
+| `limit`  | query | `integer` | No       | Max results per page, 1–100 (default 20) — see [Pagination](#pagination).          |
+| `cursor` | query | `string`  | No       | Opaque cursor from a previous page's `nextCursor` — see [Pagination](#pagination). |
+
+Returns `200` with `{ events: FrontendEvent[], nextCursor: string \| null }`.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `400`  | `invalid_request` |
+| `404`  | `not_found`       |
+
+### `POST` `/frontend/component-sessions/:sessionToken/claim`
+
+Claims a domain through the exact same path `POST /v1/domains` uses (same validation, same conflict/sandbox rules), with the project/mode and `external_id` carried over from the session. Rate limited: 10 attempts per hour, per session token.
+
+| Name           | In   | Type     | Required | Description                                                   |
+| -------------- | ---- | -------- | -------- | ------------------------------------------------------------- |
+| `sessionToken` | path | `string` | Yes      | The single-use token minted by `POST /v1/component-sessions`. |
+| `domain`       | body | `string` | Yes      | The hostname to claim (1–253 characters).                     |
+
+Returns `201` with a `ClaimResult`.
+
+| Status | Code                                            |
+| ------ | ----------------------------------------------- |
+| `400`  | `invalid_request`, `sandbox_requires_test_mode` |
+| `404`  | `not_found`                                     |
+| `409`  | `domain_already_claimed`                        |
+| `429`  | `rate_limited`                                  |
+
+### `GET` `/frontend/cloudflare/callback`
+
+Verifies `state`, exchanges the code, finds the matching zone, creates the TXT record, and triggers the standard verify path, then redirects to the hosted verification page. Not nested under `/verifications/:token` — the signed `state` round-tripped through Cloudflare's own redirect carries the claim binding instead, since a registered `redirect_uri` has to be a fixed, exact-match URL.
+
+| Name    | In    | Type     | Required | Description                                                                               |
+| ------- | ----- | -------- | -------- | ----------------------------------------------------------------------------------------- |
+| `code`  | query | `string` | No       | The OAuth authorization code, present on a successful grant.                              |
+| `state` | query | `string` | No       | The signed state minted by the authorize redirect, verified before anything else runs.    |
+| `error` | query | `string` | No       | Cloudflare's OAuth error code, present when the domain owner declines the consent screen. |
+
+Returns `302`, redirecting to the hosted verification page with `?cloudflare=<outcome>` (`success`, `denied`, `no_matching_zone`, `record_create_failed`, `exchange_failed`, or `not_found`) — even on failure, as long as `state` itself is trustworthy.
+
+| Status | Code              |
+| ------ | ----------------- |
+| `400`  | `invalid_request` |
+| `404`  | `not_configured`  |
+
 ## Dashboard API (`/dashboard/*`)
 
-Authenticated by your login session — this is what the DomainProof dashboard itself calls, covering project management, API key management, and webhook endpoint management. It's not meant to be called directly by an integration; everything an integration needs is on the Public and Frontend planes above.
+Authenticated by your login session — this is what the DomainProof dashboard itself calls, covering project management, API key management, and webhook endpoint management. It's not meant to be called directly by an integration; everything an integration needs is on the Public and Frontend planes above, and it isn't part of the generated OpenAPI document either — see the README's endpoints table for its full route list.
 
 ## Pagination
 
@@ -55,7 +362,7 @@ Every non-2xx response follows the same shape:
 { "error": { "code": "not_found", "message": "Domain not found" } }
 ```
 
-Named codes you'll actually see:
+Named codes you'll actually see (each endpoint above lists which of these it can return):
 
 | Code                         | Status | Meaning                                                                                                                                                              |
 | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -63,6 +370,9 @@ Named codes you'll actually see:
 | `sandbox_requires_test_mode` | 400    | You tried to claim a `.test` sandbox domain with a live-mode key.                                                                                                    |
 | `invalid_api_key`            | 401    | The presented key is missing, malformed, unknown, revoked, or wrong — these are deliberately indistinguishable from each other.                                      |
 | `not_found`                  | 404    | The resource doesn't exist, or belongs to a different project/key than the one authenticating the request — those two cases are also deliberately indistinguishable. |
+| `not_configured`             | 404    | A feature that needs environment configuration isn't set up here — currently only the Cloudflare one-click DNS setup flow.                                           |
 | `domain_already_claimed`     | 409    | You tried to claim a domain your project already has claimed in this mode.                                                                                           |
 | `invalid_status`             | 409    | You tried to regenerate a challenge for a domain that isn't currently `pending` or `failed`.                                                                         |
 | `rate_limited`               | 429    | You've exceeded the rate limit for this key or token. The response carries a `Retry-After` header (seconds) telling you when to try again.                           |
+
+Any request can also fail with `500 internal_error` on an unhandled server error — not tied to any one endpoint, so it's omitted from each endpoint's own table above.
