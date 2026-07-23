@@ -50,6 +50,8 @@ curl https://frontend.api.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r
 }
 ```
 
+`records[].label`'s `_domainproof-challenge`/`domainproof-verify=` prefix is this guide's placeholder, not a fixed string — it's derived from the claiming project's own name (here, `projectName` would actually derive a different prefix; don't pattern-match on this example's literal text).
+
 Notice what's absent: no account id, no project id, no key material — only what's safe to show the person on the other end of this link, whether or not they're someone you trust with your own API key. `provider` is `"cloudflare"` or `"unknown"`, detected from the domain's nameservers — `"unknown"` for anything that isn't Cloudflare-hosted, including every `.test` sandbox domain.
 
 ```bash
