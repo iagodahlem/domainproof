@@ -36,7 +36,7 @@ export function HostedLinkCard({
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-3 font-mono text-xs text-muted-foreground">
+          <div className="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-1 font-mono text-xs text-muted-foreground">
             {verificationUrl}
           </div>
           <CopyButton value={verificationUrl}>Copy link</CopyButton>
