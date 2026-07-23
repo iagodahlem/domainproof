@@ -93,7 +93,9 @@ export function UserMenu({
 
 /** Flips the dashboard's light/dark override — labeled and iconed for the
  * theme it switches *to*, same word-to-icon pairing (dark/moon,
- * light/sun) as the design-system page's own toggle. */
+ * light/sun) as the design-system page's own toggle. Prevents Radix's
+ * default select-closes-menu behavior so the user can see the flip and
+ * toggle again without reopening the menu. */
 function ThemeMenuItem() {
   const { theme, toggleTheme } = useTheme()
   const next: ThemeOverride = theme === 'dark' ? 'light' : 'dark'
@@ -107,7 +109,10 @@ function ThemeMenuItem() {
           <Sun aria-hidden="true" size={14} />
         )
       }
-      onSelect={toggleTheme}
+      onSelect={(event) => {
+        event.preventDefault()
+        toggleTheme()
+      }}
     >
       {next === 'dark' ? 'View dark' : 'View light'}
     </MenuItem>

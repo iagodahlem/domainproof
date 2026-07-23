@@ -35,6 +35,7 @@ function isThemeOverride(value: string | null): value is ThemeOverride {
 }
 
 const OVERRIDE_ID_PREFIX = 'dp-theme-favicon-override'
+const PRELOAD_ID_PREFIX = 'dp-theme-favicon-preload'
 
 /**
  * Forces the icon links to a specific theme instead of the
@@ -71,6 +72,34 @@ function upsertIconLink(
   link.href = href
 }
 
+/**
+ * Warms the browser's cache for every favicon asset of both themes, not
+ * just the active one — otherwise the first toggle to the theme that
+ * hasn't been rendered yet has to fetch its icon files from scratch,
+ * and the tab icon doesn't visibly swap on that first click. Uses
+ * `rel="preload"` (rather than e.g. an `Image()` object, which isn't
+ * guaranteed to hit the same cache entry a `<link rel="icon">` reuses)
+ * and id-guards each href so remounts (Fast Refresh, StrictMode) don't
+ * append duplicate `<link>` nodes or refetch what's already cached.
+ */
+function preloadFavicons() {
+  for (const [theme, hrefs] of Object.entries(FAVICON_HREFS)) {
+    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-svg`, hrefs.svg)
+    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-32`, hrefs.png32)
+    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-16`, hrefs.png16)
+  }
+}
+
+function preloadImage(id: string, href: string) {
+  if (document.getElementById(id)) return
+  const link = document.createElement('link')
+  link.id = id
+  link.rel = 'preload'
+  link.as = 'image'
+  link.href = href
+  document.head.appendChild(link)
+}
+
 interface ThemeContextValue {
   theme: ThemeOverride
   toggleTheme: () => void
@@ -91,6 +120,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeOverride>(DEFAULT_THEME)
 
   useEffect(() => {
+    preloadFavicons()
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (isThemeOverride(stored)) {
       setThemeState(stored)
