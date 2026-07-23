@@ -16,6 +16,7 @@ import {
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { WebhookDeliverySummary } from '@/lib/api/dashboard'
+import { formatTimestamp } from '@/lib/format-timestamp'
 import {
   useRedeliverWebhookDelivery,
   useWebhookDeliveries,
@@ -37,15 +38,6 @@ function statusTone(delivery: WebhookDeliverySummary): Tone {
 function responseLabel(delivery: WebhookDeliverySummary): string {
   if (delivery.responseStatus != null) return String(delivery.responseStatus)
   return delivery.status === 'pending' ? 'Pending' : '—'
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function errorMessage(error: unknown): string {
@@ -139,7 +131,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps) {
                 </Badge>
               </TableCell>
               <TableCell className="text-xs text-faint-foreground">
-                {formatTime(delivery.createdAt)}
+                {formatTimestamp(delivery.createdAt)}
               </TableCell>
               <TableCell className="max-[760px]:basis-full">
                 <Button
