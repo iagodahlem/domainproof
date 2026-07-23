@@ -1,18 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react'
-import type { ReactNode } from 'react'
-import { THEME_STORAGE_KEY } from '@domainproof/ui'
+  THEME_STORAGE_KEY,
+  useTheme,
+  type ThemeOverride,
+} from '@domainproof/ui'
 
-export type ThemeOverride = 'dark' | 'light'
-
-const DEFAULT_THEME: ThemeOverride = 'dark'
 const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
 
 /**
@@ -41,10 +35,6 @@ const FAVICON_HREFS: Record<
     png32: '/icon-light-32.png',
     png16: '/icon-light-16.png',
   },
-}
-
-function isThemeOverride(value: string | null): value is ThemeOverride {
-  return value === 'dark' || value === 'light'
 }
 
 const OVERRIDE_ID_PREFIX = 'dp-theme-favicon-override'
@@ -79,7 +69,7 @@ function upsertIconLink(
     link.id = id
     link.rel = 'icon'
     link.type = type
-    if (sizes) link.sizes.value = sizes
+    if (sizes) link.setAttribute('sizes', sizes)
     document.head.appendChild(link)
   }
   link.href = href
@@ -116,71 +106,25 @@ function prefetchImage(id: string, href: string) {
   document.head.appendChild(link)
 }
 
-interface ThemeContextValue {
-  theme: ThemeOverride
-  toggleTheme: () => void
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null)
-
 /**
- * Global light/dark override for the dashboard. `NO_FOUC_THEME_SCRIPT`
- * (inlined into `RootLayout`'s `<head>`) already resolves and stamps
- * `data-theme` on `<html>` before this component ever renders, so the
- * lazy `useState` initializer here just reads that attribute back —
- * matching what's already painted instead of racing it. Only the favicon
- * (a React-owned side effect, not paintable by a plain `<script>`) and a
- * live `prefers-color-scheme` listener still need to run from an effect.
+ * Keeps the tab favicon in sync with the global theme (`@domainproof/ui`'s
+ * `ThemeProvider`) on every surface — mounted once in `RootLayout` alongside
+ * that provider, rather than nested under any one route, so a toggle on
+ * marketing/docs/dashboard/hosted all update the same favicon links instead
+ * of only the route that happens to own this effect.
  */
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeOverride>(() => {
-    if (typeof document === 'undefined') return DEFAULT_THEME
-    const attr = document.documentElement.getAttribute('data-theme')
-    return isThemeOverride(attr) ? attr : DEFAULT_THEME
-  })
+export function ThemeFaviconSync() {
+  const { theme } = useTheme()
 
   useEffect(() => {
     preloadFavicons()
+    // Runs once: warming both themes' assets doesn't need to repeat on
+    // every theme change, only on first mount.
+  }, [])
+
+  useEffect(() => {
     applyFavicon(theme)
+  }, [theme])
 
-    // Device preference changes should reflect live — but only until the
-    // user makes an explicit choice, which then wins permanently.
-    const mediaQuery = window.matchMedia(PREFERS_LIGHT_QUERY)
-    function handleMediaChange(event: MediaQueryListEvent) {
-      if (isThemeOverride(window.localStorage.getItem(THEME_STORAGE_KEY)))
-        return
-      const next: ThemeOverride = event.matches ? 'light' : 'dark'
-      setThemeState(next)
-      document.documentElement.setAttribute('data-theme', next)
-      applyFavicon(next)
-    }
-    mediaQuery.addEventListener('change', handleMediaChange)
-    return () => mediaQuery.removeEventListener('change', handleMediaChange)
-    // Runs once on mount only — reads localStorage fresh inside the handler.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const toggleTheme = useCallback(() => {
-    setThemeState((current) => {
-      const next: ThemeOverride = current === 'dark' ? 'light' : 'dark'
-      window.localStorage.setItem(THEME_STORAGE_KEY, next)
-      document.documentElement.setAttribute('data-theme', next)
-      applyFavicon(next)
-      return next
-    })
-  }, [])
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
-}
-
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
+  return null
 }

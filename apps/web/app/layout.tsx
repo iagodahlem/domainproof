@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
-import { NO_FOUC_THEME_SCRIPT } from '@/lib/theme'
+import { ThemeProvider } from '@domainproof/ui'
+import { NO_FOUC_THEME_SCRIPT, ThemeFaviconSync } from '@/lib/theme'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -61,7 +62,13 @@ export default function RootLayout({
           <script dangerouslySetInnerHTML={{ __html: NO_FOUC_THEME_SCRIPT }} />
         </head>
         <body className="antialiased">
-          {children}
+          {/* Global for the whole session — every surface (marketing,
+              docs, dashboard, hosted) shares one theme and one favicon
+              side effect instead of each route mounting its own. */}
+          <ThemeProvider>
+            <ThemeFaviconSync />
+            {children}
+          </ThemeProvider>
           {/* Clerk's Smart CAPTCHA widget mount — must exist in the DOM
               before authenticateWithRedirect() runs from any page that can
               start a sign-up, or bot-protected sign-ups fall back to an

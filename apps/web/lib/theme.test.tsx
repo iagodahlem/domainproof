@@ -1,6 +1,8 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { THEME_STORAGE_KEY } from '@domainproof/ui'
-import { NO_FOUC_THEME_SCRIPT } from './theme'
+import { THEME_STORAGE_KEY, ThemeProvider, ThemeToggle } from '@domainproof/ui'
+import { NO_FOUC_THEME_SCRIPT, ThemeFaviconSync } from './theme'
 
 // jsdom under this Node/vitest combo doesn't implement window.localStorage
 // (see packages/ui's theme-toggle.test.tsx for the same pattern), so it's
@@ -44,7 +46,16 @@ beforeEach(() => {
 afterEach(() => {
   window.localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
+  document
+    .querySelectorAll('link[id^="dp-theme-favicon"]')
+    .forEach((link) => link.remove())
 })
+
+function faviconHref(idSuffix: string) {
+  return document
+    .getElementById(`dp-theme-favicon-override-${idSuffix}`)
+    ?.getAttribute('href')
+}
 
 describe('NO_FOUC_THEME_SCRIPT', () => {
   it('reads and writes the canonical key exported by @domainproof/ui, not a hand-duplicated literal', () => {
@@ -67,5 +78,37 @@ describe('NO_FOUC_THEME_SCRIPT', () => {
     installMatchMediaStub(false)
     runNoFoucScript()
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+})
+
+describe('ThemeFaviconSync', () => {
+  beforeEach(() => installMatchMediaStub(false))
+
+  it('applies the favicon matching the current theme on mount', () => {
+    render(
+      <ThemeProvider>
+        <ThemeFaviconSync />
+      </ThemeProvider>,
+    )
+
+    expect(faviconHref('svg')).toBe('/icon-dark.svg')
+    expect(faviconHref('32')).toBe('/icon-dark-32.png')
+    expect(faviconHref('16')).toBe('/icon-dark-16.png')
+  })
+
+  it('swaps the favicon when a toggle mounted anywhere else under the same provider flips the theme', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThemeProvider>
+        <ThemeFaviconSync />
+        <ThemeToggle />
+      </ThemeProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'View light' }))
+
+    expect(faviconHref('svg')).toBe('/icon-light.svg')
+    expect(faviconHref('32')).toBe('/icon-light-32.png')
+    expect(faviconHref('16')).toBe('/icon-light-16.png')
   })
 })
