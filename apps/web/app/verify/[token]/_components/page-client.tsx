@@ -1,0 +1,123 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Badge, Logo } from '@domainproof/ui'
+import type { Verification } from '@/lib/api/frontend'
+// This route mounts no QueryProvider (D-029: the hosted verification page
+// is anonymous, with no auth/session context) — converting these calls to
+// a lib/query hook would mean adding one, a real behavior change rather
+// than a structural move, so it's out of scope here (same category of
+// deliberate exception as EventsView's loadMore — see
+// apps/web/ARCHITECTURE.md).
+// eslint-disable-next-line no-restricted-imports -- see note above
+import { getVerification, runVerificationCheck } from '@/lib/api/frontend'
+import { useBoundedPoll } from '../_lib/use-bounded-poll'
+import { RecordCardSection } from './record-card-section'
+import { StatusSection } from './status-section'
+import { TimelineSection } from './timeline-section'
+
+/** No further status change is possible without external action this page can't take on its own (a project regenerating the challenge) — polling stops here. */
+const TERMINAL_STATUSES = new Set<Verification['status']>([
+  'verified',
+  'failed',
+])
+
+export interface VerificationPageClientProps {
+  token: string
+  initialData: Verification
+  /** The `?cloudflare=` outcome from the one-click callback redirect, if this load is one. */
+  cloudflareOutcome: string | null
+}
+
+export function VerificationPageClient({
+  token,
+  initialData,
+  cloudflareOutcome,
+}: VerificationPageClientProps) {
+  const [data, setData] = useState(initialData)
+  const [pollError, setPollError] = useState<string | null>(null)
+  const triggeredOptimisticRecheck = useRef(false)
+
+  const poll = useCallback(async () => {
+    const result = await getVerification(token)
+    if (result.ok) {
+      setData(result.data)
+      setPollError(null)
+    } else if (result.error.kind === 'network') {
+      setPollError(
+        "We're having trouble reaching DomainProof — we'll keep trying.",
+      )
+    }
+    // An http error here (e.g. a 404 for a claim released mid-session) is
+    // left alone rather than tearing down an otherwise-working page out
+    // from under a live background poll; "Recheck now" surfaces it instead.
+  }, [token])
+
+  const { isPolling } = useBoundedPoll(
+    poll,
+    !TERMINAL_STATUSES.has(data.status),
+  )
+
+  // FD-023: a successful Cloudflare one-click setup writes the record
+  // server-side and triggers a verify there too, but this page's own view
+  // of `data` is still whatever the initial SSR fetch saw *before* that —
+  // force one immediate check so the optimistic "checking now…" callout
+  // resolves quickly instead of waiting for the poll's first backoff rung.
+  // Gated on the *initial* fetch already being verified: `cloudflareOutcome`
+  // comes from the URL and survives a plain page reload, so without this
+  // guard, reloading a since-verified page would fire another check (and
+  // log another event) for no reason — there's nothing left to optimistically
+  // resolve.
+  useEffect(() => {
+    if (
+      cloudflareOutcome !== 'success' ||
+      triggeredOptimisticRecheck.current ||
+      initialData.status === 'verified'
+    ) {
+      return
+    }
+    triggeredOptimisticRecheck.current = true
+    void runVerificationCheck(token).then((result) => {
+      if (result.ok) setData(result.data)
+    })
+  }, [cloudflareOutcome, initialData.status, token])
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12 max-[640px]:px-4 max-[640px]:py-8">
+      <header className="flex flex-col gap-2">
+        <Logo />
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-heading break-all">
+            Verify {data.domain}
+          </h1>
+          {data.mode === 'test' ? (
+            <Badge tone="warning" mode>
+              Test mode
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-sm text-text-muted">
+          Requested by {data.projectName}
+        </p>
+      </header>
+
+      <StatusSection
+        token={token}
+        data={data}
+        onDataChange={setData}
+        isPolling={isPolling}
+        pollError={pollError}
+      />
+
+      <RecordCardSection
+        token={token}
+        records={data.records}
+        provider={data.provider}
+        status={data.status}
+        cloudflareOutcome={cloudflareOutcome}
+      />
+
+      <TimelineSection token={token} refreshKey={data.updatedAt} />
+    </main>
+  )
+}
