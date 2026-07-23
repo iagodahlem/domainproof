@@ -38,7 +38,7 @@ export function AgentReveal({ domain, records }: AgentRevealProps) {
         />
       </summary>
       <div className="flex flex-col gap-3 border-t border-border px-5 pt-4 pb-5">
-        <div className="overflow-hidden rounded-lg border border-border bg-background">
+        <div className="overflow-hidden rounded-md border border-border bg-background">
           <div className="border-b border-border bg-surface-2 px-3 py-2 font-mono text-2xs text-faint-foreground">
             Copy-ready prompt
           </div>

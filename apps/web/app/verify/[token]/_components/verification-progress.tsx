@@ -37,7 +37,7 @@ export function VerificationProgress({
   unreachableNote,
 }: VerificationProgressProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-8">
       <Stepper steps={steps} />
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill
