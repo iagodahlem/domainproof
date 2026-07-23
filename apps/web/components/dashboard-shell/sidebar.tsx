@@ -40,7 +40,7 @@ export function Sidebar({ projects, activeProject, email }: SidebarProps) {
   return (
     <nav
       aria-label="Dashboard"
-      className="flex w-52 shrink-0 flex-col border-r border-border bg-surface max-[760px]:w-full max-[760px]:grid max-[760px]:grid-cols-[1fr_auto_1fr] max-[760px]:items-center max-[760px]:gap-4 max-[760px]:overflow-x-auto max-[760px]:border-r-0 max-[760px]:border-b max-[760px]:p-4"
+      className="sticky top-0 flex h-screen w-52 shrink-0 flex-col self-start overflow-y-auto border-r border-border bg-surface max-[760px]:static max-[760px]:h-auto max-[760px]:w-full max-[760px]:grid max-[760px]:grid-cols-[1fr_auto_1fr] max-[760px]:items-center max-[760px]:gap-4 max-[760px]:overflow-x-auto max-[760px]:overflow-y-visible max-[760px]:border-r-0 max-[760px]:border-b max-[760px]:p-4"
     >
       <div className="max-[760px]:hidden">
         <Header
