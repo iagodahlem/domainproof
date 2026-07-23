@@ -1,0 +1,39 @@
+/* Compiled by scripts/build-css.mjs into dist/styles.css — the stylesheet
+   `@domainproof/react/styles.css` resolves to. Not shipped as-is: the
+   build scans this package's own source plus `@domainproof/ui`'s (the
+   design-system components `<DomainVerification />` composes) for classes
+   in use, then every rule gets scoped under `.dp-widget` so the reset
+   utilities and tokens below never leak onto the host page — see that
+   script for the scoping pass. */
+/* source(none) turns off Tailwind's automatic content detection (which
+   would otherwise scan the whole repo, not just the files listed below)
+   — every class this stylesheet can generate has to come from an explicit
+   @source line. */
+@import 'tailwindcss' source(none);
+
+@source './';
+
+/* Only the `@domainproof/ui` source files `<DomainVerification />` actually
+   composes — not the whole package — so classes belonging to components
+   this widget never renders (Menu, Select, DomainTable, ...) don't bloat
+   the compiled output. Extend this list alongside domain-verification.tsx's
+   `@domainproof/ui` import whenever it starts using another component. */
+@source '../../ui/src/badge.tsx';
+@source '../../ui/src/button.tsx';
+@source '../../ui/src/callout.tsx';
+@source '../../ui/src/card.tsx';
+@source '../../ui/src/cn.ts';
+@source '../../ui/src/copy-button.tsx';
+@source '../../ui/src/field.tsx';
+@source '../../ui/src/record-card.tsx';
+@source '../../ui/src/record-field.tsx';
+@source '../../ui/src/status-summary.tsx';
+@source '../../ui/src/text-field.tsx';
+
+/* Design tokens + Tailwind utility mapping + focus-ring/pulse utilities —
+   the same files apps/web imports, so this widget renders with the exact
+   values the rest of the product does. */
+@import '@domainproof/ui/tokens.css';
+@import '@domainproof/ui/theme.css';
+@import '@domainproof/ui/focus-ring.css';
+@import '@domainproof/ui/pulse.css';
