@@ -81,12 +81,26 @@ describe('domainStatusSteps', () => {
     expect(statusesOf(steps)).toEqual(['done', 'done', 'done', 'current'])
   })
 
-  it('marks a stalled step "failed" (not merely upcoming) for a hard wrong_value failure', () => {
+  it('marks "record added" failed for a hard wrong_value failure, ignoring session-only check data', () => {
     const steps = domainStatusSteps(
       fakeDomain({ status: 'failed' }),
       check('wrong_value', { expected: 'a', detected: ['b'] }),
     )
-    expect(statusesOf(steps)).toEqual(['done', 'done', 'failed', 'upcoming'])
+    expect(statusesOf(steps)).toEqual([
+      'done',
+      'failed',
+      'upcoming',
+      'upcoming',
+    ])
+  })
+
+  it('makes the same "record added" failed claim on a cold reload (check: null) as it did live, for the same failed domain', () => {
+    const live = domainStatusSteps(
+      fakeDomain({ status: 'failed' }),
+      check('wrong_value', { expected: 'a', detected: ['b'] }),
+    )
+    const coldReload = domainStatusSteps(fakeDomain({ status: 'failed' }), null)
+    expect(statusesOf(coldReload)).toEqual(statusesOf(live))
   })
 
   it('marks "record added" failed for a domain that expired without ever finding a record', () => {

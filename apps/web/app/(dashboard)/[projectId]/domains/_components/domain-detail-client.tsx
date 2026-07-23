@@ -196,8 +196,20 @@ export function DomainDetailClient({
       </div>
     ),
     action: (
-      <div className="flex flex-wrap items-center gap-2">
-        <CopyButton value={domain.verificationUrl}>
+      <div className="flex flex-wrap items-center gap-2 max-[420px]:flex-nowrap">
+        <CopyButton
+          value={domain.verificationUrl}
+          className="max-[420px]:hidden"
+        >
+          Copy verification link
+        </CopyButton>
+        <CopyButton
+          value={domain.verificationUrl}
+          size="icon"
+          iconOnly
+          aria-label="Copy verification link"
+          className="hidden max-[420px]:flex"
+        >
           Copy verification link
         </CopyButton>
         <Button
@@ -207,7 +219,7 @@ export function DomainDetailClient({
           loading={verifyDomain.isPending}
         >
           <RefreshCw aria-hidden="true" size={13} />
-          Check now
+          <span className="max-[420px]:sr-only">Check now</span>
         </Button>
         <Menu>
           <MenuTrigger asChild>

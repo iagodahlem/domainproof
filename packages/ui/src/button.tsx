@@ -15,7 +15,7 @@ const buttonVariants = cva(
         ghost:
           'border-transparent bg-transparent text-muted-foreground hover:bg-surface-2 hover:text-foreground',
         'danger-ghost':
-          'border-danger-tint bg-transparent text-danger hover:bg-danger-soft',
+          'border-danger-tint bg-transparent text-danger hover:bg-danger-soft focus-visible:[--focus-ring-color:var(--danger)]',
       },
       size: {
         default: 'rounded-md px-4 py-2',

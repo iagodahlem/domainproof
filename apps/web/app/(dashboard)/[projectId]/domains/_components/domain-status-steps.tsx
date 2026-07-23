@@ -32,6 +32,18 @@ import { formatRelativeTime } from '@/lib/format-relative-time'
  * yet". The hosted page's stepper has no such status; this one does
  * because `Stepper`'s `StepperStepStatus` gained a `'failed'` variant
  * specifically for this page (see `packages/ui`'s `status-summary.tsx`).
+ *
+ * A hard-failed domain never lets session-only `check` data pick *which*
+ * step it stalled at. `check` resets to `null` on every reload, and the
+ * events feed that could in principle recover it is paginated oldest-first
+ * (`listDomainEvents`), so the triggering `domain.check_failed` — always
+ * among the newest events on a domain with any history — isn't reliably in
+ * the first page. Rather than have the same persisted `failed` domain claim
+ * "Propagated" broke it right after a live check and "Record added" broke
+ * it after a reload, `failed` always gets the one claim a reload can't
+ * contradict: it stalled at "Record added". `everVerified` is unaffected —
+ * a domain that reached `verified` before failing has real, persisted proof
+ * both earlier steps happened.
  */
 export function domainStatusSteps(
   domain: DomainDetail,
@@ -39,14 +51,16 @@ export function domainStatusSteps(
 ): StepperStep[] {
   const everVerified =
     domain.status === 'verified' || domain.status === 'temporarily_failed'
+  const failedTerminal = domain.status === 'failed'
   const recordAdded =
     everVerified ||
-    check?.outcome === 'found' ||
-    check?.outcome === 'wrong_value' ||
-    (check?.detected?.length ?? 0) > 0
-  const propagated = everVerified || check?.outcome === 'found'
+    (!failedTerminal &&
+      (check?.outcome === 'found' ||
+        check?.outcome === 'wrong_value' ||
+        (check?.detected?.length ?? 0) > 0))
+  const propagated =
+    everVerified || (!failedTerminal && check?.outcome === 'found')
   const verified = domain.status === 'verified'
-  const failedTerminal = domain.status === 'failed'
 
   const done = [true, recordAdded, propagated, verified]
   const firstNotDoneIndex = done.indexOf(false)
