@@ -96,14 +96,12 @@ export function AddDomainForm({
           <Button
             type="submit"
             variant="primary"
-            size="sm"
             loading={createDomain.isPending}
           >
             Add domain
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={onCancel}
             disabled={createDomain.isPending}
           >
