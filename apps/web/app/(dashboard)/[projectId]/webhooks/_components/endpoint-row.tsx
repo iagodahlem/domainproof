@@ -7,7 +7,7 @@ import {
   Badge,
   Button,
   Callout,
-  ConfirmBar,
+  ConfirmDialog,
   TableCell,
   TableRow,
   cn,
@@ -50,9 +50,10 @@ function eventsSummary(eventTypes: string[]): { label: string; extra: number } {
 /**
  * One endpoint row. Clicking it (or Enter/Space when focused) expands an
  * inline detail panel below — mode, masked signing secret, enable/disable,
- * delete (behind a `ConfirmBar`), and the endpoint's delivery log — rather
- * than navigating anywhere, matching this design system's no-modal
- * convention.
+ * delete (behind a `ConfirmDialog`, converted from an inline `ConfirmBar`
+ * for consistency with the domain detail page's delete dialog — see that
+ * PR's description), and the endpoint's delivery log — rather than
+ * navigating anywhere.
  */
 export function EndpointRow({
   projectId,
@@ -177,19 +178,22 @@ export function EndpointRow({
             </Button>
           </div>
 
-          {confirmingDelete ? (
-            <div className="mb-4">
-              <ConfirmBar
-                message="Deleting this endpoint stops all future deliveries. This can't be undone."
-                confirmLabel="Confirm delete"
-                pending={busy}
-                onCancel={() => setConfirmingDelete(false)}
-                onConfirm={handleDelete}
-              />
-            </div>
-          ) : null}
+          <ConfirmDialog
+            open={confirmingDelete}
+            onOpenChange={setConfirmingDelete}
+            title="Delete this endpoint?"
+            description="Deleting this endpoint stops all future deliveries. This can't be undone."
+            confirmLabel="Confirm delete"
+            pending={busy}
+            // Only surfaced inside the dialog while it's open (a delete
+            // attempt failing) — the row's own Callout below covers the
+            // same `error` state for a toggle-disabled failure, which
+            // never opens this dialog at all.
+            error={confirmingDelete ? error : undefined}
+            onConfirm={handleDelete}
+          />
 
-          {error ? (
+          {error && !confirmingDelete ? (
             <Callout tone="warning" className="mb-4">
               {error}
             </Callout>
