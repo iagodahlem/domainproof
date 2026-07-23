@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from './cn'
+import { THEME_STORAGE_KEY } from './theme-storage-key'
 
 type Theme = 'dark' | 'light'
-
-const STORAGE_KEY = 'dp-theme'
 
 const themeToggleVariants = cva(
   // `focus-ring` (the bare utility, not `focus-visible:`) paints
@@ -47,13 +46,13 @@ export function ThemeToggle({ variant, className }: ThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>('dark')
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
     if (stored === 'dark' || stored === 'light') setTheme(stored)
   }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    window.localStorage.setItem(STORAGE_KEY, theme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
     return () => {
       document.documentElement.removeAttribute('data-theme')
     }

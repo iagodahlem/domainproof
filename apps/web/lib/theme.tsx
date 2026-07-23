@@ -8,22 +8,29 @@ import {
   useState,
 } from 'react'
 import type { ReactNode } from 'react'
+import { THEME_STORAGE_KEY } from '@domainproof/ui'
 
 export type ThemeOverride = 'dark' | 'light'
 
-const STORAGE_KEY = 'dp_theme'
+// Superseded by @domainproof/ui's THEME_STORAGE_KEY ('dp-theme') — this app
+// used to store the theme under a different key than ThemeToggle, so a
+// choice made on one surface silently didn't apply on the other. Read once
+// for migration in NO_FOUC_THEME_SCRIPT below, then never written again.
+const LEGACY_STORAGE_KEY = 'dp_theme'
 const DEFAULT_THEME: ThemeOverride = 'dark'
 const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
 
 /**
  * Sets `data-theme` on `<html>` before React hydrates or CSS paints — the
- * standard no-FOUC pattern. Resolution order: explicit stored choice,
- * then the device's own `prefers-color-scheme`, then dark. Kept as a
- * plain string template (rather than a function this module calls) since
- * it runs as a standalone inline `<script>` in `RootLayout`'s `<head>`,
- * before React or this file loads.
+ * standard no-FOUC pattern. Resolution order: explicit stored choice
+ * (migrating a legacy-key value in place on first run), then the device's
+ * own `prefers-color-scheme`, then dark. Kept as a plain string template
+ * (rather than a function this module calls) since it runs as a standalone
+ * inline `<script>` in `RootLayout`'s `<head>`, before React or this file
+ * loads — the canonical key still comes from the imported constant via
+ * interpolation below, so it can't drift from @domainproof/ui's value.
  */
-export const NO_FOUC_THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('${STORAGE_KEY}');var t=(s==='dark'||s==='light')?s:(matchMedia('${PREFERS_LIGHT_QUERY}').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`
+export const NO_FOUC_THEME_SCRIPT = `(function(){try{var k='${THEME_STORAGE_KEY}';var s=localStorage.getItem(k);if(s===null){var legacy=localStorage.getItem('${LEGACY_STORAGE_KEY}');if(legacy==='dark'||legacy==='light'){s=legacy;localStorage.setItem(k,legacy);}localStorage.removeItem('${LEGACY_STORAGE_KEY}');}var t=(s==='dark'||s==='light')?s:(matchMedia('${PREFERS_LIGHT_QUERY}').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`
 
 const FAVICON_HREFS: Record<
   ThemeOverride,
@@ -145,7 +152,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // user makes an explicit choice, which then wins permanently.
     const mediaQuery = window.matchMedia(PREFERS_LIGHT_QUERY)
     function handleMediaChange(event: MediaQueryListEvent) {
-      if (isThemeOverride(window.localStorage.getItem(STORAGE_KEY))) return
+      if (isThemeOverride(window.localStorage.getItem(THEME_STORAGE_KEY)))
+        return
       const next: ThemeOverride = event.matches ? 'light' : 'dark'
       setThemeState(next)
       document.documentElement.setAttribute('data-theme', next)
@@ -160,7 +168,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => {
     setThemeState((current) => {
       const next: ThemeOverride = current === 'dark' ? 'light' : 'dark'
-      window.localStorage.setItem(STORAGE_KEY, next)
+      window.localStorage.setItem(THEME_STORAGE_KEY, next)
       document.documentElement.setAttribute('data-theme', next)
       applyFavicon(next)
       return next

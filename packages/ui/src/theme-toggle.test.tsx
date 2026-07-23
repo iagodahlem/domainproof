@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ThemeToggle } from './theme-toggle'
+import { THEME_STORAGE_KEY } from './theme-storage-key'
 
 // jsdom under this Node/vitest combo doesn't implement window.localStorage
 // (see the sibling CopyButton test's navigator.clipboard stub for the same
@@ -53,7 +54,7 @@ describe('ThemeToggle', () => {
     const { unmount } = render(<ThemeToggle />)
 
     await user.click(screen.getByRole('button', { name: 'View light' }))
-    expect(window.localStorage.getItem('dp-theme')).toBe('light')
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
     unmount()
 
     render(<ThemeToggle />)
