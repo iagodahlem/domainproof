@@ -109,10 +109,7 @@ export function VerificationPageClient({
   const showCloudflareFastpath = showTaskArea && data.provider === 'cloudflare'
 
   return (
-    <main
-      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- the design board's approved hosted-page container is a fixed 560px, narrower than any existing max-w-* token; matches loading.tsx's skeleton
-      className="mx-auto flex max-w-[560px] flex-col gap-8 px-6 py-12 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:py-8"
-    >
+    <main className="mx-auto flex max-w-140 flex-col gap-8 px-6 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:py-8">
       <VerifyHeader
         domain={data.domain}
         projectName={data.projectName}
