@@ -10,6 +10,8 @@ import { GoogleIcon } from './google-icon'
 
 export interface AuthCtaProps extends Pick<ButtonProps, 'size' | 'className'> {
   iconSize?: number
+  /** Hides the label below the `sm` breakpoint, leaving only the icon — for the marketing header's actions cluster, where the toggle beside it does the same so the pair stays on one row down to the smallest screens. The label stays in the DOM as `sr-only`, so the accessible name is unaffected. */
+  compact?: boolean
 }
 
 /**
@@ -18,18 +20,24 @@ export interface AuthCtaProps extends Pick<ButtonProps, 'size' | 'className'> {
  * signed-out shape (disabled) until Clerk reports its loaded state, so
  * there's never a flash of the wrong action.
  */
-export function AuthCta({ size, className, iconSize = 15 }: AuthCtaProps) {
+export function AuthCta({
+  size,
+  className,
+  iconSize = 15,
+  compact = false,
+}: AuthCtaProps) {
   const { isLoaded, isSignedIn } = useUser()
   const { signIn } = useSignIn()
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | undefined>()
+  const labelClassName = compact ? 'sr-only sm:not-sr-only' : undefined
 
   if (isLoaded && isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
         <Link href="/dashboard">
           <LayoutGrid aria-hidden="true" size={iconSize} />
-          Dashboard
+          <span className={labelClassName}>Dashboard</span>
         </Link>
       </Button>
     )
@@ -67,7 +75,7 @@ export function AuthCta({ size, className, iconSize = 15 }: AuthCtaProps) {
         onClick={() => void startGoogleSignIn()}
       >
         <GoogleIcon size={iconSize} />
-        Continue with Google
+        <span className={labelClassName}>Continue with Google</span>
       </Button>
       {error ? (
         <Callout tone="warning" className="max-w-[38ch] p-3 text-xs">

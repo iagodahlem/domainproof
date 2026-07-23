@@ -75,6 +75,7 @@ export {
   type SegmentedControlProps,
   type SegmentedControlOption,
 } from './segmented-control'
+export { ThemeToggle, type ThemeToggleProps } from './theme-toggle'
 export { TextField, type TextFieldProps } from './text-field'
 export { Select, type SelectProps, type SelectOption } from './select'
 export { Checkbox, type CheckboxProps } from './checkbox'

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Header, Logo } from '@domainproof/ui'
 import { AuthCta } from '@/components/header/auth-cta'
+import { MarketingActions } from '@/components/header/marketing-actions'
 
 export const metadata: Metadata = {
   title: 'DomainProof',
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header left={<Logo />} right={<AuthCta size="sm" iconSize={13} />} />
+      <Header left={<Logo />} right={<MarketingActions />} />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
         <div className="flex max-w-[62ch] flex-col gap-4">
