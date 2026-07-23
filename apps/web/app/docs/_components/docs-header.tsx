@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { Button, Header, Logo } from '@domainproof/ui'
+import { auth } from '@clerk/nextjs/server'
+import { Header, Logo } from '@domainproof/ui'
+import { AuthCta } from '@/components/header/auth-cta'
 
 /**
  * The real Header, variant="glass" — same instance the marketing pages and
@@ -12,12 +14,16 @@ import { Button, Header, Logo } from '@domainproof/ui'
  * one directed exception — everything else here is unchanged from the
  * board.
  *
- * Dashboard links straight to `/app` — the single resolver route that
- * lands a signed-in visitor on their active project, or bounces a
- * signed-out one to sign-in (see middleware.ts). No per-render auth check
- * or project lookup needed here.
+ * Right slot is the same AuthCta the marketing header uses — signed-in
+ * "Dashboard" / signed-out "Continue with Google", both resolving to
+ * `/app` — resolved here via its own `auth()` call rather than threading
+ * it down from the marketing layout, since docs pages aren't under that
+ * layout. `variant="default"` and `showIcon={false}` keep it pixel-identical
+ * to this button's pre-AuthCta look: a plain bordered text button, no icon.
  */
-export function DocsHeader() {
+export async function DocsHeader() {
+  const { userId } = await auth()
+
   return (
     <Header
       contentClassName="max-w-none gap-4 px-6"
@@ -32,9 +38,12 @@ export function DocsHeader() {
         </div>
       }
       right={
-        <Button asChild size="sm">
-          <Link href="/app">Dashboard</Link>
-        </Button>
+        <AuthCta
+          size="sm"
+          variant="default"
+          showIcon={false}
+          initialIsSignedIn={Boolean(userId)}
+        />
       }
     />
   )
