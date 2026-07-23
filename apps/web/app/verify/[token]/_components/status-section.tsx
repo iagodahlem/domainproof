@@ -6,6 +6,7 @@ import {
   Callout,
   Card,
   CardBody,
+  Stepper,
   StatusPill,
   type Tone,
 } from '@domainproof/ui'
@@ -17,6 +18,7 @@ import type { Verification } from '@/lib/api/frontend'
 // eslint-disable-next-line no-restricted-imports -- see note above
 import { runVerificationCheck } from '@/lib/api/frontend'
 import { describeStatus, type StatusTone } from '../_lib/status-view'
+import { verificationSteps } from '../_lib/verification-steps'
 
 export interface StatusSectionProps {
   token: string
@@ -98,6 +100,11 @@ export function StatusSection({
             </span>
           ) : null}
         </div>
+
+        <Stepper
+          steps={verificationSteps({ status: data.status, check: data.check })}
+          className="mb-4"
+        />
 
         <h2 className="text-lg font-heading">{view.heading}</h2>
         <p className="mt-2 text-sm leading-body text-text-muted">{view.body}</p>
