@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { NO_FOUC_THEME_SCRIPT } from '@/lib/theme'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -50,7 +51,15 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider signInUrl="/" signUpUrl="/">
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* Reads the stored/device theme and stamps `data-theme` before
+              first paint — must stay a plain inline script, not next/script,
+              so it runs synchronously ahead of CSS instead of being
+              deferred. suppressHydrationWarning above covers the attribute
+              it sets, which the server can't know in advance. */}
+          <script dangerouslySetInnerHTML={{ __html: NO_FOUC_THEME_SCRIPT }} />
+        </head>
         <body className="antialiased">{children}</body>
       </html>
     </ClerkProvider>

@@ -13,6 +13,17 @@ export type ThemeOverride = 'dark' | 'light'
 
 const STORAGE_KEY = 'dp_theme'
 const DEFAULT_THEME: ThemeOverride = 'dark'
+const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
+
+/**
+ * Sets `data-theme` on `<html>` before React hydrates or CSS paints — the
+ * standard no-FOUC pattern. Resolution order: explicit stored choice,
+ * then the device's own `prefers-color-scheme`, then dark. Kept as a
+ * plain string template (rather than a function this module calls) since
+ * it runs as a standalone inline `<script>` in `RootLayout`'s `<head>`,
+ * before React or this file loads.
+ */
+export const NO_FOUC_THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('${STORAGE_KEY}');var t=(s==='dark'||s==='light')?s:(matchMedia('${PREFERS_LIGHT_QUERY}').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`
 
 const FAVICON_HREFS: Record<
   ThemeOverride,
@@ -77,24 +88,27 @@ function upsertIconLink(
  * just the active one — otherwise the first toggle to the theme that
  * hasn't been rendered yet has to fetch its icon files from scratch,
  * and the tab icon doesn't visibly swap on that first click. Uses
- * `rel="preload"` (rather than e.g. an `Image()` object, which isn't
- * guaranteed to hit the same cache entry a `<link rel="icon">` reuses)
- * and id-guards each href so remounts (Fast Refresh, StrictMode) don't
- * append duplicate `<link>` nodes or refetch what's already cached.
+ * `rel="prefetch"` (rather than `rel="preload"`, which Chrome warns about
+ * when the fetched resource isn't consumed within a few seconds of load —
+ * exactly this case, since the inactive theme's icons are fetched for
+ * *later*, not immediate, use; and rather than an `Image()` object, which
+ * isn't guaranteed to hit the same cache entry a `<link rel="icon">`
+ * reuses) and id-guards each href so remounts (Fast Refresh, StrictMode)
+ * don't append duplicate `<link>` nodes or refetch what's already cached.
  */
 function preloadFavicons() {
   for (const [theme, hrefs] of Object.entries(FAVICON_HREFS)) {
-    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-svg`, hrefs.svg)
-    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-32`, hrefs.png32)
-    preloadImage(`${PRELOAD_ID_PREFIX}-${theme}-16`, hrefs.png16)
+    prefetchImage(`${PRELOAD_ID_PREFIX}-${theme}-svg`, hrefs.svg)
+    prefetchImage(`${PRELOAD_ID_PREFIX}-${theme}-32`, hrefs.png32)
+    prefetchImage(`${PRELOAD_ID_PREFIX}-${theme}-16`, hrefs.png16)
   }
 }
 
-function preloadImage(id: string, href: string) {
+function prefetchImage(id: string, href: string) {
   if (document.getElementById(id)) return
   const link = document.createElement('link')
   link.id = id
-  link.rel = 'preload'
+  link.rel = 'prefetch'
   link.as = 'image'
   link.href = href
   document.head.appendChild(link)
@@ -108,26 +122,39 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 /**
- * Global light/dark override for the dashboard. Defaults to `dark` on
- * first render (SSR-safe, and matches tokens.css's own default
- * presentation), then syncs from `localStorage` on mount — same
- * default-then-sync-from-storage pattern as `ModeProvider`. Only touches
- * `data-theme`/the favicon once an explicit preference exists; absent
- * one, both stay on their existing defaults (forced dark body,
- * system-following favicon) instead of stamping a redundant override.
+ * Global light/dark override for the dashboard. `NO_FOUC_THEME_SCRIPT`
+ * (inlined into `RootLayout`'s `<head>`) already resolves and stamps
+ * `data-theme` on `<html>` before this component ever renders, so the
+ * lazy `useState` initializer here just reads that attribute back —
+ * matching what's already painted instead of racing it. Only the favicon
+ * (a React-owned side effect, not paintable by a plain `<script>`) and a
+ * live `prefers-color-scheme` listener still need to run from an effect.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeOverride>(DEFAULT_THEME)
+  const [theme, setThemeState] = useState<ThemeOverride>(() => {
+    if (typeof document === 'undefined') return DEFAULT_THEME
+    const attr = document.documentElement.getAttribute('data-theme')
+    return isThemeOverride(attr) ? attr : DEFAULT_THEME
+  })
 
   useEffect(() => {
     preloadFavicons()
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (isThemeOverride(stored)) {
-      setThemeState(stored)
-      document.documentElement.setAttribute('data-theme', stored)
-      applyFavicon(stored)
+    applyFavicon(theme)
+
+    // Device preference changes should reflect live — but only until the
+    // user makes an explicit choice, which then wins permanently.
+    const mediaQuery = window.matchMedia(PREFERS_LIGHT_QUERY)
+    function handleMediaChange(event: MediaQueryListEvent) {
+      if (isThemeOverride(window.localStorage.getItem(STORAGE_KEY))) return
+      const next: ThemeOverride = event.matches ? 'light' : 'dark'
+      setThemeState(next)
+      document.documentElement.setAttribute('data-theme', next)
+      applyFavicon(next)
     }
-    // Runs once on mount only.
+    mediaQuery.addEventListener('change', handleMediaChange)
+    return () => mediaQuery.removeEventListener('change', handleMediaChange)
+    // Runs once on mount only — reads localStorage fresh inside the handler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const toggleTheme = useCallback(() => {
