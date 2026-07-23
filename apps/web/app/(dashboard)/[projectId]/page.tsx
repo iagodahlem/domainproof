@@ -37,17 +37,21 @@ export default async function ProjectOverviewPage({
   }
 
   try {
-    const { domains, nextCursor } = await dashboardApi.listDomains(
-      token,
-      projectId,
-      { limit: OVERVIEW_DOMAINS_LIMIT },
-    )
+    const [{ domains, nextCursor }, { endpoints }] = await Promise.all([
+      dashboardApi.listDomains(token, projectId, {
+        limit: OVERVIEW_DOMAINS_LIMIT,
+      }),
+      // No `mode` filter — the checklist only cares whether *any* endpoint
+      // exists, in either mode.
+      dashboardApi.listWebhookEndpoints(token, projectId),
+    ])
 
     return (
       <ProjectOverviewView
         project={project}
         domains={domains}
         truncated={nextCursor !== null}
+        anyWebhookRegistered={endpoints.length > 0}
       />
     )
   } catch (error) {

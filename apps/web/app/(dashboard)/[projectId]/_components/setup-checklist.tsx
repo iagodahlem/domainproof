@@ -1,0 +1,192 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import { Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Badge, cn } from '@domainproof/ui'
+import type { ProjectSummary } from '@/lib/api/dashboard'
+import { formatRelativeTime } from '@/lib/format-relative-time'
+import type { ChecklistProgress, ChecklistStepInfo } from './checklist-progress'
+import { useChecklistCollapsed } from './onboarding-storage'
+
+const STEP_NUMBER: Record<ChecklistStepInfo['id'], string> = {
+  'create-project': '1',
+  'first-run': '2',
+  'add-webhook': '3',
+}
+
+const STEP_TITLE: Record<ChecklistStepInfo['id'], string> = {
+  'create-project': 'Create your project',
+  'first-run': 'First run',
+  'add-webhook': 'Add a webhook',
+}
+
+const STEP_DESCRIPTION: Record<ChecklistStepInfo['id'], string> = {
+  'create-project': '',
+  'first-run':
+    "Pick how you're integrating — the walkthrough below adapts, and ends with a real verified sandbox domain.",
+  'add-webhook':
+    "Get notified the moment a domain's state changes. Skip for now if you're just exploring.",
+}
+
+export interface SetupChecklistProps {
+  project: ProjectSummary
+  progress: ChecklistProgress
+  /** The First-run step's own body (the integration-path tabs) — rendered inside that one row. */
+  firstRunContent: ReactNode
+}
+
+/**
+ * The Overview's "Get started" checklist — 3 steps derived entirely from
+ * real project data (see `deriveChecklistProgress`), collapsing to a slim
+ * strip once the two required steps are done. The optional third step
+ * (webhook) never blocks that collapse; a builder can still expand the
+ * strip back open by hand at any time; that manual choice — not just the
+ * data-derived default — is what persists across a reload.
+ */
+export function SetupChecklist({
+  project,
+  progress,
+  firstRunContent,
+}: SetupChecklistProps) {
+  const [collapsed, setCollapsed] = useChecklistCollapsed(
+    project.id,
+    progress.requiredDone,
+  )
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        className="mb-6 inline-flex items-center gap-3 rounded-full border border-border bg-surface py-2 pr-3 pl-2 text-sm text-muted-foreground transition-colors duration-150 hover:border-border-strong"
+      >
+        <ProgressRing doneCount={progress.doneCount} />
+        <span>
+          <strong className="font-semibold text-foreground">Setup:</strong>{' '}
+          {progress.doneCount} of 3 done
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          size={14}
+          className="text-faint-foreground"
+        />
+      </button>
+    )
+  }
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
+        <h3 className="font-heading text-foreground">Get started</h3>
+        <div className="flex items-center gap-3">
+          <span className="text-xs whitespace-nowrap text-faint-foreground">
+            {progress.doneCount} of 3 done
+          </span>
+          <span className="h-1 w-24 flex-shrink-0 overflow-hidden rounded-full bg-surface-3">
+            <span
+              className="block h-full rounded-full bg-accent"
+              style={{ width: `${(progress.doneCount / 3) * 100}%` }}
+            />
+          </span>
+          {progress.requiredDone ? (
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              aria-label="Collapse checklist"
+              className="text-faint-foreground transition-colors duration-150 hover:text-foreground"
+            >
+              <ChevronUp aria-hidden="true" size={16} />
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex flex-col">
+        {progress.steps.map((step) => (
+          <ChecklistStepRow
+            key={step.id}
+            step={step}
+            projectName={project.name}
+            projectCreatedAt={project.createdAt}
+            content={step.id === 'first-run' ? firstRunContent : null}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ProgressRing({ doneCount }: { doneCount: number }) {
+  const percent = (doneCount / 3) * 100
+  return (
+    <span
+      className="relative flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full"
+      style={{
+        background: `conic-gradient(var(--color-accent) 0% ${percent}%, var(--color-surface-3) ${percent}% 100%)`,
+      }}
+    >
+      <span className="absolute inset-1 rounded-full bg-surface" />
+    </span>
+  )
+}
+
+function ChecklistStepRow({
+  step,
+  projectName,
+  projectCreatedAt,
+  content,
+}: {
+  step: ChecklistStepInfo
+  projectName: string
+  projectCreatedAt: string
+  content: ReactNode
+}) {
+  const done = step.status === 'done'
+  const description =
+    step.id === 'create-project'
+      ? `${projectName} — created ${formatRelativeTime(projectCreatedAt)}.`
+      : STEP_DESCRIPTION[step.id]
+
+  return (
+    <div
+      className={cn(
+        'flex gap-4 border-b border-border p-5 last:border-b-0',
+        step.status === 'current' && 'bg-accent/5',
+      )}
+    >
+      <span
+        className={cn(
+          'mt-px flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 font-mono text-2xs font-bold',
+          done && 'border-success bg-success text-success-foreground',
+          step.status === 'current' &&
+            'border-accent bg-surface text-accent shadow-current',
+          step.status === 'upcoming' &&
+            'border-border-strong bg-surface text-faint-foreground',
+        )}
+      >
+        {done ? <Check aria-hidden="true" size={11} /> : STEP_NUMBER[step.id]}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-2 font-heading text-base text-foreground',
+            done && 'text-muted-foreground',
+          )}
+        >
+          {STEP_TITLE[step.id]}
+          {step.id === 'add-webhook' ? (
+            <Badge tone="neutral">Optional</Badge>
+          ) : null}
+        </div>
+        <p
+          className={cn(
+            'mt-0.5 text-sm',
+            done ? 'text-faint-foreground' : 'text-muted-foreground',
+          )}
+        >
+          {description}
+        </p>
+        {content ? <div className="mt-5">{content}</div> : null}
+      </div>
+    </div>
+  )
+}

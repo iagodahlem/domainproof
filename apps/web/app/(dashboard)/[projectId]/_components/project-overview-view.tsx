@@ -7,14 +7,18 @@ import type {
 } from '@/lib/api/dashboard'
 import { domainStatusPresentation } from '@/lib/domain-status'
 import { formatRelativeTime } from '@/lib/format-relative-time'
-import { EmptyOverview } from './empty-overview'
+import { deriveChecklistProgress } from './checklist-progress'
+import { OnboardingPanel } from './onboarding-panel'
 import { OverviewLinkCard } from './overview-link-card'
+import { SetupChecklist } from './setup-checklist'
 
 export interface ProjectOverviewViewProps {
   project: ProjectSummary
   domains: DomainListItem[]
   /** True once the domains snapshot below hit the fetch limit — the counts are a lower bound, not an exhaustive tally. */
   truncated: boolean
+  /** Whether this project has registered at least one webhook endpoint, in any mode — the checklist's third step. */
+  anyWebhookRegistered: boolean
 }
 
 // Every status worth its own badge, in the order builders scan a health
@@ -31,6 +35,7 @@ export function ProjectOverviewView({
   project,
   domains,
   truncated,
+  anyWebhookRegistered,
 }: ProjectOverviewViewProps) {
   const total = domains.length
   // `listDomains` returns both modes mixed, newest first — the first row is
@@ -47,6 +52,11 @@ export function ProjectOverviewView({
   const testCount = domains.filter((domain) => domain.mode === 'test').length
   const liveCount = total - testCount
 
+  const progress = deriveChecklistProgress({
+    anyDomainVerified: domains.some((domain) => domain.status === 'verified'),
+    anyWebhookRegistered,
+  })
+
   return (
     <div>
       <header className="mb-6">
@@ -60,9 +70,13 @@ export function ProjectOverviewView({
         </h2>
       </header>
 
-      {total === 0 ? (
-        <EmptyOverview projectId={project.id} />
-      ) : (
+      <SetupChecklist
+        project={project}
+        progress={progress}
+        firstRunContent={<OnboardingPanel projectId={project.id} />}
+      />
+
+      {total > 0 ? (
         <>
           <Card className="mb-6">
             <CardHead>
@@ -158,7 +172,7 @@ export function ProjectOverviewView({
             />
           </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }
