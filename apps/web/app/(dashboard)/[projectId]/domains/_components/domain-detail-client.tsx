@@ -183,6 +183,11 @@ export function DomainDetailClient({
   )
 
   useTopbarSlot({
+    // A domain's mode is a fixed fact, already shown in its own meta rail —
+    // the dashboard-wide toggle here is noise, not to mention it was the
+    // main reason this row wrapped onto multiple lines at normal desktop
+    // widths.
+    hideModeToggle: true,
     back: {
       href: `/${projectId}/domains`,
       label: 'Back to domains',
@@ -196,7 +201,7 @@ export function DomainDetailClient({
       </div>
     ),
     action: (
-      <div className="flex flex-wrap items-center gap-2 max-[420px]:flex-nowrap">
+      <div className="flex flex-nowrap items-center gap-2">
         <CopyButton
           value={domain.verificationUrl}
           className="max-[420px]:hidden"
