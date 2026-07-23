@@ -17,8 +17,8 @@ export const metadata: Metadata = {
  * `projectId` URL segment (there's no `/me` route) and renders the shared
  * sidebar/topbar shell around every nav route below it. A fresh account
  * with no projects goes to `/new`; an unknown/placeholder segment (e.g.
- * `/active/...`, from the `/dashboard` redirect stub) redirects to the
- * caller's first project.
+ * `/active`, the post-signin landing target) redirects to the caller's
+ * first project.
  */
 export default async function DashboardProjectLayout({
   children,

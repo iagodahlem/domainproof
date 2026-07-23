@@ -50,9 +50,9 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
     description: `email claim present by default: ${emailClaimPresent}`,
   })
 
-  // Fresh account, no projects yet: /dashboard redirects to the locked
+  // Fresh account, no projects yet: /active redirects to the locked
   // create-project screen (routing is derived from the projects list).
-  await page.goto('/dashboard')
+  await page.goto('/active')
   await expect(page).toHaveURL(/\/new$/)
   await expect(
     page.getByRole('heading', { name: 'Name your project' }),

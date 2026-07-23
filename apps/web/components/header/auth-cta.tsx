@@ -40,7 +40,7 @@ export function AuthCta({
   if (isSignedIn) {
     return (
       <Button asChild size={size} variant="primary" className={className}>
-        <Link href="/dashboard">
+        <Link href="/active">
           <LayoutGrid aria-hidden="true" size={iconSize} />
           <span className={labelClassName}>Dashboard</span>
         </Link>
@@ -56,7 +56,7 @@ export function AuthCta({
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/dashboard',
+        redirectUrlComplete: '/active',
       })
     } catch (err) {
       setStarting(false)

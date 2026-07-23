@@ -15,7 +15,7 @@ import { Button, Header, Logo } from '@domainproof/ui'
  *
  * Dashboard link resolves auth state server-side (Clerk's auth()) so a
  * signed-out visitor never bounces through Clerk's hosted sign-in page —
- * /dashboard is a protected route (see middleware.ts), so a signed-out
+ * every project route is protected (see middleware.ts), so a signed-out
  * click goes to the marketing root instead.
  */
 export async function DocsHeader() {
@@ -36,7 +36,7 @@ export async function DocsHeader() {
       }
       right={
         <Button asChild size="sm">
-          <Link href={userId ? '/dashboard' : '/'}>Dashboard</Link>
+          <Link href={userId ? '/active' : '/'}>Dashboard</Link>
         </Button>
       }
     />
