@@ -127,4 +127,8 @@
      backdrop-blur-* utilities, so mapping --blur-header here gives us
      backdrop-blur-header for sticky glass chrome (topbar-style headers). */
   --blur-header: var(--blur-header);
+
+  /* layout — the container-* namespace backs max-w-* utilities, so this
+     gives us max-w-dashboard-content. */
+  --container-dashboard-content: var(--dashboard-content-max);
 }
