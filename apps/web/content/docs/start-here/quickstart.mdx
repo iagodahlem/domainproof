@@ -76,7 +76,11 @@ Call the same endpoint again after 45 seconds have passed since the claim:
 
 ```json
 {
-  "domain": { "status": "verified", "verifiedAt": "2026-07-22T10:00:46.000Z", "...": "..." },
+  "domain": {
+    "status": "verified",
+    "verifiedAt": "2026-07-22T10:00:46.000Z",
+    "...": "..."
+  },
   "check": {
     "outcome": "found",
     "checkedAt": "2026-07-22T10:00:46.000Z"
@@ -97,7 +101,9 @@ const domainproof = new DomainProof({
   apiKey: process.env.DOMAINPROOF_API_KEY!,
 })
 
-const claim = await domainproof.domains.claim({ domain: 'pending-then-verified.test' })
+const claim = await domainproof.domains.claim({
+  domain: 'pending-then-verified.test',
+})
 if (claim.error) throw claim.error
 
 let result = await domainproof.domains.verify(claim.data.id)

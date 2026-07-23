@@ -1,5 +1,5 @@
 ---
-title: "Sandbox: verify without a real domain"
+title: 'Sandbox: verify without a real domain'
 description: The full magic-domain table, what journey each one scripts, and why .test is safe to use.
 section: Start here
 order: 2
@@ -17,14 +17,14 @@ Sandbox domains only work with a test-mode API key (`dp_test_...`). Claiming one
 
 The first label of a sandbox domain (before any `.test` suffix) selects which journey it scripts. Every journey is deterministic and timed from when the domain was claimed — nothing here depends on wall-clock time beyond that.
 
-| Domain | What happens |
-| --- | --- |
-| `verified.test` | The correct record is present from the very first check. Verifies immediately — models an owner who published the record before starting verification. |
-| `pending-then-verified.test` | Reports `not_found` (nxdomain) until 45 seconds after the claim, then the correct record appears. Models real DNS propagation delay: long enough to feel real on a polling UI, short enough to still fit inside a live demo. |
-| `wrong-value.test` | Always returns a syntactically valid but incorrect record. Every check reports `wrong_value` with a detected value that never matches the expected one — useful for exercising the expected-vs-detected diff. |
-| `nxdomain.test` | Never resolves. Every check reports `not_found`, forever — models an owner who never added the record. |
-| `flaky.test` | Alternates every 30 seconds between unreachable (a simulated timeout) and the correct record. Drives the `temporarily_failed` grace-window story and its recovery UX. |
-| `conflict.test` | Resolves the correct record immediately, exactly like `verified.test`. DNS has no notion of "this domain is already claimed by someone else" — that's enforced by the claim endpoint itself (`409 domain_already_claimed`), not simulated in DNS. Claim `conflict.test` twice under the same mode to see it. |
+| Domain                       | What happens                                                                                                                                                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `verified.test`              | The correct record is present from the very first check. Verifies immediately — models an owner who published the record before starting verification.                                                                                                                                                       |
+| `pending-then-verified.test` | Reports `not_found` (nxdomain) until 45 seconds after the claim, then the correct record appears. Models real DNS propagation delay: long enough to feel real on a polling UI, short enough to still fit inside a live demo.                                                                                 |
+| `wrong-value.test`           | Always returns a syntactically valid but incorrect record. Every check reports `wrong_value` with a detected value that never matches the expected one — useful for exercising the expected-vs-detected diff.                                                                                                |
+| `nxdomain.test`              | Never resolves. Every check reports `not_found`, forever — models an owner who never added the record.                                                                                                                                                                                                       |
+| `flaky.test`                 | Alternates every 30 seconds between unreachable (a simulated timeout) and the correct record. Drives the `temporarily_failed` grace-window story and its recovery UX.                                                                                                                                        |
+| `conflict.test`              | Resolves the correct record immediately, exactly like `verified.test`. DNS has no notion of "this domain is already claimed by someone else" — that's enforced by the claim endpoint itself (`409 domain_already_claimed`), not simulated in DNS. Claim `conflict.test` twice under the same mode to see it. |
 
 ## Parallel runs
 

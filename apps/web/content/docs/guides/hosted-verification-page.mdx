@@ -10,7 +10,9 @@ order: 4
 Every domain claim returns a `verificationUrl` — a link you can hand to whoever needs to publish the DNS record, without building any verification UI of your own:
 
 ```json
-{ "verificationUrl": "https://domainproof.dev/verify/f4h5k6m7n2p3q5r6s7t2u3v4w5" }
+{
+  "verificationUrl": "https://domainproof.dev/verify/f4h5k6m7n2p3q5r6s7t2u3v4w5"
+}
 ```
 
 The trailing segment is the claim's `frontendToken`: a 128-bit unguessable credential, distinct from the claim's own id, generated once when the domain is claimed. It authorizes exactly three things on exactly that one claim — reading its status, triggering a rate-limited recheck, and reading its event timeline — with no session and no API key involved.
@@ -37,7 +39,11 @@ curl https://frontend.api.domainproof.dev/frontend/verifications/f4h5k6m7n2p3q5r
   "projectName": "Acme",
   "provider": "unknown",
   "records": [
-    { "label": "_domainproof-challenge.example.com", "type": "TXT", "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4" }
+    {
+      "label": "_domainproof-challenge.example.com",
+      "type": "TXT",
+      "value": "domainproof-verify=n4p3q5r6s7t2u3v4w5x6y2z3a4"
+    }
   ],
   "check": { "outcome": "not_found", "checkedAt": "2026-07-22T10:00:05.000Z" },
   "updatedAt": "2026-07-22T10:00:05.000Z"

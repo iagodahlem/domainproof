@@ -47,11 +47,11 @@ Each subscribed event is delivered as an HTTP `POST` with this JSON body:
 
 Every delivery carries three headers alongside `content-type: application/json`:
 
-| Header | Value |
-| --- | --- |
-| `domainproof-webhook-id` | The delivery's id — stable across retries of the same delivery, so you can dedupe. |
-| `domainproof-webhook-timestamp` | Unix seconds at send time. |
-| `domainproof-webhook-signature` | `sha256=<hex hmac>`, computed as below. |
+| Header                          | Value                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `domainproof-webhook-id`        | The delivery's id — stable across retries of the same delivery, so you can dedupe. |
+| `domainproof-webhook-timestamp` | Unix seconds at send time.                                                         |
+| `domainproof-webhook-signature` | `sha256=<hex hmac>`, computed as below.                                            |
 
 Creating an endpoint returns its signing secret (`whsec_...`) exactly once — every later response only shows a masked form (`whsec_...ab12`). Store it when you create the endpoint; there's no way to retrieve it again later, only to rotate it.
 
