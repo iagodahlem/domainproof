@@ -77,7 +77,12 @@ export {
   type SegmentedControlOption,
 } from './segmented-control'
 export { ThemeToggle, type ThemeToggleProps } from './theme-toggle'
-export { ThemeProvider, useTheme, type ThemeOverride } from './theme-provider'
+export {
+  ThemeProvider,
+  useTheme,
+  type ThemeOverride,
+  type ThemePreference,
+} from './theme-provider'
 export { THEME_STORAGE_KEY } from './theme-storage-key'
 export { TextField, type TextFieldProps } from './text-field'
 export { Select, type SelectProps, type SelectOption } from './select'

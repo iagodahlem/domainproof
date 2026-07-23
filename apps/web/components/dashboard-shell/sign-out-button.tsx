@@ -36,6 +36,7 @@ export function SignOutButton({
   if (variant === 'menu-item') {
     return (
       <MenuItem
+        tone="danger"
         icon={<LogOut aria-hidden="true" size={14} />}
         disabled={loading}
         onSelect={(event) => {
