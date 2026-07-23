@@ -13,11 +13,20 @@ export interface HostRestrictionConfig {
   dashboardApiHost?: string
   /** e.g. `verify.domainproof.dev`. Restricts that host to `/frontend/*`. */
   frontendApiHost?: string
+  /**
+   * e.g. `mcp.domainproof.dev`. Restricts that host to `/mcp` — the
+   * hosted MCP endpoint (`apis/mcp/router.ts`), not one of the three
+   * authentication planes above, but confined to its own host the same
+   * way for the same reason: a host serving the public/dashboard/frontend
+   * planes has no business also answering MCP JSON-RPC traffic.
+   */
+  mcpHost?: string
 }
 
 const PUBLIC_PLANE_PREFIX = '/v1'
 const DASHBOARD_PLANE_PREFIX = '/dashboard'
 const FRONTEND_PLANE_PREFIX = '/frontend'
+const MCP_PREFIX = '/mcp'
 
 /**
  * Liveness check, exempt from host restriction on every host — see the
@@ -40,6 +49,7 @@ const HEALTH_CHECK_PATH = '/health'
  * - Host matches `publicApiHost` and the path isn't under `/v1` -> 404.
  * - Host matches `dashboardApiHost` and the path isn't under `/dashboard` -> 404.
  * - Host matches `frontendApiHost` and the path isn't under `/frontend` -> 404.
+ * - Host matches `mcpHost` and the path isn't `/mcp` -> 404.
  * - Everything else — an unconfigured plane, an unmatched host
  *   (`localhost`, `*.up.railway.app`), or none of the vars set at all —
  *   passes through untouched. Local dev, tests, and the Railway service
@@ -62,10 +72,10 @@ const HEALTH_CHECK_PATH = '/health'
 export function createHostRestrictionMiddleware(
   config: HostRestrictionConfig,
 ): MiddlewareHandler {
-  const { publicApiHost, dashboardApiHost, frontendApiHost } = config
+  const { publicApiHost, dashboardApiHost, frontendApiHost, mcpHost } = config
 
   return async (c, next) => {
-    if (!publicApiHost && !dashboardApiHost && !frontendApiHost) {
+    if (!publicApiHost && !dashboardApiHost && !frontendApiHost && !mcpHost) {
       await next()
       return
     }
@@ -82,7 +92,8 @@ export function createHostRestrictionMiddleware(
     const wrongPlane =
       (host === publicApiHost && !path.startsWith(PUBLIC_PLANE_PREFIX)) ||
       (host === dashboardApiHost && !path.startsWith(DASHBOARD_PLANE_PREFIX)) ||
-      (host === frontendApiHost && !path.startsWith(FRONTEND_PLANE_PREFIX))
+      (host === frontendApiHost && !path.startsWith(FRONTEND_PLANE_PREFIX)) ||
+      (host === mcpHost && !path.startsWith(MCP_PREFIX))
 
     if (wrongPlane) {
       return c.json(apiError('not_found', 'Route not found'), 404)

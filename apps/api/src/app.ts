@@ -52,6 +52,7 @@ import type { WebhookSender } from '@modules/webhooks/ports'
 import { createDashboardRouter } from '@apis/dashboard/router'
 import { createV1Router } from '@apis/v1/router'
 import { createFrontendRouter } from '@apis/frontend/router'
+import { createMcpRouter } from '@apis/mcp/router'
 import { createClerkSessionVerifier } from '@infra/auth/clerk'
 import { createDb, type Database } from '@infra/db/client'
 import {
@@ -181,6 +182,16 @@ export interface AppDependencies {
    * `shared/middlewares/host-restriction.ts`.
    */
   frontendApiHost?: string
+  /**
+   * Injected for tests; defaults to `env.MCP_API_HOST`. See
+   * `shared/middlewares/host-restriction.ts`.
+   */
+  mcpHost?: string
+  /**
+   * Injected for tests; defaults to `env.DOMAINPROOF_BASE_URL`. See
+   * `apis/mcp/router.ts`.
+   */
+  mcpBaseUrl?: string
   /**
    * Injected for tests; defaults to `env.WEB_ORIGIN`. See
    * `apis/dashboard/router.ts`'s CORS policy.
@@ -457,7 +468,7 @@ export function createApp(
   // Confines each configured plane hostname to its own path prefix — see
   // shared/middlewares/host-restriction.ts. Applied once, at the root,
   // ahead of every route below: unset in dev/tests/Railway's service
-  // domain, so this is a no-op until the two production hostnames are
+  // domain, so this is a no-op until the production hostnames are
   // configured.
   app.use(
     '*',
@@ -465,6 +476,7 @@ export function createApp(
       publicApiHost: deps.publicApiHost ?? env.PUBLIC_API_HOST,
       dashboardApiHost: deps.dashboardApiHost ?? env.DASHBOARD_API_HOST,
       frontendApiHost: deps.frontendApiHost ?? env.FRONTEND_API_HOST,
+      mcpHost: deps.mcpHost ?? env.MCP_API_HOST,
     }),
   )
 
@@ -517,6 +529,16 @@ export function createApp(
       componentSessionsService,
       providerForDomain,
       cloudflareOAuthService,
+    }),
+  )
+  // Not one of the three authentication planes above — see
+  // apis/mcp/router.ts's doc comment for why it forwards to /v1 instead
+  // of taking a service dependency the way every other plane does.
+  app.route(
+    '/mcp',
+    createMcpRouter({
+      baseUrl: deps.mcpBaseUrl ?? env.DOMAINPROOF_BASE_URL,
+      version: pkg.version,
     }),
   )
 

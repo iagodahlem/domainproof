@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@domainproof/core": "workspace:*",
+    "@domainproof/mcp": "workspace:*",
+    "@domainproof/sdk": "workspace:*",
     "@hono/node-server": "^2.0.10",
     "@hono/standard-validator": "^0.2.3",
     "@react-email/render": "^2.1.0",

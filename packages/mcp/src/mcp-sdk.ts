@@ -12,6 +12,14 @@ export { Client } from '@modelcontextprotocol/sdk/client/index.js'
 export { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 export { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 export { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+/**
+ * The Web Standards (Request/Response) flavor of the Streamable HTTP
+ * transport, not the Node req/res one — this is what lets the hosted MCP
+ * endpoint (`apps/api`'s `apis/mcp/router.ts`) hand it a Hono `c.req.raw`
+ * directly, on any Fetch-API runtime, with no Express/Node-http adapter
+ * in between.
+ */
+export { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 export type {
   CallToolResult,
   ToolAnnotations,

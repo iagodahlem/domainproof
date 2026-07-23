@@ -75,38 +75,59 @@ and every new route picks one:
 All three planes are path-based on one origin, and that origin is also
 host-restricted in production:
 
-| Host                                                                          | Serves              |
-| ----------------------------------------------------------------------------- | ------------------- |
-| `api.domainproof.dev`                                                         | `/v1/*` only        |
-| `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only |
-| `verify.domainproof.dev`                                                      | `/frontend/*` only  |
-| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | every plane         |
+| Host                                                                          | Serves               |
+| ----------------------------------------------------------------------------- | -------------------- |
+| `api.domainproof.dev`                                                         | `/v1/*` only         |
+| `dashboard.api.domainproof.dev`                                               | `/dashboard/*` only  |
+| `frontend.api.domainproof.dev`                                                | `/frontend/*` only   |
+| `mcp.domainproof.dev`                                                         | `/mcp` only          |
+| anything else (local dev, tests, Railway's `*.up.railway.app` service domain) | every plane + `/mcp` |
 
 This is enforced by `shared/middlewares/host-restriction.ts`, applied once
 at the root of `app.ts` — ahead of every plane router, since it decides
 which plane (if any) a request may reach before any plane's own auth
-middleware runs. It's driven by three optional env vars, `PUBLIC_API_HOST`,
-`DASHBOARD_API_HOST`, and `FRONTEND_API_HOST` (see `env.ts`); unset (the
-default everywhere except production) means no restriction at all, so
-local dev and tests never need `/etc/hosts` tricks to exercise any plane.
-The wrong plane on a restricted host gets a 404 through the shared error
-taxonomy, not a 403 — a 403 would confirm the other plane's routes exist
-on that host, which is exactly the information a 404 withholds. `/health`
-is the one exception: it answers on every host, restricted or not, since
-external uptime monitors hit it directly on the production hostnames
-rather than through Railway's internal healthcheck.
+middleware runs. It's driven by four optional env vars, `PUBLIC_API_HOST`,
+`DASHBOARD_API_HOST`, `FRONTEND_API_HOST`, and `MCP_API_HOST` (see
+`env.ts`); unset (the default everywhere except production) means no
+restriction at all, so local dev and tests never need `/etc/hosts` tricks
+to exercise any plane. The wrong plane on a restricted host gets a 404
+through the shared error taxonomy, not a 403 — a 403 would confirm the
+other plane's routes exist on that host, which is exactly the information
+a 404 withholds. `/health` is the one exception: it answers on every host,
+restricted or not, since external uptime monitors hit it directly on the
+production hostnames rather than through Railway's internal healthcheck.
 
 **A new plane hostname is created only when a real auth/CORS boundary
 appears, never speculatively.** `dashboard.api.domainproof.dev` earned one
 because the dashboard plane needed to be unreachable from hosts serving
-the public API — a real boundary — and `verify.domainproof.dev` earned one
-for the same reason: the Frontend API is reachable with no session and no
-api key at all, so it needs to be unreachable from the hosts that serve
-the other two authenticated planes, not because splitting hosts looked
-tidy. The path-based split (`/v1/*` vs `/dashboard/*` vs `/frontend/*`)
-remains the source of truth for which plane a route belongs to; host
-restriction is an additional production-only constraint layered on top,
-not a replacement for it.
+the public API — a real boundary — and `frontend.api.domainproof.dev`
+earned one for the same reason: the Frontend API is reachable with no
+session and no api key at all, so it needs to be unreachable from the
+hosts that serve the other two authenticated planes, not because splitting
+hosts looked tidy. The path-based split (`/v1/*` vs `/dashboard/*` vs
+`/frontend/*`) remains the source of truth for which plane a route belongs
+to; host restriction is an additional production-only constraint layered
+on top, not a replacement for it. `mcp.domainproof.dev` earned its own
+host by the same logic even though `/mcp` isn't a fourth plane (see "The
+hosted MCP endpoint" below) — a host serving one of the three
+authentication planes has no business also answering MCP JSON-RPC
+traffic, and vice versa.
+
+### The hosted MCP endpoint
+
+`apis/mcp/router.ts` mounts a single route, `/mcp`
+(`packages/mcp`'s Streamable HTTP transport, stateless — a fresh
+`McpServer` per request), host-restricted the same way the three planes
+above are but deliberately not counted as a fourth one: it has no
+authentication of its own. The caller's `Authorization: Bearer <key>`
+becomes a `@domainproof/sdk` client's api key for the duration of the
+request, and every tool call that client makes goes back out over HTTP to
+this same service's own `/v1` plane — reusing that plane's key-auth, rate
+limiting, and error taxonomy instead of a second, in-process mapping from
+MCP tool calls to module services. This is also why it doesn't fit the
+module-anatomy rules below the way a plane's route file does: it never
+imports a `modules/*` service, only `@domainproof/sdk` and
+`@domainproof/mcp`.
 
 **A plane's `router.ts` is the only place its global middleware gets
 applied.** `apis/dashboard/router.ts` mounts session auth once for the
