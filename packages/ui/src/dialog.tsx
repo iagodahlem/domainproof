@@ -111,10 +111,11 @@ export interface ConfirmDialogProps {
 
 /**
  * Destructive-action confirmation as a modal — the `ConfirmBar` of dialogs.
- * Dismissal (Escape, overlay click, the corner close button, Cancel) is
- * disabled outright while `pending`, same reasoning as `ConfirmBar`
- * disabling both its actions: a request in flight shouldn't be walked away
- * from mid-flight.
+ * Its actions are exactly Cancel and the destructive confirm button, so the
+ * corner close button never renders, pending or not. Dismissal (Escape,
+ * overlay click, Cancel) is additionally disabled outright while `pending`,
+ * same reasoning as `ConfirmBar` disabling both its actions: a request in
+ * flight shouldn't be walked away from mid-flight.
  */
 export function ConfirmDialog({
   open,
@@ -135,7 +136,7 @@ export function ConfirmDialog({
       }}
     >
       <DialogContent
-        hideClose={pending}
+        hideClose
         onEscapeKeyDown={(event) => {
           if (pending) event.preventDefault()
         }}

@@ -38,6 +38,11 @@ describe('ConfirmDialog', () => {
     expect(screen.getByRole('button', { name: 'Confirm delete' })).toBeTruthy()
   })
 
+  it('never renders the corner close button, pending or not', () => {
+    render(<ControlledConfirmDialog onConfirm={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
   it('calls onConfirm when the confirm action is clicked', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
@@ -66,12 +71,11 @@ describe('ConfirmDialog', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
-  it('disables Cancel and hides the close button while pending', () => {
+  it('disables Cancel while pending', () => {
     render(<ControlledConfirmDialog onConfirm={() => {}} pending />)
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty(
       'disabled',
       true,
     )
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
   })
 })
