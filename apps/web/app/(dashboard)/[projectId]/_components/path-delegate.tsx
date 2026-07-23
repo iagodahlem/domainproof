@@ -18,7 +18,7 @@ export interface PathDelegateProps {
  */
 export function PathDelegate({ prompt }: PathDelegateProps) {
   return (
-    <details className="group flex-shrink-0">
+    <details className="group flex-shrink-0 open:w-full">
       <summary className="flex cursor-pointer list-none items-center gap-2 py-1 text-xs font-semibold whitespace-nowrap text-faint-foreground transition-colors duration-150 hover:text-muted-foreground [&::-webkit-details-marker]:hidden">
         Prefer to delegate? Hand this path to your agent
         <ChevronDown

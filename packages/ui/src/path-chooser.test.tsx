@@ -45,7 +45,7 @@ describe('PathChooser', () => {
     expect(onChange).toHaveBeenCalledWith('hosted')
   })
 
-  it('stacks into full-width cards under 780px instead of wrapping text', () => {
+  it('stacks into full-width cards under 780px of its own rendered width, not the viewport', () => {
     render(
       <PathChooser
         options={OPTIONS}
@@ -57,10 +57,15 @@ describe('PathChooser', () => {
     expect(screen.getByTestId('chooser').className).toContain('flex-nowrap')
     expect(screen.getByTestId('chooser').className).not.toContain('flex-wrap')
     expect(screen.getByTestId('chooser').className).toContain(
-      'max-[780px]:flex-col',
+      '@max-[780px]:flex-col',
     )
     expect(screen.getByRole('tab', { name: /API/ }).className).toContain(
-      'max-[780px]:w-full',
+      '@max-[780px]:w-full',
+    )
+    // A container query only applies once an ancestor declares the
+    // containment context — without this, `@max-[780px]` would never match.
+    expect(screen.getByTestId('chooser').parentElement?.className).toContain(
+      '@container',
     )
   })
 

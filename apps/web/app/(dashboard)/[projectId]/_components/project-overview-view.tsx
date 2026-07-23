@@ -1,6 +1,7 @@
 import { Activity, Globe, Zap } from 'lucide-react'
 import { Badge, Card, CardBody, CardHead } from '@domainproof/ui'
 import type {
+  DomainDetail,
   DomainListItem,
   DomainStatus,
   ProjectSummary,
@@ -19,6 +20,8 @@ export interface ProjectOverviewViewProps {
   truncated: boolean
   /** Whether this project has registered at least one webhook endpoint, in any mode — the checklist's third step. */
   anyWebhookRegistered: boolean
+  /** The sandbox domain the First-run walkthrough claims, if it already has been — the walkthrough's source of truth so its state survives a remount. */
+  initialClaimedDomain: DomainDetail | null
 }
 
 // Every status worth its own badge, in the order builders scan a health
@@ -36,6 +39,7 @@ export function ProjectOverviewView({
   domains,
   truncated,
   anyWebhookRegistered,
+  initialClaimedDomain,
 }: ProjectOverviewViewProps) {
   const total = domains.length
   // `listDomains` returns both modes mixed, newest first — the first row is
@@ -73,7 +77,12 @@ export function ProjectOverviewView({
       <SetupChecklist
         project={project}
         progress={progress}
-        firstRunContent={<OnboardingPanel projectId={project.id} />}
+        firstRunContent={
+          <OnboardingPanel
+            projectId={project.id}
+            initialClaimedDomain={initialClaimedDomain}
+          />
+        }
       />
 
       {total > 0 ? (

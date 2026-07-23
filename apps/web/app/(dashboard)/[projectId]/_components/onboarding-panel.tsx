@@ -84,6 +84,14 @@ function conflictMessage(): string {
 
 export interface OnboardingPanelProps {
   projectId: string
+  /**
+   * The sandbox domain the walkthrough claims, as it stood on the server
+   * when this panel's parent tree last rendered — the source of truth for
+   * `claimedDomain`'s initial value so collapsing/re-expanding the
+   * checklist (which unmounts and remounts this panel) or a reload doesn't
+   * forget a domain that's already been claimed.
+   */
+  initialClaimedDomain: DomainDetail | null
 }
 
 /**
@@ -94,9 +102,14 @@ export interface OnboardingPanelProps {
  * way; the Agents & CLI path doesn't participate in that state at all (see
  * `onboarding-agents-path.tsx`).
  */
-export function OnboardingPanel({ projectId }: OnboardingPanelProps) {
+export function OnboardingPanel({
+  projectId,
+  initialClaimedDomain,
+}: OnboardingPanelProps) {
   const [activePath, setActivePath] = useOnboardingTab(projectId)
-  const [claimedDomain, setClaimedDomain] = useState<DomainDetail | null>(null)
+  const [claimedDomain, setClaimedDomain] = useState<DomainDetail | null>(
+    initialClaimedDomain,
+  )
   const [claimError, setClaimError] = useState<string | undefined>()
 
   const createDomain = useCreateDomain(projectId)
