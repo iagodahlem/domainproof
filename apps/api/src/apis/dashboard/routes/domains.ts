@@ -58,8 +58,6 @@ const RECORD_TYPE_BY_METHOD: Record<string, string> = {
   dns_txt: 'TXT',
 }
 
-const VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
-
 const INVALID_DOMAIN_MESSAGES: Record<string, string> = {
   empty: 'Domain is required.',
   invalid_format: 'Domain is not a valid hostname.',
@@ -141,17 +139,22 @@ function serializeDomainSummary(summary: DomainSummary) {
 /**
  * The dashboard's domain detail view: the summary fields plus the current
  * challenge's record instructions (what to publish to prove ownership) and
- * the hosted verification portal's URL, mirroring the public API's
+ * the claim's raw `frontendToken`, mirroring the public API's
  * `records`-as-data shape (`apis/v1/routes/domains.ts`'s `serializeDomain`)
  * but without that route's API-consumer-facing copy — the dashboard UI
- * writes its own. Also the create/verify/regenerate/delete write routes'
+ * writes its own. Unlike `apis/v1`'s `verificationUrl`, this plane returns
+ * the bare token rather than a pre-built absolute URL: the api has no way
+ * to know which origin (local/preview/prod) the signed-in browser is
+ * actually on, so the web app builds `/verify/${frontendToken}` itself,
+ * relative for links and against its own origin for anything copied as an
+ * absolute string. Also the create/verify/regenerate/delete write routes'
  * response shape, not just this file's read routes — one serializer for
  * every route that returns a full domain.
  */
 function serializeDomainDetail(summary: DomainSummary) {
   return {
     ...serializeDomainSummary(summary),
-    verificationUrl: `${VERIFICATION_BASE_URL}/${summary.frontendToken}`,
+    frontendToken: summary.frontendToken,
     records: summary.challenges.map((challenge) => ({
       type: RECORD_TYPE_BY_METHOD[challenge.method] ?? challenge.method,
       name: challenge.recordHost,

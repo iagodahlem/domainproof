@@ -115,7 +115,7 @@ interface DomainResponseBody {
     mode: string
     status: string
     external_id: string | null
-    verificationUrl: string
+    frontendToken: string
     records: Array<{
       type: string
       name: string
@@ -647,7 +647,7 @@ describe('/dashboard/projects/:projectId/domains', () => {
       expect(res.status).toBe(401)
     })
 
-    it('claims a domain with a TXT record and a hosted verification URL', async () => {
+    it('claims a domain with a TXT record and its Frontend API token', async () => {
       const app = buildApp()
       const clerkUserId = freshClerkUserId()
       const projectId = await createProject(app, clerkUserId)
@@ -660,13 +660,13 @@ describe('/dashboard/projects/:projectId/domains', () => {
       expect(body.domain.domain).toBe('example.test')
       expect(body.domain.mode).toBe('test')
       expect(body.domain.status).toBe('pending')
-      // Embeds the domain's Frontend API token, not its internal id — see
+      // The raw Frontend API token, not its internal id — see
       // `infra/db/schema.ts`'s `frontendToken` doc comment for why the two
-      // are deliberately different values.
-      expect(body.domain.verificationUrl).toMatch(
-        /^https:\/\/domainproof\.dev\/verify\/[a-z2-7]{26}$/,
-      )
-      expect(body.domain.verificationUrl).not.toContain(body.domain.id)
+      // are deliberately different values. Unlike `/v1/domains`, this
+      // plane returns the bare token rather than a pre-built absolute URL
+      // — see `serializeDomainDetail`'s doc comment.
+      expect(body.domain.frontendToken).toMatch(/^[a-z2-7]{26}$/)
+      expect(body.domain.frontendToken).not.toBe(body.domain.id)
       expect(body.domain.records).toHaveLength(1)
       expect(body.domain.records[0]?.type).toBe('TXT')
       expect(body.domain.records[0]?.status).toBe('pending')

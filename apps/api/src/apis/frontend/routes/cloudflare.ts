@@ -7,14 +7,7 @@ import type {
 } from '@modules/cloudflare/service'
 import { apiError } from '@shared/http-errors'
 import { errorResponse } from '@shared/openapi'
-
-/**
- * Matches `apis/v1/routes/domains.ts`/`apis/dashboard/routes/domains.ts`'s
- * own `VERIFICATION_BASE_URL` — duplicated locally rather than shared,
- * same convention those two files already use (a display/redirect-only
- * value, not worth a shared constant module for three call sites).
- */
-const VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
+import { buildVerificationUrl } from '@shared/verification-url'
 
 /**
  * Documentation only — Cloudflare's own redirect, not a request this api
@@ -72,7 +65,7 @@ function hostedRedirectUrl(
   frontendToken: string,
   outcome: CloudflareCallbackOutcome,
 ): string {
-  return `${VERIFICATION_BASE_URL}/${frontendToken}?cloudflare=${outcome}`
+  return `${buildVerificationUrl(frontendToken)}?cloudflare=${outcome}`
 }
 
 /**
