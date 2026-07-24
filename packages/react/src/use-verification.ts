@@ -24,6 +24,7 @@ export interface UseVerificationOptions {
   /** Forwarded to the underlying backoff scheduler — see `useBoundedPoll`. */
   intervalsMs?: readonly number[]
   maxAttempts?: number
+  longTailIntervalMs?: number
 }
 
 export interface UseVerificationResult {
@@ -58,7 +59,12 @@ export function useVerification(
   token: string | null,
   options: UseVerificationOptions = {},
 ): UseVerificationResult {
-  const { autoPoll = true, intervalsMs, maxAttempts } = options
+  const {
+    autoPoll = true,
+    intervalsMs,
+    maxAttempts,
+    longTailIntervalMs,
+  } = options
   const baseUrl = useDomainProofBaseUrl(options.baseUrl)
 
   const [verification, setVerification] = useState<Verification | null>(null)
@@ -168,6 +174,7 @@ export function useVerification(
   const { isPolling } = useBoundedPoll(runCheck, shouldPoll, {
     intervalsMs,
     maxAttempts,
+    longTailIntervalMs,
   })
 
   const verify = useCallback(async () => {

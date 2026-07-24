@@ -54,6 +54,14 @@ type Phase = 'idle' | 'scanning' | 'unreachable' | 'report'
 const MIN_SCAN_DISPLAY_MS = 900
 const STATUS_POLL_INTERVAL_MS = 5000
 const STATUS_POLL_MAX_ATTEMPTS = 40
+/**
+ * Cadence once `STATUS_POLL_MAX_ATTEMPTS` ticks at the normal interval have
+ * fired. Real DNS propagation can easily outlast that window, so this poll
+ * never stops on its own while the claim is still pending — it only slows
+ * down. `status?.verified` turning `true` is what actually ends it (see the
+ * effect below).
+ */
+const STATUS_POLL_LONG_TAIL_INTERVAL_MS = 60_000
 
 export function SitegradeApp() {
   const router = useRouter()
@@ -258,21 +266,72 @@ export function SitegradeApp() {
     }
   }, [])
 
+  // Drives `refreshStatus` on a schedule that never dies while the claim is
+  // still pending: quick at first, then — past `STATUS_POLL_MAX_ATTEMPTS` —
+  // settling onto a slow long tail instead of stopping, since a real DNS
+  // provider can easily outlast the fast phase. Only `status?.verified`
+  // turning `true` (this effect's own guard above, re-run via the
+  // dependency below) ends it for good. Also re-checks immediately the
+  // moment the tab regains visibility or focus, rather than leaving it to
+  // whatever's left of the current tick's wait — a backgrounded tab's
+  // timers are throttled by the browser anyway, so the schedule alone
+  // can't be trusted to notice a regain promptly.
   useEffect(() => {
     if (!claim || status?.verified) return
 
+    let cancelled = false
     let attempts = 0
-    void refreshStatus()
-    const interval = setInterval(() => {
-      attempts += 1
-      if (attempts >= STATUS_POLL_MAX_ATTEMPTS) {
-        clearInterval(interval)
-        return
-      }
-      void refreshStatus()
-    }, STATUS_POLL_INTERVAL_MS)
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    // Guards against `visibilitychange` and `focus` both firing for the
+    // same regain and running two immediate re-checks instead of one.
+    let regainInFlight = false
 
-    return () => clearInterval(interval)
+    function scheduleNext() {
+      const delay =
+        attempts >= STATUS_POLL_MAX_ATTEMPTS
+          ? STATUS_POLL_LONG_TAIL_INTERVAL_MS
+          : STATUS_POLL_INTERVAL_MS
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined
+        if (cancelled) return
+        attempts += 1
+        void refreshStatus().then(() => {
+          if (!cancelled) scheduleNext()
+        })
+      }, delay)
+    }
+
+    function regain() {
+      if (cancelled || regainInFlight) return
+      regainInFlight = true
+      Promise.resolve().then(() => {
+        regainInFlight = false
+      })
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId)
+        timeoutId = undefined
+      }
+      attempts += 1
+      void refreshStatus().then(() => {
+        if (!cancelled) scheduleNext()
+      })
+    }
+
+    function handleVisibilityChange() {
+      if (!document.hidden) regain()
+    }
+
+    void refreshStatus()
+    scheduleNext()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', regain)
+
+    return () => {
+      cancelled = true
+      if (timeoutId !== undefined) clearTimeout(timeoutId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', regain)
+    }
   }, [claim, status?.verified, refreshStatus])
 
   function handleWidgetVerified(verification: Verification) {
