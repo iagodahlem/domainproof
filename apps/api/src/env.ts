@@ -47,6 +47,20 @@ const envSchema = z.object({
   // keeps local dev (web on whatever port) and tests working without
   // configuration.
   WEB_ORIGIN: z.string().url().optional(),
+  // Optional. Base URL the hosted verification page's links are built
+  // against — the public v1 API's `verificationUrl`, the Cloudflare
+  // one-click callback's redirect, and anywhere else this service builds
+  // an absolute link to `/verify/:token` (see `shared/verification-url.ts`).
+  // Includes the `/verify` path itself, not just the origin. Defaults to
+  // this service's production hosted page; staging/preview deploys point
+  // it at their own web app's `/verify` path instead. The dashboard plane
+  // doesn't use this — it returns the raw `frontendToken` and the
+  // session-authenticated web app builds the link from its own origin,
+  // since the api has no way to know which origin a browser is on.
+  VERIFICATION_BASE_URL: z
+    .string()
+    .url()
+    .default('https://domainproof.dev/verify'),
   // Optional: unset means the email notification subscribers aren't
   // registered at all (see `app.ts`) — a clean log-and-skip, not a crash,
   // since dev/test environments won't have this configured. See

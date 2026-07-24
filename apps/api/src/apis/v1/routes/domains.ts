@@ -18,6 +18,7 @@ import {
   toJsonSchema,
   toParameters,
 } from '@shared/openapi'
+import { buildVerificationUrl } from '@shared/verification-url'
 
 // 253 is the maximum length of a fully-qualified DNS domain name (RFC
 // 1035/1123: 255 octets on the wire, minus 2 for the root label and
@@ -70,8 +71,6 @@ const claimDomainBodySchema = z.object({
   domain: z.string().min(1).max(MAX_DOMAIN_LENGTH),
   external_id: z.string().min(1).max(MAX_EXTERNAL_ID_LENGTH).optional(),
 })
-
-const VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
 
 const INVALID_DOMAIN_MESSAGES: Record<string, string> = {
   empty: 'Domain is required.',
@@ -169,7 +168,7 @@ function serializeDomain(summary: DomainSummary) {
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
     verifiedAt: summary.verifiedAt,
-    verificationUrl: `${VERIFICATION_BASE_URL}/${summary.frontendToken}`,
+    verificationUrl: buildVerificationUrl(summary.frontendToken),
     records: summary.challenges.map((challenge) => ({
       type: RECORD_TYPE_BY_METHOD[challenge.method] ?? challenge.method,
       name: challenge.recordHost,

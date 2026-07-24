@@ -130,10 +130,10 @@ function createProviderForDomain(): ProviderForDomain {
  * The Cloudflare one-click DNS setup flow's fixed redirect URI — must
  * exactly match what's registered on the Cloudflare OAuth client (see
  * README's Cloudflare setup section). Hardcoded rather than derived from
- * `env.FRONTEND_API_HOST` (unset outside production, same as
- * `VERIFICATION_BASE_URL` in `apis/v1/routes/domains.ts`/`apis/dashboard/routes/domains.ts`)
- * — this is a display/redirect-only value, never dereferenced by this
- * process itself, so there's no local/staging variant to wire up here.
+ * `env.FRONTEND_API_HOST` (unset outside production) — this is a
+ * display/redirect-only value, never dereferenced by this process itself,
+ * so there's no local/staging variant to wire up here the way `env.ts`'s
+ * `VERIFICATION_BASE_URL` needs one.
  */
 const CLOUDFLARE_OAUTH_REDIRECT_URI =
   env.CLOUDFLARE_OAUTH_REDIRECT_URI ??
