@@ -45,7 +45,7 @@ export function PathChooser({
             aria-selected={active}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex w-max shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
+              'flex flex-1 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
               active && 'border-accent bg-accent-soft',
             )}
           >

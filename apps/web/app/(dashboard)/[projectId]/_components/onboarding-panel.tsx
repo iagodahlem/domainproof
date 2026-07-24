@@ -138,7 +138,7 @@ export function OnboardingPanel({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-4xl">
       <Callout tone="accent" className="flex items-start gap-3">
         <Sparkles
           aria-hidden="true"
