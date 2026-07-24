@@ -25,17 +25,19 @@ export function OutcomeCard({ tone, heading, body, check }: OutcomeCardProps) {
   const Icon = tone === 'success' ? Check : AlertCircle
   return (
     <Callout tone={tone} className="flex flex-col items-start">
-      <span
-        className={cn(
-          'mb-4 flex h-8.5 w-8.5 items-center justify-center rounded-full',
-          ICON_WRAP_CLASS_BY_TONE[tone],
-        )}
-      >
-        <Icon aria-hidden="true" size={17} />
-      </span>
-      <h3 className="mb-2 text-xl leading-heading-loose font-heading text-foreground">
-        {heading}
-      </h3>
+      <div className="mb-2 flex items-center gap-3">
+        <span
+          className={cn(
+            'flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full',
+            ICON_WRAP_CLASS_BY_TONE[tone],
+          )}
+        >
+          <Icon aria-hidden="true" size={16} />
+        </span>
+        <h3 className="text-xl leading-heading-loose font-heading text-foreground">
+          {heading}
+        </h3>
+      </div>
       <p className="max-w-[50ch] text-sm text-muted-foreground">{body}</p>
       {check ? (
         <div className="mt-4 flex w-full flex-col gap-2 rounded-md border border-border bg-background p-4 font-mono text-xs">
