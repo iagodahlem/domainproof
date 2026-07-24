@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { cva } from 'class-variance-authority'
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { BookOpen, Monitor, Moon, Sun } from 'lucide-react'
 import {
   Menu,
   MenuContent,
@@ -92,6 +93,9 @@ export function UserMenu({
           </span>
         </div>
         <MenuSeparator />
+        <MenuItem asChild icon={<BookOpen aria-hidden="true" size={14} />}>
+          <Link href="/docs">Docs</Link>
+        </MenuItem>
         <SignOutButton variant="menu-item" />
         <MenuSeparator />
         <ThemeFooterRow />
