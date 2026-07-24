@@ -50,7 +50,8 @@ export interface DomainRecord {
 }
 
 export interface DomainDetail extends DomainSummary {
-  verificationUrl: string
+  /** The claim's Frontend API credential — build a hosted link with `/verify/${frontendToken}` against this app's own origin rather than trusting an api-provided absolute URL, since the api can't know which origin (local/preview/prod) the browser is on. */
+  frontendToken: string
   records: DomainRecord[]
 }
 
