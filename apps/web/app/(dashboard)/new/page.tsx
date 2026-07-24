@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { Button, CenteredMain, Header, Logo, cn } from '@domainproof/ui'
+import { CenteredMain, Header, Logo, cn } from '@domainproof/ui'
 import { dashboardApi, type ProjectSummary } from '@/lib/api/dashboard'
 import { CREATE_PROJECT_CARD_WIDTH } from '@/lib/create-project-card-width'
 import { CreateProjectFlow } from './_components/create-project-flow'
@@ -14,8 +12,8 @@ export const metadata: Metadata = {
 }
 
 /**
- * Create-project screen (D-045): a fresh account has no project yet, so it
- * lands here and stays here — no nav, nothing else to click. The dashboard
+ * Create-project screen: a fresh account has no project yet, so it lands
+ * here and stays here — no nav, nothing else to click. The dashboard
  * shell's project switcher also routes its "New project" item here, so a
  * caller with existing projects can reach it too — routing is derived from
  * the projects list either way (no `/me` route).
@@ -27,7 +25,9 @@ export const metadata: Metadata = {
  * confirmed to be one of the caller's own projects (below), which is also
  * exactly the condition under which a first-signup caller (no projects at
  * all) naturally gets no back control — there's nothing valid for `from`
- * to resolve to.
+ * to resolve to. `CreateProjectFlow` only renders the resulting back link
+ * on the pre-creation form and drops it (URL included) once creation
+ * succeeds — see its own doc comment.
  */
 export default async function NewProjectPage({
   searchParams,
@@ -81,17 +81,14 @@ export default async function NewProjectPage({
               CREATE_PROJECT_CARD_WIDTH,
             )}
           >
-            {previousProject ? (
-              <Button asChild variant="ghost" size="sm" className="self-start">
-                <Link href={`/${previousProject.id}`}>
-                  <ArrowLeft aria-hidden="true" size={14} />
-                  Back to {previousProject.name}
-                </Link>
-              </Button>
-            ) : null}
             <CreateProjectFlow
               hasExistingProjects={projects.length > 0}
               namePrefill={namePrefill}
+              previousProject={
+                previousProject
+                  ? { id: previousProject.id, name: previousProject.name }
+                  : undefined
+              }
             />
           </div>
         )}

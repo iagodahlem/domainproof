@@ -80,6 +80,7 @@ export function ProjectSwitcher({
             asChild
             active={project.id === activeProject.id}
             icon={<LayoutGrid aria-hidden="true" size={14} />}
+            secondary={project.slug}
           >
             <Link href={`/${project.id}`}>{project.name}</Link>
           </MenuItem>

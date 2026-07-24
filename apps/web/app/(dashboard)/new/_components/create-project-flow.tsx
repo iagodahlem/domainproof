@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Button, Callout, Card, CardBody, TextField, cn } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import { useCreateProject } from '@/lib/query/projects'
@@ -15,6 +17,14 @@ export interface CreateProjectFlowProps {
   hasExistingProjects?: boolean
   /** First-signup only: a suggested name (derived from the caller's Clerk profile) pre-filled into the field but fully editable. Omitted for the switcher-created flow, which starts blank. */
   namePrefill?: string
+  /**
+   * The validated `?from` project to offer as a bail-out back link — only
+   * shown on the pre-creation form. Once creation succeeds the handoff
+   * screen is about the new project, not this one, so it's never rendered
+   * there and the `?from` param is stripped from the URL so a refresh or
+   * back-nav can't resurrect it.
+   */
+  previousProject?: { id: string; name: string }
 }
 
 /**
@@ -26,12 +36,19 @@ export interface CreateProjectFlowProps {
 export function CreateProjectFlow({
   hasExistingProjects = false,
   namePrefill,
+  previousProject,
 }: CreateProjectFlowProps) {
   const router = useRouter()
   const [name, setName] = useState(namePrefill ?? '')
   const [fieldError, setFieldError] = useState<string | undefined>()
 
   const createProject = useCreateProject()
+
+  useEffect(() => {
+    if (createProject.data && previousProject) {
+      window.history.replaceState(null, '', '/new')
+    }
+  }, [createProject.data, previousProject])
 
   if (createProject.data) {
     const result = createProject.data
@@ -63,57 +80,67 @@ export function CreateProjectFlow({
   }
 
   return (
-    <Card className={cn('w-full', CREATE_PROJECT_CARD_WIDTH)}>
-      <CardBody className="p-8 max-[640px]:p-6">
-        <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
-          Before you continue
-        </p>
-        <h3 className="mt-1 text-xl font-heading text-foreground">
-          Name your project
-        </h3>
-        <p className="mt-2 text-sm leading-body text-muted-foreground">
-          {hasExistingProjects ? (
-            <>
-              Projects group your API keys, domains, and webhooks — add another
-              one for a separate product or environment.
-            </>
-          ) : (
-            <>
-              Projects group your API keys, domains, and webhooks. You&rsquo;re
-              creating your first one now — add more later if you&rsquo;re
-              running multiple products.
-            </>
-          )}
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-2">
-          <TextField
-            label="Project name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            error={fieldError}
-            autoComplete="off"
-            autoFocus
-          />
-          <p className="flex flex-wrap items-center gap-1 font-mono text-xs text-faint-foreground">
-            Derived DNS record:
-            <strong className="font-medium text-muted-foreground">
-              _{slugPreview(name)}-challenge.example.com
-            </strong>
+    <>
+      {previousProject ? (
+        <Button asChild variant="ghost" size="sm" className="self-start">
+          <Link href={`/${previousProject.id}`}>
+            <ArrowLeft aria-hidden="true" size={14} />
+            Back to {previousProject.name}
+          </Link>
+        </Button>
+      ) : null}
+      <Card className={cn('w-full', CREATE_PROJECT_CARD_WIDTH)}>
+        <CardBody className="p-8 max-[640px]:p-6">
+          <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
+            Before you continue
+          </p>
+          <h3 className="mt-1 text-xl font-heading text-foreground">
+            Name your project
+          </h3>
+          <p className="mt-2 text-sm leading-body text-muted-foreground">
+            {hasExistingProjects ? (
+              <>
+                Projects group your API keys, domains, and webhooks — add
+                another one for a separate product or environment.
+              </>
+            ) : (
+              <>
+                Projects group your API keys, domains, and webhooks.
+                You&rsquo;re creating your first one now — add more later if
+                you&rsquo;re running multiple products.
+              </>
+            )}
           </p>
 
-          {formError ? <Callout tone="warning">{formError}</Callout> : null}
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-2">
+            <TextField
+              label="Project name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              error={fieldError}
+              autoComplete="off"
+              autoFocus
+            />
+            <p className="flex flex-wrap items-center gap-1 font-mono text-xs text-faint-foreground">
+              Derived DNS record:
+              <strong className="font-medium text-muted-foreground">
+                _{slugPreview(name)}-challenge.example.com
+              </strong>
+            </p>
 
-          <Button
-            type="submit"
-            variant="primary"
-            loading={createProject.isPending}
-            className="mt-4 w-full justify-center"
-          >
-            Continue
-          </Button>
-        </form>
-      </CardBody>
-    </Card>
+            {formError ? <Callout tone="warning">{formError}</Callout> : null}
+
+            <Button
+              type="submit"
+              variant="primary"
+              loading={createProject.isPending}
+              className="mt-4 w-full justify-center"
+            >
+              Continue
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
+    </>
   )
 }

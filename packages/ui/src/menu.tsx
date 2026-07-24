@@ -88,6 +88,13 @@ export interface MenuItemProps
     VariantProps<typeof menuItemVariants> {
   icon?: ReactNode
   /**
+   * Optional trailing text rendered as its own flex item after the main
+   * label, e.g. a slug that disambiguates two items sharing a label — kept
+   * outside the label's own truncating span so the label shrinks first and
+   * this stays fully visible.
+   */
+  secondary?: ReactNode
+  /**
    * Skips the icon/label/check composition and `menuItemVariants` styling
    * entirely, passing `children` straight through as the sole `asChild`
    * target — for registering an already-fully-styled interactive element
@@ -112,6 +119,7 @@ export const MenuItem = forwardRef<
     active = false,
     iconOnly = false,
     icon,
+    secondary,
     children,
     asChild = false,
     bare = false,
@@ -150,6 +158,11 @@ export const MenuItem = forwardRef<
   const checkEl = active ? (
     <Check aria-hidden="true" size={14} className="shrink-0 text-accent" />
   ) : null
+  const secondaryEl = secondary ? (
+    <span className="max-w-[16ch] shrink-0 truncate font-mono text-xs text-faint-foreground">
+      {secondary}
+    </span>
+  ) : null
 
   // Radix's Slot (used under `asChild`) requires exactly one element
   // child — so the icon/label/check can't be siblings of that element
@@ -164,6 +177,7 @@ export const MenuItem = forwardRef<
       <>
         {iconEl}
         <span className="flex-1 truncate">{children.props.children}</span>
+        {secondaryEl}
         {checkEl}
       </>,
     )
@@ -171,6 +185,7 @@ export const MenuItem = forwardRef<
     <>
       {iconEl}
       <span className="flex-1 truncate">{children}</span>
+      {secondaryEl}
       {checkEl}
     </>
   )

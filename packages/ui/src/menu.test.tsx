@@ -83,4 +83,22 @@ describe('Menu', () => {
     expect(link.tagName).toBe('A')
     expect(link.getAttribute('href')).toBe('/projects/1')
   })
+
+  it('renders secondary text as its own element, alongside a truncating label rather than nested inside it', async () => {
+    const user = userEvent.setup()
+    render(
+      <Menu>
+        <MenuTrigger>Projects</MenuTrigger>
+        <MenuContent>
+          <MenuItem asChild secondary="acme-x7k9p2">
+            <a href="/projects/2">Acme</a>
+          </MenuItem>
+        </MenuContent>
+      </Menu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Projects' }))
+    const item = screen.getByRole('menuitem')
+    expect(item.textContent).toContain('Acme')
+    expect(item.textContent).toContain('acme-x7k9p2')
+  })
 })
