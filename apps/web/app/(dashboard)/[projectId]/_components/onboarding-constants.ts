@@ -1,9 +1,11 @@
 /**
  * The First-run walkthrough's sandbox domain — seeded to go from `pending`
- * to `verified` in about 45 seconds with no real DNS involved (see the
- * `.test` fixture resolver in `apps/api/src/infra/dns/sandbox.ts`). Shared
- * across every integration-path tab and the Agents & CLI prompt so the
- * whole walkthrough tells one consistent story.
+ * to `verified` in about 15 seconds with no real DNS involved (see the
+ * `.test` fixture resolver in `apps/api/src/infra/dns/sandbox.ts`, and this
+ * directory's own `use-bounded-poll.ts`, which drives the active auto-check
+ * that catches it that fast). Shared across every integration-path tab and
+ * the Agents & CLI prompt so the whole walkthrough tells one consistent
+ * story.
  */
 export const SANDBOX_DOMAIN = 'pending-then-verified.test'
 

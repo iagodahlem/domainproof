@@ -44,7 +44,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   await page.getByRole('link', { name: 'Domains', exact: true }).click()
   await expect(page).toHaveURL(/\/domains$/)
 
-  // --- Domain 1: pending-then-verified.test (stays pending ~45s) ---
+  // --- Domain 1: pending-then-verified.test (stays pending ~12s) ---
   await page.getByRole('button', { name: 'Add domain' }).click()
   await page
     .getByLabel('Domain', { exact: true })
@@ -261,7 +261,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  // --- Back to domain 1: wait out its 45s propagation window, confirm the
+  // --- Back to domain 1: wait out its 12s propagation window, confirm the
   // auto-check schedule (not a manual click) flips it to verified. Scoped
   // to the header's status badge specifically — the stepper's 4th step is
   // *always* labeled "Verified", reached or not, so an unscoped match would

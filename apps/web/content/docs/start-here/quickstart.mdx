@@ -57,7 +57,7 @@ curl -X POST https://api.domainproof.dev/v1/domains/3f2a1c4e-8b6d-4a1f-9c2e-7d5b
   -H "Authorization: Bearer dp_test_k7h2m5p3qrtx_a3b4c5d6e7f2g3h4i5j6k7l2m3"
 ```
 
-For the first 45 seconds after the claim, this sandbox domain reports the record isn't there yet:
+For the first 12 seconds after the claim, this sandbox domain reports the record isn't there yet:
 
 ```json
 {
@@ -74,18 +74,18 @@ This endpoint is safe to poll — it re-runs the check every time it's called, s
 
 ## 3. Watch it verify
 
-Call the same endpoint again after 45 seconds have passed since the claim:
+Call the same endpoint again after 12 seconds have passed since the claim:
 
 ```json
 {
   "domain": {
     "status": "verified",
-    "verifiedAt": "2026-07-22T10:00:46.000Z",
+    "verifiedAt": "2026-07-22T10:00:12.000Z",
     "...": "..."
   },
   "check": {
     "outcome": "found",
-    "checkedAt": "2026-07-22T10:00:46.000Z"
+    "checkedAt": "2026-07-22T10:00:12.000Z"
   }
 }
 ```
@@ -118,7 +118,7 @@ if (result.error) throw result.error
 console.log(result.data.domain.status) // 'verified'
 ```
 
-Same sandbox domain, same 45-second settle time — the loop above just calls `verify` every 5 seconds instead of you timing two manual calls. See [Claim and verify a domain](/docs/claim-and-verify) for the SDK method behind every other call in this guide.
+Same sandbox domain, same 12-second settle time — the loop above just calls `verify` every 5 seconds instead of you timing two manual calls. See [Claim and verify a domain](/docs/claim-and-verify) for the SDK method behind every other call in this guide.
 
 ## Where to next
 

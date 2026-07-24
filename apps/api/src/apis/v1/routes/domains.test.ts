@@ -796,9 +796,9 @@ describe('/v1/domains', () => {
       expect(before.body.domain.status).toBe('pending')
 
       // The sandbox's `pending-then-verified` journey answers correctly once
-      // 45s have elapsed since the challenge was created — move the
+      // 12s have elapsed since the challenge was created — move the
       // injected clock forward instead of sleeping the test.
-      clockOffsetMs = 46_000
+      clockOffsetMs = 13_000
       const after = await verify(app, apiKey, domainId)
       expect(after.status).toBe(200)
       expect(after.body.check.outcome).toBe('found')

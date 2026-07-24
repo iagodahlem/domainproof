@@ -16,9 +16,11 @@ const SANDBOX_TLD = 'test'
  * How long a `pending-then-verified` journey stays nxdomain before the
  * correct record "appears". Long enough to feel like real propagation delay
  * on the hosted page's polling UI, short enough that a reviewer isn't
- * sitting around during a demo.
+ * sitting around during a demo — tuned for the onboarding walkthrough's
+ * active auto-check poll (see `ClaimedDomainWalkthrough` in
+ * `onboarding-panel.tsx`), which lands its third tick around this mark.
  */
-const PENDING_PROPAGATION_MS = 45_000
+const PENDING_PROPAGATION_MS = 12_000
 
 /** Width of a `flaky` journey's alternating reachable/unreachable windows. */
 const FLAKY_WINDOW_MS = 30_000
@@ -44,7 +46,7 @@ const WRONG_VALUE_TOKEN = 'wrongwrongwrongwrongwrongw'
  * | journey                  | resolveTxt behavior over elapsed time         |
  * |--------------------------|------------------------------------------------|
  * | `verified`               | Correct record from the first check.          |
- * | `pending-then-verified`  | nxdomain until 45s elapsed, then correct.     |
+ * | `pending-then-verified`  | nxdomain until 12s elapsed, then correct.     |
  * | `wrong-value`            | Always a valid-looking but wrong record.      |
  * | `nxdomain`               | nxdomain forever.                             |
  * | `flaky`                  | Alternates unreachable/correct every 30s.     |
@@ -56,7 +58,7 @@ export const SANDBOX_JOURNEYS = {
     "challenge's record value from the very first check. Models a domain " +
     'owner who published the record before starting verification.',
   'pending-then-verified':
-    'nxdomain until 45 seconds have elapsed since the challenge was ' +
+    'nxdomain until 12 seconds have elapsed since the challenge was ' +
     'created, then the correct record appears. Models real-world DNS ' +
     "propagation delay: long enough to read as real on the hosted page's " +
     'polling UI, short enough to still fit inside a live demo.',

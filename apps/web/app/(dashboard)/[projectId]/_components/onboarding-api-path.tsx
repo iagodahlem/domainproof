@@ -114,9 +114,10 @@ export function buildApiPathSteps({
                 <span className="mb-2 block font-mono text-2xs tracking-label text-faint-foreground uppercase">
                   What&rsquo;s happening under the hood
                 </span>
-                We check automatically every couple of minutes, tab open or not.
-                This sandbox domain is seeded to verify itself in about 45
-                seconds — real domains follow the same polling cadence.
+                While this page is open, we check automatically every few
+                seconds — this sandbox domain is seeded to verify itself in
+                about 15 seconds. Without an open tab, checks fall back to a
+                slower background schedule, same as real domains.
               </Callout>
             ) : null}
           </>

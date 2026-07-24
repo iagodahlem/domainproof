@@ -138,9 +138,9 @@ describe('createSandboxResolver', () => {
   describe('pending-then-verified journey', () => {
     it.each([
       [0, { ok: false, reason: 'nxdomain' }],
-      [44_000, { ok: false, reason: 'nxdomain' }],
-      [45_000, { ok: true, records: [RECORD_VALUE] }],
-      [46_000, { ok: true, records: [RECORD_VALUE] }],
+      [11_000, { ok: false, reason: 'nxdomain' }],
+      [12_000, { ok: true, records: [RECORD_VALUE] }],
+      [13_000, { ok: true, records: [RECORD_VALUE] }],
     ] satisfies Array<[number, unknown]>)(
       'at %ims elapsed resolves to %j',
       async (elapsedMs, expected) => {
@@ -306,14 +306,14 @@ describe('checkTxt over a sandbox resolver (full outcome taxonomy from elapsed t
   it('pending-then-verified: not_found before propagation, found after', async () => {
     const challenge = makeChallenge('pending-then-verified.test')
 
-    const before = createSandboxResolver(challenge, clockAt(44_000))
+    const before = createSandboxResolver(challenge, clockAt(11_000))
     expect(
       await checkTxt(before, challenge.recordHost, TOKEN, BRAND_SLUG),
     ).toEqual({
       outcome: 'not_found',
     })
 
-    const after = createSandboxResolver(challenge, clockAt(45_000))
+    const after = createSandboxResolver(challenge, clockAt(12_000))
     expect(
       await checkTxt(after, challenge.recordHost, TOKEN, BRAND_SLUG),
     ).toEqual({ outcome: 'found' })
