@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import Link from 'next/link'
 import {
   Button,
   Callout,
@@ -120,6 +121,20 @@ export function AddDomainForm({
               autoComplete="off"
               autoFocus
             />
+            {mode === 'test' ? (
+              <p className="text-xs text-faint-foreground">
+                Testing? Sandbox domains verify instantly —{' '}
+                <code className="font-mono">verified.test</code>,{' '}
+                <code className="font-mono">pending-then-verified.test</code>,
+                and more.{' '}
+                <Link
+                  href="/docs/sandbox"
+                  className="focus-ring-text text-accent underline"
+                >
+                  Full table
+                </Link>
+              </p>
+            ) : null}
             <Select
               label="Mode"
               options={MODE_OPTIONS}
