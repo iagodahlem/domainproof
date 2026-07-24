@@ -70,6 +70,7 @@ nothing breaks if the file doesn't exist):
 | `DATABASE_URL`                                                               | Yes       | Postgres connection string. The `.env.example` default matches `compose.yaml`'s `db` service.                                                                                                                                                                                     |
 | `CLERK_JWKS_URL`, `CLERK_ISSUER`                                             | No        | Session auth for the dashboard API. Unset means routes that need it (`/dashboard/*`) respond `500 auth_not_configured` instead of the app refusing to boot.                                                                                                                       |
 | `WEB_ORIGIN`                                                                 | No        | The dashboard web app's origin, for the dashboard plane's CORS policy — the only plane a browser calls directly. Unset allows any origin.                                                                                                                                         |
+| `VERIFICATION_BASE_URL`                                                      | No        | Base URL (including the `/verify` path) the public API's `verificationUrl` and the Cloudflare one-click callback's redirect are built against. Defaults to `https://domainproof.dev/verify`; set for staging/preview to point at that environment's own web app instead.          |
 | `PUBLIC_API_HOST`, `DASHBOARD_API_HOST`, `FRONTEND_API_HOST`, `MCP_API_HOST` | No        | Production-only host restriction, one per plane plus the hosted MCP endpoint (see [API](#api) below). Unset means no restriction — local dev and tests reach every plane on one origin.                                                                                           |
 | `DOMAINPROOF_BASE_URL`                                                       | No        | Where the hosted MCP endpoint's per-request SDK client sends tool-call requests — this same service's own `/v1` plane. Unset defaults to the SDK's own production default (`https://api.domainproof.dev`), correct in production; override locally, e.g. `http://localhost:3001`. |
 | `PORT`                                                                       | No        | Defaults to `3001`.                                                                                                                                                                                                                                                               |
@@ -305,11 +306,14 @@ existed.
 
 ### Frontend API
 
-`verificationUrl` (returned by every plane that builds one — `/v1/domains`,
-`/dashboard/.../domains`) embeds a domain claim's `frontendToken`: a
+`/v1/domains`' `verificationUrl` embeds a domain claim's `frontendToken`: a
 128-bit unguessable credential generated once at claim time, distinct from
-the claim's own `id`. It authorizes exactly three things on exactly that
-one claim, with nothing else to authenticate — no session, no api key:
+the claim's own `id`. `/dashboard/.../domains` returns the same
+`frontendToken` bare rather than a pre-built URL — the api has no way to
+know which origin (local/preview/prod) the signed-in browser is on, so the
+dashboard web app builds the `/verify/:token` link itself, against its own
+origin. Either way, the token authorizes exactly three things on exactly
+that one claim, with nothing else to authenticate — no session, no api key:
 
 ```json
 {
