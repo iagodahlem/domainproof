@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@domainproof/ui'
 import { NO_FOUC_THEME_SCRIPT, ThemeFaviconSync } from '@/lib/theme'
 import './globals.css'
@@ -75,6 +76,7 @@ export default function RootLayout({
               invisible check that can reject real users. Zero-height;
               global here so every page has it without a per-page mount. */}
           <div id="clerk-captcha" />
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
