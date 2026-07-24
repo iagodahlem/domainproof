@@ -1,0 +1,40 @@
+---
+title: Add a TXT record (any provider)
+description: The general steps to publish DomainProof's TXT record, for any DNS provider not covered by its own guide.
+section: Guides
+order: 7
+---
+
+# Add a TXT record (any provider)
+
+Every DNS provider's dashboard looks a little different, but publishing a TXT record follows the same shape everywhere. If your provider is [Cloudflare](/docs/add-txt-record-cloudflare), [GoDaddy](/docs/add-txt-record-godaddy), [Vercel](/docs/add-txt-record-vercel), or [AWS Route 53](/docs/add-txt-record-route53), its own guide covers the exact screens — use this one for everything else.
+
+The record DomainProof asks for is always two values, shown on the [hosted verification page](/docs/hosted-verification-page):
+
+- **Host** (also called Name, or Record name) — something like `_acme-challenge.example.com`.
+- **Value** (also called Content, or Data) — something like `acme-verify=abc123`.
+
+## 1. Find your DNS provider's records page
+
+Sign in wherever you manage DNS for the domain — usually the registrar you bought it from, or whichever host its nameservers point at (check your registrar's dashboard for the domain's current nameservers if you're not sure). Look for a section called "DNS", "DNS Records", "DNS Management", or "Zone Editor".
+
+## 2. Add a new record, type TXT
+
+Most providers have an "Add record" (or "Add new record") button, followed by a Type dropdown — choose `TXT`.
+
+## 3. Enter the host and value exactly as shown
+
+Paste the **Host**/**Name** and **Value** fields from DomainProof's record card into the matching fields on your provider's form.
+
+One common gotcha: some providers want the host's full value (`_acme-challenge.example.com`), while others want only the part before your domain name (`_acme-challenge`) — they append the domain automatically. If your provider's Name/Host field says something like "without the domain name" or shows your domain as a fixed suffix next to the input, drop the trailing `.example.com` and enter just the prefix.
+
+Leave TTL at its default — DomainProof doesn't require a specific value.
+
+## 4. Save, then recheck
+
+Save the record, then go back to the hosted verification page and click **Recheck** (or just wait — it polls automatically every 20 seconds). DNS changes can take anywhere from a few seconds to a few minutes to become visible, depending on your provider.
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — what the record card and recheck button are part of.
+- [How verification works](/docs/how-verification-works) — the full claim → challenge → check → verified lifecycle.

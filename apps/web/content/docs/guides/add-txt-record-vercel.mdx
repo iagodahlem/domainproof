@@ -1,0 +1,41 @@
+---
+title: Add a TXT record on Vercel
+description: Publish DomainProof's TXT record from Vercel's DNS records dashboard.
+section: Guides
+order: 10
+---
+
+# Add a TXT record on Vercel
+
+DomainProof detects Vercel when a domain's nameservers point at Vercel's own DNS (`ns1.vercel-dns.com` / `ns2.vercel-dns.com`) — meaning Vercel, not your registrar, is where its DNS records live.
+
+The record DomainProof asks for is two values shown on the [hosted verification page](/docs/hosted-verification-page):
+
+- **Host** — something like `_acme-challenge.example.com`.
+- **Value** — something like `acme-verify=abc123`.
+
+## 1. Open the domain's DNS records
+
+From your Vercel team dashboard, open **Domains** in the sidebar and select the domain to open its settings page.
+
+## 2. Add a new record, type TXT
+
+Fill out the DNS record form on that page (if this is the first record you're adding, you may need to select **Enable Vercel DNS** first).
+
+## 3. Enter the name and value
+
+- **Name** — the prefix only, not the full hostname: drop the trailing `.example.com` that DomainProof's Host value ends with. For a host of `_acme-challenge.example.com`, enter `_acme-challenge`.
+- **Type** — `TXT`.
+- **Value** — paste the Value exactly as DomainProof shows it.
+- **TTL** — leave the default (60 seconds).
+
+Click **Add**.
+
+## 4. Recheck
+
+Vercel notes DNS changes can take up to 24 hours to fully propagate, though most updates show up much sooner. Back on DomainProof's hosted verification page, click **Recheck**, or wait for its automatic poll (every 20 seconds).
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — what the record card and recheck button are part of.
+- [Add a TXT record (any provider)](/docs/add-txt-record) — the same steps in general terms, if your domain isn't on Vercel DNS.
