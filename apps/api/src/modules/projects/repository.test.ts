@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts } from '@infra/db/schema'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 import {
   createProjectsRepository,
   type ProjectApiKeyInsert,
@@ -62,14 +63,18 @@ describe('listByAccountId', () => {
     const accountA = await createTestAccount()
     const accountB = await createTestAccount()
 
-    await repository.createProject(accountA, 'Project A', 'project-a', [
-      keyMaterial('test'),
-      keyMaterial('live'),
-    ])
-    await repository.createProject(accountB, 'Project B', 'project-b', [
-      keyMaterial('test'),
-      keyMaterial('live'),
-    ])
+    await repository.createProject(
+      accountA,
+      'Project A',
+      uniqueSlug('project-a'),
+      [keyMaterial('test'), keyMaterial('live')],
+    )
+    await repository.createProject(
+      accountB,
+      'Project B',
+      uniqueSlug('project-b'),
+      [keyMaterial('test'), keyMaterial('live')],
+    )
 
     const rowsA = await repository.listByAccountId(accountA)
     expect(rowsA).toHaveLength(1)
@@ -93,30 +98,36 @@ describe('findByIdForAccount', () => {
     const owner = await createTestAccount()
     const other = await createTestAccount()
 
-    const { project } = await repository.createProject(
+    const created = await repository.createProject(
       owner,
       'Owner project',
-      'owner-project',
+      uniqueSlug('owner-project'),
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!created) throw new Error('setup failed')
 
     expect(
-      await repository.findByIdForAccount(project.id, other),
+      await repository.findByIdForAccount(created.project.id, other),
     ).toBeUndefined()
   })
 
   it('returns the project when it belongs to the given account', async () => {
     const accountId = await createTestAccount()
-    const { project } = await repository.createProject(
+    const slug = uniqueSlug('skylane-hr')
+    const created = await repository.createProject(
       accountId,
       'Skylane HR',
-      'skylane-hr',
+      slug,
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!created) throw new Error('setup failed')
 
-    const found = await repository.findByIdForAccount(project.id, accountId)
-    expect(found?.id).toBe(project.id)
-    expect(found?.slug).toBe('skylane-hr')
+    const found = await repository.findByIdForAccount(
+      created.project.id,
+      accountId,
+    )
+    expect(found?.id).toBe(created.project.id)
+    expect(found?.slug).toBe(slug)
   })
 })
 
@@ -127,14 +138,16 @@ describe('findSlugById', () => {
 
   it("returns the project's slug", async () => {
     const accountId = await createTestAccount()
-    const { project } = await repository.createProject(
+    const slug = uniqueSlug('skylane-hr')
+    const created = await repository.createProject(
       accountId,
       'Skylane HR',
-      'skylane-hr',
+      slug,
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!created) throw new Error('setup failed')
 
-    expect(await repository.findSlugById(project.id)).toBe('skylane-hr')
+    expect(await repository.findSlugById(created.project.id)).toBe(slug)
   })
 })
 
@@ -145,14 +158,15 @@ describe('findNameById', () => {
 
   it("returns the project's display name", async () => {
     const accountId = await createTestAccount()
-    const { project } = await repository.createProject(
+    const created = await repository.createProject(
       accountId,
       'Skylane HR',
-      'skylane-hr',
+      uniqueSlug('skylane-hr'),
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!created) throw new Error('setup failed')
 
-    expect(await repository.findNameById(project.id)).toBe('Skylane HR')
+    expect(await repository.findNameById(created.project.id)).toBe('Skylane HR')
   })
 })
 
@@ -165,36 +179,46 @@ describe('updateName', () => {
 
   it('updates the name without touching the slug', async () => {
     const accountId = await createTestAccount()
-    const { project } = await repository.createProject(
+    const slug = uniqueSlug('skylane-hr')
+    const created = await repository.createProject(
       accountId,
       'Skylane HR',
-      'skylane-hr',
+      slug,
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!created) throw new Error('setup failed')
 
-    const updated = await repository.updateName(project.id, 'Skylane People')
+    const updated = await repository.updateName(
+      created.project.id,
+      'Skylane People',
+    )
     expect(updated?.name).toBe('Skylane People')
-    expect(updated?.slug).toBe('skylane-hr')
+    expect(updated?.slug).toBe(slug)
 
-    const reread = await repository.findByIdForAccount(project.id, accountId)
+    const reread = await repository.findByIdForAccount(
+      created.project.id,
+      accountId,
+    )
     expect(reread?.name).toBe('Skylane People')
-    expect(reread?.slug).toBe('skylane-hr')
+    expect(reread?.slug).toBe(slug)
   })
 })
 
 describe('createProject', () => {
   it('creates a project and both of its keys atomically', async () => {
     const accountId = await createTestAccount()
+    const slug = uniqueSlug('skylane-hr')
 
     const result = await repository.createProject(
       accountId,
       'Skylane HR',
-      'skylane-hr',
+      slug,
       [keyMaterial('test'), keyMaterial('live')],
     )
+    if (!result) throw new Error('setup failed')
 
     expect(result.project.name).toBe('Skylane HR')
-    expect(result.project.slug).toBe('skylane-hr')
+    expect(result.project.slug).toBe(slug)
     expect(result.project.accountId).toBe(accountId)
 
     expect(result.apiKeys).toHaveLength(2)
@@ -206,18 +230,38 @@ describe('createProject', () => {
     }
   })
 
-  it('allows a second project for the same account (no dedup/uniqueness guard)', async () => {
+  it('allows a second project for the same account (no name/account dedup guard)', async () => {
     const accountId = await createTestAccount()
 
-    await repository.createProject(accountId, 'First', 'first', [
+    await repository.createProject(accountId, 'First', uniqueSlug('first'), [
       keyMaterial('test'),
       keyMaterial('live'),
     ])
-    await repository.createProject(accountId, 'Second', 'second', [
+    await repository.createProject(accountId, 'Second', uniqueSlug('second'), [
       keyMaterial('test'),
       keyMaterial('live'),
     ])
 
     expect(await repository.listByAccountId(accountId)).toHaveLength(2)
+  })
+
+  it('returns undefined and inserts nothing when the slug is already taken', async () => {
+    const accountA = await createTestAccount()
+    const accountB = await createTestAccount()
+    const slug = uniqueSlug('taken')
+
+    const first = await repository.createProject(accountA, 'First', slug, [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+    if (!first) throw new Error('setup failed')
+
+    const second = await repository.createProject(accountB, 'Second', slug, [
+      keyMaterial('test'),
+      keyMaterial('live'),
+    ])
+
+    expect(second).toBeUndefined()
+    expect(await repository.listByAccountId(accountB)).toEqual([])
   })
 })

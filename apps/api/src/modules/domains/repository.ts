@@ -175,9 +175,14 @@ export interface DomainsRepository {
    * cross-tenant token filter. `recordHost` is derived from `(brandSlug,
    * domain)` alone (see `@domainproof/core`'s `challengeHost`), so two
    * unrelated domain claims — different projects, even different accounts —
-   * can end up sharing one when their projects' slugs collide (slugs carry
-   * no uniqueness constraint, see `infra/db/schema.ts`'s `projects.slug`
-   * doc comment). When that happens, a raw DNS answer at that host is
+   * could end up sharing one when their projects' slugs collided. As of
+   * `projects.slug`'s unique constraint (see `infra/db/schema.ts`'s doc
+   * comment) that can no longer happen for any project created after the
+   * migration that introduced it — but a challenge row issued before then
+   * can still carry an old, pre-dedup `recordHost` until its domain is next
+   * regenerated or re-verified, so this filter stays in place as defense in
+   * depth for that migration window rather than being provably dead code.
+   * When a collision does happen, a raw DNS answer at that host is
    * ambiguous about which claim it belongs to; this lets the caller
    * recognize a detected value that's actually another domain's own real
    * token rather than the requesting claim's.

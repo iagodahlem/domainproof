@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../../app'
 import type { SessionVerifier } from '@modules/accounts/ports'
+import { deriveProjectSlug } from '@modules/projects/domain/brand'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts } from '@infra/db/schema'
 
@@ -31,6 +32,15 @@ function freshClerkUserId() {
   const id = `user_${randomUUID()}`
   createdClerkUserIds.push(id)
   return id
+}
+
+// `projects.slug` carries a real unique constraint, and this file's real
+// `/dashboard/projects` route derives it from `name` via `deriveProjectSlug`
+// — a fixed literal like 'Skylane HR' would collide with this file's other
+// tests (and other test files') own real project rows once run
+// concurrently, same reasoning as `keyMaterial`-style helpers elsewhere.
+function freshProjectName(base: string) {
+  return `${base} ${randomUUID().slice(0, 8)}`
 }
 
 function buildApp() {
@@ -81,11 +91,12 @@ describe('/dashboard/projects', () => {
   it('creates a project, minting both a test and a live key in one response, then lists it', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
+    const name = freshProjectName('Skylane HR')
 
     const createRes = await asUser(app, clerkUserId, '/dashboard/projects', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Skylane HR' }),
+      body: JSON.stringify({ name }),
     })
     expect(createRes.status).toBe(201)
 
@@ -96,8 +107,8 @@ describe('/dashboard/projects', () => {
         live: { key: string; apiKey: { mode: string } }
       }
     }
-    expect(created.project.name).toBe('Skylane HR')
-    expect(created.project.slug).toBe('skylane-hr')
+    expect(created.project.name).toBe(name)
+    expect(created.project.slug).toBe(deriveProjectSlug(name))
     expect(created.keys.test.key).toMatch(/^dp_test_[a-z2-7]{12}_[a-z2-7]{26}$/)
     expect(created.keys.live.key).toMatch(/^dp_live_[a-z2-7]{12}_[a-z2-7]{26}$/)
     expect(created.keys.test.apiKey.mode).toBe('test')
@@ -125,12 +136,12 @@ describe('/dashboard/projects', () => {
     await asUser(app, clerkUserId, '/dashboard/projects', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'First' }),
+      body: JSON.stringify({ name: freshProjectName('First') }),
     })
     await asUser(app, clerkUserId, '/dashboard/projects', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Second' }),
+      body: JSON.stringify({ name: freshProjectName('Second') }),
     })
 
     const listRes = await asUser(app, clerkUserId, '/dashboard/projects')
@@ -194,7 +205,11 @@ describe('PATCH /dashboard/projects/:projectId', () => {
   it('renames a project without changing its slug, reflected in a follow-up read', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
-    const project = await createProject(app, clerkUserId, 'Skylane HR')
+    const project = await createProject(
+      app,
+      clerkUserId,
+      freshProjectName('Skylane HR'),
+    )
 
     const patchRes = await asUser(
       app,
@@ -226,7 +241,11 @@ describe('PATCH /dashboard/projects/:projectId', () => {
   it('rejects an empty name', async () => {
     const app = buildApp()
     const clerkUserId = freshClerkUserId()
-    const project = await createProject(app, clerkUserId, 'Skylane HR')
+    const project = await createProject(
+      app,
+      clerkUserId,
+      freshProjectName('Skylane HR'),
+    )
 
     const res = await asUser(
       app,
@@ -266,7 +285,8 @@ describe('PATCH /dashboard/projects/:projectId', () => {
     const app = buildApp()
     const owner = freshClerkUserId()
     const other = freshClerkUserId()
-    const project = await createProject(app, owner, 'Skylane HR')
+    const name = freshProjectName('Skylane HR')
+    const project = await createProject(app, owner, name)
 
     const res = await asUser(app, other, `/dashboard/projects/${project.id}`, {
       method: 'PATCH',
@@ -281,9 +301,7 @@ describe('PATCH /dashboard/projects/:projectId', () => {
     const listBody = (await listRes.json()) as {
       projects: Array<{ id: string; name: string }>
     }
-    expect(listBody.projects.find((p) => p.id === project.id)?.name).toBe(
-      'Skylane HR',
-    )
+    expect(listBody.projects.find((p) => p.id === project.id)?.name).toBe(name)
   })
 })
 

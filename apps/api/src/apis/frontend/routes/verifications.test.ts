@@ -6,6 +6,7 @@ import { createApp } from '../../../app'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 
 /**
  * End-to-end coverage of the Frontend API plane: claims a domain through
@@ -28,10 +29,11 @@ function hashSecret(secret: string): string {
 
 async function createTestApiKey(
   overrides: { mode?: 'test' | 'live' } = {},
-): Promise<{ projectId: string; key: string }> {
+): Promise<{ projectId: string; key: string; slug: string }> {
   const mode = overrides.mode ?? 'test'
   const clerkUserId = `user_${randomUUID()}`
   createdClerkUserIds.push(clerkUserId)
+  const slug = uniqueSlug('fpt')
 
   const [account] = await db
     .insert(accounts)
@@ -41,7 +43,11 @@ async function createTestApiKey(
 
   const [project] = await db
     .insert(projects)
-    .values({ accountId: account.id, name: 'Frontend Plane Test', slug: 'fpt' })
+    .values({
+      accountId: account.id,
+      name: 'Frontend Plane Test',
+      slug,
+    })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')
 
@@ -56,7 +62,7 @@ async function createTestApiKey(
     name: null,
   })
 
-  return { projectId: project.id, key: `dp_${mode}_${keyId}_${secret}` }
+  return { projectId: project.id, key: `dp_${mode}_${keyId}_${secret}`, slug }
 }
 
 function buildApp() {
@@ -144,8 +150,12 @@ describe('/frontend/verifications', () => {
       expect(body.records).toHaveLength(1)
       const [record] = body.records
       expect(record?.type).toBe('TXT')
-      expect(record?.label).toMatch(/^_fpt-challenge\.pending-example\.test$/)
-      expect(record?.value).toMatch(/^fpt-verify=[a-z2-7]{26}$/)
+      expect(record?.label).toBe(
+        `_${apiKey.slug}-challenge.pending-example.test`,
+      )
+      expect(record?.value).toMatch(
+        new RegExp(`^${apiKey.slug}-verify=[a-z2-7]{26}$`),
+      )
     })
 
     it('never leaks account, project, or key ids in the response', async () => {

@@ -1,7 +1,17 @@
 import type { AccountsService } from '@modules/accounts/service'
 import type { CreateKeyResult, KeysService } from '@modules/keys/service'
-import { deriveProjectSlug } from './domain/brand'
+import { deriveProjectSlug, withRandomSuffix } from './domain/brand'
 import type { ProjectRow, ProjectsRepository } from './repository'
+
+/**
+ * Bounds `createProject`'s retry loop against `projects.slug`'s unique
+ * constraint. Each retry draws a fresh 5-character random suffix from a
+ * 36-character alphabet (see `domain/brand.ts`'s `withRandomSuffix`) — the
+ * odds of exhausting every attempt on real collisions are astronomically
+ * low; this cap exists only to turn a pathological run into a clear error
+ * instead of an infinite loop.
+ */
+const MAX_CREATE_PROJECT_ATTEMPTS = 5
 
 export interface ProjectSummary {
   id: string
@@ -33,9 +43,10 @@ export interface ProjectsService {
   /**
    * Bootstraps the caller's account and creates a new, named project with
    * both a test and a live API key minted alongside it, atomically. Slug
-   * is derived from `name` via `deriveProjectSlug` — collisions with other
-   * projects' slugs are allowed by design (verification records are
-   * project-scoped, not slug-unique).
+   * is derived from `name` via `deriveProjectSlug`; if that default is
+   * already taken (`projects.slug` is globally unique — see
+   * `infra/db/schema.ts`'s doc comment for why), this retries with a
+   * randomly-suffixed variant via `withRandomSuffix` until one lands.
    */
   createProject(
     clerkUserId: string,
@@ -117,15 +128,28 @@ export function createProjectsService(
         clerkUserId,
         emailHint,
       )
-      const slug = deriveProjectSlug(name)
+      const baseSlug = deriveProjectSlug(name)
 
       const testMaterial = keysService.generateKeyMaterial('test')
       const liveMaterial = keysService.generateKeyMaterial('live')
 
-      const created = await repository.createProject(accountId, name, slug, [
-        testMaterial.insert,
-        liveMaterial.insert,
-      ])
+      let created
+      for (let attempt = 0; attempt < MAX_CREATE_PROJECT_ATTEMPTS; attempt++) {
+        const slug = attempt === 0 ? baseSlug : withRandomSuffix(baseSlug)
+        created = await repository.createProject(accountId, name, slug, [
+          testMaterial.insert,
+          liveMaterial.insert,
+        ])
+        if (created) break
+      }
+      if (!created) {
+        // Cannot happen in practice: each retry draws a fresh 5-character
+        // suffix from a 36-character alphabet, so exhausting every attempt
+        // on real collisions is astronomically unlikely.
+        throw new Error(
+          `Failed to create project: no unique slug found for "${baseSlug}" after ${MAX_CREATE_PROJECT_ATTEMPTS} attempts`,
+        )
+      }
 
       const testRow = created.apiKeys.find((row) => row.mode === 'test')
       const liveRow = created.apiKeys.find((row) => row.mode === 'live')

@@ -7,6 +7,7 @@ import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
 import type { CloudflareClient } from '@modules/cloudflare/ports'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 
 /**
  * End-to-end coverage of the Cloudflare one-click DNS setup flow: claims a
@@ -53,7 +54,7 @@ async function createTestApiKey(
     .values({
       accountId: account.id,
       name: 'Cloudflare OAuth Test',
-      slug: 'cft',
+      slug: uniqueSlug('cft'),
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')
