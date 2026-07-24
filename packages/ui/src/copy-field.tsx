@@ -1,4 +1,6 @@
-import { useId } from 'react'
+'use client'
+
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CopyButton } from './copy-button'
 import { FieldLabel } from './field'
@@ -19,6 +21,11 @@ export interface CopyFieldProps {
  * copied verbatim (a hosted link, a token) rather than edited — for an
  * editable field with a copy affordance beside it, `TextField`'s
  * `trailing` slot is the right tool instead.
+ *
+ * Unlike `CodePanel`, `copyLabel` (and the button's own "Copied" state)
+ * varies in width per consumer, so the reserved space for the button is
+ * measured rather than a fixed `pr-*` — a static guess is exactly what let
+ * "Copy link" run under the button in the first place.
  */
 export function CopyField({
   value,
@@ -27,6 +34,20 @@ export function CopyField({
   className,
 }: CopyFieldProps) {
   const generatedId = useId()
+  const buttonSlotRef = useRef<HTMLSpanElement>(null)
+  const [buttonWidth, setButtonWidth] = useState<number>()
+
+  useLayoutEffect(() => {
+    const node = buttonSlotRef.current
+    if (!node) return
+    setButtonWidth(node.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setButtonWidth(entry.contentRect.width)
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
@@ -38,15 +59,21 @@ export function CopyField({
           readOnly
           value={value}
           onFocus={(event) => event.currentTarget.select()}
-          className="w-full truncate rounded-md border border-border bg-background py-3 pr-22 pl-3 font-mono text-xs text-muted-foreground"
+          style={
+            buttonWidth !== undefined
+              ? { paddingRight: buttonWidth + 20 }
+              : undefined
+          }
+          className="w-full min-w-0 truncate rounded-md border border-border bg-background py-3 pr-22 pl-3 font-mono text-xs text-muted-foreground"
         />
-        <CopyButton
-          value={value}
-          size="sm"
+        <span
+          ref={buttonSlotRef}
           className="absolute top-1/2 right-3 -translate-y-1/2"
         >
-          {copyLabel}
-        </CopyButton>
+          <CopyButton value={value} size="sm">
+            {copyLabel}
+          </CopyButton>
+        </span>
       </div>
     </div>
   )

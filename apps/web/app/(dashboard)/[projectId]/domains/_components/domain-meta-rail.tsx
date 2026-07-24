@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { cn } from '@domainproof/ui'
+import { RotateCw, Trash2 } from 'lucide-react'
+import { Button, CopyButton, cn } from '@domainproof/ui'
 import type { DomainMode } from '@/lib/api/dashboard'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 
@@ -41,6 +42,10 @@ export interface DomainMetaRailProps {
   updatedAt: string
   /** Omit entirely for states with nothing honest to show (verified, recovering) — see `domain-detail-client.tsx`'s doc comment on why "challenge expires" never appears here at all. */
   nextCheck?: { value: string; note?: string }
+  verificationUrl: string
+  onRegenerate: () => void
+  regenerating: boolean
+  onDeleteRequest: () => void
 }
 
 /**
@@ -52,12 +57,21 @@ export interface DomainMetaRailProps {
  * own row) — `nextCheck` is the one exception, computed client-side from
  * this page's own polling schedule rather than read from the API, since
  * it's a fact about *this page's* behavior, not the domain's.
+ *
+ * The secondary domain actions (copy/regenerate/delete) live here too,
+ * divider-separated below the facts — not a header dropdown. They're
+ * reached rarely enough that low-emphasis, always-visible buttons read
+ * better than a menu a builder has to open to even see what's possible.
  */
 export function DomainMetaRail({
   mode,
   createdAt,
   updatedAt,
   nextCheck,
+  verificationUrl,
+  onRegenerate,
+  regenerating,
+  onDeleteRequest,
 }: DomainMetaRailProps) {
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">
@@ -84,6 +98,36 @@ export function DomainMetaRail({
           </RailField>
         </>
       ) : null}
+      <div className="border-t border-border" />
+      <div className="flex flex-col gap-1">
+        <CopyButton
+          value={verificationUrl}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+        >
+          Copy verification link
+        </CopyButton>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          icon={<RotateCw aria-hidden="true" size={14} />}
+          loading={regenerating}
+          onClick={onRegenerate}
+        >
+          Regenerate challenge
+        </Button>
+        <Button
+          variant="danger-ghost"
+          size="sm"
+          className="w-full justify-start"
+          icon={<Trash2 aria-hidden="true" size={14} />}
+          onClick={onDeleteRequest}
+        >
+          Delete domain
+        </Button>
+      </div>
     </div>
   )
 }

@@ -65,10 +65,13 @@ describe('PathChooser', () => {
     )
   })
 
-  it('keeps option labels on a single line', () => {
+  it('sizes each option to its content instead of truncating the label', () => {
     render(<PathChooser options={OPTIONS} value="api" onChange={() => {}} />)
-    expect(screen.getByText('Full control, your UI').className).toContain(
-      'truncate',
+    const sub = screen.getByText('Full control, your UI')
+    expect(sub.className).toContain('whitespace-nowrap')
+    expect(sub.className).not.toContain('truncate')
+    expect(screen.getByRole('tab', { name: /API/ }).className).not.toContain(
+      'w-44',
     )
   })
 })

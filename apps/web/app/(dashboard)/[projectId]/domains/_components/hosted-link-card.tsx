@@ -1,5 +1,5 @@
 import { Link2 } from 'lucide-react'
-import { Card, CardBody, CopyButton } from '@domainproof/ui'
+import { Card, CardBody, CopyField } from '@domainproof/ui'
 
 export interface HostedLinkCardProps {
   verificationUrl: string
@@ -35,12 +35,7 @@ export function HostedLinkCard({
             </p>
           </div>
         </div>
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-1 font-mono text-xs text-muted-foreground">
-            {verificationUrl}
-          </div>
-          <CopyButton value={verificationUrl}>Copy link</CopyButton>
-        </div>
+        <CopyField value={verificationUrl} copyLabel="Copy link" />
       </CardBody>
     </Card>
   )

@@ -2,25 +2,11 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  Check,
-  ChevronDown,
-  CircleDashed,
-  MoreVertical,
-  RefreshCw,
-  RotateCw,
-  Trash2,
-} from 'lucide-react'
+import { Check, ChevronDown, CircleDashed, RefreshCw } from 'lucide-react'
 import {
   Badge,
   Button,
   Callout,
-  CopyButton,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
   RecordCard,
   RecordField,
   StatusSummary,
@@ -203,53 +189,15 @@ export function DomainDetailClient({
       </div>
     ),
     action: (
-      <div className="flex flex-nowrap items-center gap-2">
-        <CopyButton value={verificationUrl} className="max-[420px]:hidden">
-          Copy verification link
-        </CopyButton>
-        <CopyButton
-          value={verificationUrl}
-          size="icon"
-          iconOnly
-          aria-label="Copy verification link"
-          className="hidden max-[420px]:flex"
-        >
-          Copy verification link
-        </CopyButton>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleVerify}
-          loading={verifyDomain.isPending}
-          icon={<RefreshCw aria-hidden="true" size={13} />}
-        >
-          <span className="max-[420px]:sr-only">Check now</span>
-        </Button>
-        <Menu>
-          <MenuTrigger asChild>
-            <Button size="sm" className="px-2" aria-label="More actions">
-              <MoreVertical aria-hidden="true" size={15} />
-            </Button>
-          </MenuTrigger>
-          <MenuContent align="end">
-            <MenuItem
-              icon={<RotateCw aria-hidden="true" size={14} />}
-              disabled={regenerateDomain.isPending}
-              onSelect={handleRegenerate}
-            >
-              Regenerate challenge
-            </MenuItem>
-            <MenuSeparator />
-            <MenuItem
-              tone="danger"
-              icon={<Trash2 aria-hidden="true" size={14} />}
-              onSelect={() => setDeleteDialogOpen(true)}
-            >
-              Delete domain
-            </MenuItem>
-          </MenuContent>
-        </Menu>
-      </div>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={handleVerify}
+        loading={verifyDomain.isPending}
+        icon={<RefreshCw aria-hidden="true" size={13} />}
+      >
+        Check now
+      </Button>
     ),
   })
 
@@ -295,8 +243,18 @@ export function DomainDetailClient({
           >
             {domain.records.map((record) => (
               <div key={record.name}>
-                <RecordField label="Host / Name" value={record.name} copyable />
-                <RecordField label="Value" value={record.value} copyable />
+                <RecordField
+                  label="Host / Name"
+                  value={record.name}
+                  copyable
+                  truncateValue
+                />
+                <RecordField
+                  label="Value"
+                  value={record.value}
+                  copyable
+                  truncateValue
+                />
               </div>
             ))}
           </RecordCard>
@@ -355,6 +313,10 @@ export function DomainDetailClient({
           createdAt={domain.createdAt}
           updatedAt={domain.updatedAt}
           nextCheck={nextCheck}
+          verificationUrl={verificationUrl}
+          onRegenerate={handleRegenerate}
+          regenerating={regenerateDomain.isPending}
+          onDeleteRequest={() => setDeleteDialogOpen(true)}
         />
       </div>
 

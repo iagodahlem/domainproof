@@ -89,7 +89,7 @@ export function SetupChecklist({
               type="button"
               onClick={() => setCollapsed(true)}
               aria-label="Collapse checklist"
-              className="text-faint-foreground transition-colors duration-150 hover:text-foreground"
+              className="focus-ring-text text-faint-foreground transition-colors duration-150 hover:text-foreground"
             >
               <ChevronUp aria-hidden="true" size={16} />
             </button>
@@ -146,7 +146,10 @@ function ChecklistStepRow({
     ) : step.id === 'add-webhook' ? (
       <>
         Get notified the moment a domain&rsquo;s state changes.{' '}
-        <Link href={`/${projectId}/webhooks`} className="text-accent underline">
+        <Link
+          href={`/${projectId}/webhooks`}
+          className="focus-ring-text text-accent underline"
+        >
           Add a webhook
         </Link>
         . Skip for now if you&rsquo;re just exploring.

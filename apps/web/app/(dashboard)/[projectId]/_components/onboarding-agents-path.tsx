@@ -97,7 +97,9 @@ function McpConnectStep() {
           </CopyButton>
         </div>
       </div>
-      <p className="text-2xs text-faint-foreground">
+      <p
+        className={`text-2xs text-faint-foreground ${WALKTHROUGH_SURFACE_MAX_WIDTH}`}
+      >
         Prefer to run it yourself?{' '}
         <code className="font-mono">{AGENT_STDIO_SNIPPETS[agent]}</code> works
         as a local stdio server too.
@@ -175,7 +177,10 @@ function WatchItLandStep({ projectId }: { projectId: string }) {
       )}
       <p className="text-2xs text-faint-foreground">
         Ask the agent to check status, or open{' '}
-        <a href={`/${projectId}/domains`} className="text-accent underline">
+        <a
+          href={`/${projectId}/domains`}
+          className="focus-ring-text text-accent underline"
+        >
           Domains
         </a>{' '}
         yourself — same data either way.
