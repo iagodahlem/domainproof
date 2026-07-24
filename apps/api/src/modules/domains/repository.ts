@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm'
 import type { Database } from '@infra/db/client'
 import { challenges, domains } from '@infra/db/schema'
 import type { DomainStatus } from '@domainproof/core'
@@ -168,6 +168,24 @@ export interface DomainsRepository {
 
   /** The most recently issued (non-superseded-by-date) challenge for a domain. */
   findLatestChallenge(domainId: string): Promise<ChallengeRow | undefined>
+
+  /**
+   * Every challenge (current or superseded) ever issued at `recordHost` for
+   * a domain other than `excludeDomainId` — used by `service.ts`'s
+   * cross-tenant token filter. `recordHost` is derived from `(brandSlug,
+   * domain)` alone (see `@domainproof/core`'s `challengeHost`), so two
+   * unrelated domain claims — different projects, even different accounts —
+   * can end up sharing one when their projects' slugs collide (slugs carry
+   * no uniqueness constraint, see `infra/db/schema.ts`'s `projects.slug`
+   * doc comment). When that happens, a raw DNS answer at that host is
+   * ambiguous about which claim it belongs to; this lets the caller
+   * recognize a detected value that's actually another domain's own real
+   * token rather than the requesting claim's.
+   */
+  findChallengesAtHostForOtherDomains(
+    recordHost: string,
+    excludeDomainId: string,
+  ): Promise<ChallengeRow[]>
 
   /**
    * Deletes the domain claim, scoped to `(projectId, mode)` — a `FOREIGN
@@ -368,6 +386,18 @@ export function createDomainsRepository(db: Database): DomainsRepository {
         .orderBy(desc(challenges.createdAt))
         .limit(1)
       return row
+    },
+
+    async findChallengesAtHostForOtherDomains(recordHost, excludeDomainId) {
+      return db
+        .select()
+        .from(challenges)
+        .where(
+          and(
+            eq(challenges.recordHost, recordHost),
+            ne(challenges.domainId, excludeDomainId),
+          ),
+        )
     },
 
     async release(projectId, mode, id) {

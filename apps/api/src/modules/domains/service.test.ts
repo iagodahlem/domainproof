@@ -137,6 +137,13 @@ function fakeRepository(): DomainsRepository {
       return rows?.[rows.length - 1]
     },
 
+    async findChallengesAtHostForOtherDomains(recordHost, excludeDomainId) {
+      return [...challengesByDomainId.entries()]
+        .filter(([domainId]) => domainId !== excludeDomainId)
+        .flatMap(([, rows]) => rows)
+        .filter((row) => row.recordHost === recordHost)
+    },
+
     async release(projectId, mode, id) {
       const row = domainRows.get(id)
       if (!row || row.projectId !== projectId || row.mode !== mode) {
@@ -1287,6 +1294,62 @@ describe('verifyDomain', () => {
         payload: expect.objectContaining({ domainId }),
       },
     ])
+  })
+
+  it('wrong_value: filters out a detected value that is actually a different domain’s own live token at a shared recordHost', async () => {
+    // Two projects whose slugs collide (allowed — see infra/db/schema.ts's
+    // `projects.slug` doc comment) claiming the same domain end up with the
+    // identical `_<slug>-challenge.<domain>` host (record.ts's
+    // `challengeHost` is a pure function of slug + domain alone). This
+    // models that: project B's check must not echo back project A's real
+    // token just because it happens to answer at the same host.
+    const repository = fakeRepository()
+    const projectsService = fakeProjectsService({
+      project_a: 'skylane',
+      project_b: 'skylane',
+    })
+    const claimingService = createDomainsService(
+      repository,
+      projectsService,
+      fakeResolverForChallenge(createFixtureResolver()),
+    )
+
+    const { challenge: challengeA } = await claimAndGetChallenge(
+      claimingService,
+      'shared.example',
+      'project_a',
+      'live',
+    )
+    const { domainId: domainBId, challenge: challengeB } =
+      await claimAndGetChallenge(
+        claimingService,
+        'shared.example',
+        'project_b',
+        'live',
+      )
+    expect(challengeB.recordHost).toBe(challengeA.recordHost)
+
+    // The domain owner published only project A's real record at the
+    // shared host.
+    const resolver = createFixtureResolver({
+      [challengeA.recordHost]: [challengeA.recordValue],
+    })
+    const verifyingService = createDomainsService(
+      repository,
+      projectsService,
+      fakeResolverForChallenge(resolver),
+    )
+
+    const result = await verifyingService.verifyDomain(
+      'project_b',
+      'live',
+      domainBId,
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.check.outcome).toBe('wrong_value')
+    expect(result.check.detectedValues).toEqual([])
   })
 
   it('unreachable: never transitions, regardless of status, and publishes nothing', async () => {

@@ -434,6 +434,46 @@ function toSummary(
 }
 
 /**
+ * `checkTxt`'s `detected` values for a `wrong_value` outcome are parsed
+ * straight off whatever the DNS host actually answered — they carry no
+ * notion of which domain claim they "belong to". Ordinarily that is exactly
+ * right (a stray or stale record at the same label is still useful
+ * diagnostic information). But `recordHost` is derived from `(brandSlug,
+ * domain)` alone, and slugs carry no uniqueness constraint (see
+ * `infra/db/schema.ts`'s `projects.slug` doc comment), so two unrelated
+ * domain claims can end up sharing one host. When that happens, a detected
+ * value that exactly matches another domain's own real challenge token
+ * isn't a diagnostic stray — it's that other claim's live verification
+ * secret leaking across the tenant boundary through every plane that reads
+ * `detectedValues` (dashboard, v1, and the anonymous hosted verification
+ * page). An exact match against a 128-bit CSPRNG token is proof of
+ * cross-tenant origin, not coincidence, so this only ever drops values that
+ * are provably someone else's — a garden-variety typo'd or unrelated TXT
+ * record is untouched.
+ */
+async function filterCrossTenantDetectedValues(
+  repository: DomainsRepository,
+  detected: string[],
+  recordHost: string,
+  domainId: string,
+): Promise<string[]> {
+  if (detected.length === 0) {
+    return detected
+  }
+
+  const otherChallenges = await repository.findChallengesAtHostForOtherDomains(
+    recordHost,
+    domainId,
+  )
+  if (otherChallenges.length === 0) {
+    return detected
+  }
+
+  const otherTokens = new Set(otherChallenges.map((c) => c.token))
+  return detected.filter((value) => !otherTokens.has(value))
+}
+
+/**
  * Publishes the events one `verifyDomain` attempt produces: a
  * `domain.check_passed`/`domain.check_failed` for the attempt itself (a
  * merely inconclusive `unreachable` outcome — "we don't know", not a
@@ -651,7 +691,14 @@ export function createDomainsService(
     const verifiedAt = nextStatus === 'verified' ? checkedAt : undefined
 
     const detectedValues =
-      result.outcome === 'wrong_value' ? result.detected : []
+      result.outcome === 'wrong_value'
+        ? await filterCrossTenantDetectedValues(
+            repository,
+            result.detected,
+            challenge.recordHost,
+            row.id,
+          )
+        : []
 
     const schedule = computeRecheckSchedule({
       previousStatus: currentStatus,

@@ -462,6 +462,62 @@ describe('findLatestChallenge', () => {
   })
 })
 
+describe('findChallengesAtHostForOtherDomains', () => {
+  it('finds another domain’s challenge sharing the same recordHost', async () => {
+    const projectA = await createTestProject()
+    const projectB = await createTestProject()
+    const sharedHost = `_shared-challenge.collide-${randomUUID()}.test`
+
+    const domainA = await repository.claim(
+      claimValues(projectA, { domain: 'a.test' }),
+    )
+    if (!domainA) throw new Error('setup failed')
+    await db
+      .update(challenges)
+      .set({ recordHost: sharedHost })
+      .where(eq(challenges.domainId, domainA.domain.id))
+
+    const domainB = await repository.claim(
+      claimValues(projectB, { domain: 'b.test' }),
+    )
+    if (!domainB) throw new Error('setup failed')
+    await db
+      .update(challenges)
+      .set({ recordHost: sharedHost })
+      .where(eq(challenges.domainId, domainB.domain.id))
+
+    const found = await repository.findChallengesAtHostForOtherDomains(
+      sharedHost,
+      domainB.domain.id,
+    )
+    expect(found.map((c) => c.id)).toEqual([domainA.challenge.id])
+  })
+
+  it('excludes the given domain’s own challenges at the same host', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const found = await repository.findChallengesAtHostForOtherDomains(
+      created.challenge.recordHost,
+      created.domain.id,
+    )
+    expect(found).toEqual([])
+  })
+
+  it('returns an empty array when no other domain shares the host', async () => {
+    const projectId = await createTestProject()
+    const created = await repository.claim(claimValues(projectId))
+    if (!created) throw new Error('setup failed')
+
+    const found = await repository.findChallengesAtHostForOtherDomains(
+      created.challenge.recordHost,
+      randomUUID(),
+    )
+    expect(found).toEqual([created.challenge])
+  })
+})
+
 describe('release', () => {
   it('deletes the domain and cascades its challenge and timeline event', async () => {
     const projectId = await createTestProject()
