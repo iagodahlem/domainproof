@@ -65,7 +65,7 @@ function mockDemoFetch() {
       if (url === '/demo/api/claim' && method === 'POST') {
         return Promise.resolve(jsonResponse(CLAIM_SUCCESS))
       }
-      if (url === '/demo/api/status') {
+      if (url.startsWith('/demo/api/status')) {
         return Promise.resolve(jsonResponse(pendingStatusResponse()))
       }
       return Promise.reject(
@@ -89,8 +89,8 @@ async function scanAndClaim() {
 }
 
 function statusCallCount(fetchMock: ReturnType<typeof mockDemoFetch>) {
-  return fetchMock.mock.calls.filter(
-    ([url]) => String(url) === '/demo/api/status',
+  return fetchMock.mock.calls.filter(([url]) =>
+    String(url).startsWith('/demo/api/status'),
   ).length
 }
 
