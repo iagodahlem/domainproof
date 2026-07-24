@@ -1,11 +1,9 @@
-import {
-  Callout,
-  Stepper,
-  StatusPill,
-  type StepperStep,
-  type Tone,
-} from '@domainproof/ui'
-import type { StatusTone } from '../_lib/status-view'
+import { Callout } from './callout'
+import { StatusPill, type Tone } from './badge'
+import { Stepper, type StepperStep } from './status-summary'
+
+export type VerificationStatusTone =
+  'pending' | 'success' | 'warning' | 'danger'
 
 // `pending` reads as `warning` (amber), matching both the design board's
 // token semantics (accent/success is reserved for the verified state — the
@@ -13,7 +11,7 @@ import type { StatusTone } from '../_lib/status-view'
 // share one color on purpose) and the dashboard's own
 // `domainStatusPresentation` — a pending pill must never look like a
 // verified one.
-const BADGE_TONE_BY_STATUS_TONE: Record<StatusTone, Tone> = {
+const BADGE_TONE_BY_STATUS_TONE: Record<VerificationStatusTone, Tone> = {
   pending: 'warning',
   success: 'success',
   warning: 'warning',
@@ -22,19 +20,19 @@ const BADGE_TONE_BY_STATUS_TONE: Record<StatusTone, Tone> = {
 
 export interface VerificationProgressProps {
   steps: StepperStep[]
-  tone: StatusTone
+  tone: VerificationStatusTone
   badgeLabel: string
-  /** The one-liner shown beside the badge — must stay a single line at this page's narrow container width, so callers pass already-tightened copy (e.g. only while actively polling). */
-  meta: string | null
-  unreachableNote: string | null
+  /** The one-liner shown beside the badge — must stay a single line at narrow container widths, so callers pass already-tightened copy (e.g. only while actively polling). */
+  meta?: string | null
+  unreachableNote?: string | null
 }
 
 export function VerificationProgress({
   steps,
   tone,
   badgeLabel,
-  meta,
-  unreachableNote,
+  meta = null,
+  unreachableNote = null,
 }: VerificationProgressProps) {
   return (
     <div className="flex flex-col gap-8">

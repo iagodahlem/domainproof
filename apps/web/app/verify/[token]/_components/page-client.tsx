@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Callout } from '@domainproof/ui'
+import { Callout, VerificationView } from '@domainproof/ui'
 import type { Verification } from '@/lib/api/frontend'
 // This route mounts no QueryProvider (D-029: the hosted verification page
 // is anonymous, with no auth/session context) — converting these calls to
@@ -12,14 +12,12 @@ import type { Verification } from '@/lib/api/frontend'
 // eslint-disable-next-line no-restricted-imports -- see note above
 import { getVerification, runVerificationCheck } from '@/lib/api/frontend'
 import { useBoundedPoll } from '../_lib/use-bounded-poll'
+import { guideForProvider } from '../_lib/provider-guide'
 import { describeStatus } from '../_lib/status-view'
 import { verificationSteps } from '../_lib/verification-steps'
 import { AgentReveal } from './agent-reveal'
 import { CloudflareFastpathCard } from './cloudflare-fastpath-card'
 import { ExpiredLinkCard } from './expired-link-card'
-import { OutcomeCard } from './outcome-card'
-import { RecordCardSection } from './record-card-section'
-import { VerificationProgress } from './verification-progress'
 import { VerifyHeader } from './verify-header'
 
 /** No further status change is possible without external action this page can't take on its own (a project regenerating the challenge) — polling stops here. */
@@ -107,6 +105,7 @@ export function VerificationPageClient({
   const outcomeTone = view.tone === 'pending' ? null : view.tone
   const showTaskArea = view.showRecheck
   const showCloudflareFastpath = showTaskArea && data.provider === 'cloudflare'
+  const guide = guideForProvider(data.provider)
   const headerVariant =
     data.status === 'verified'
       ? 'verified'
@@ -123,58 +122,62 @@ export function VerificationPageClient({
           variant={headerVariant}
         />
 
-        <div className="flex flex-col gap-6">
-          <VerificationProgress
-            steps={verificationSteps({
-              status: data.status,
-              check: data.check,
-            })}
-            tone={view.tone}
-            badgeLabel={view.badgeLabel}
-            meta={isPolling ? 'Checking automatically, every 20s.' : null}
-            unreachableNote={view.unreachableNote}
-          />
-
-          {pollError ? <Callout tone="warning">{pollError}</Callout> : null}
-
-          {outcomeTone ? (
-            <OutcomeCard
-              tone={outcomeTone}
-              heading={view.heading}
-              body={view.body}
-              check={view.showDiff ? data.check : null}
+        <VerificationView
+          steps={verificationSteps({
+            status: data.status,
+            check: data.check,
+          })}
+          tone={view.tone}
+          badgeLabel={view.badgeLabel}
+          meta={isPolling ? 'Checking automatically, every 20s.' : null}
+          unreachableNote={view.unreachableNote}
+          beforeOutcome={
+            pollError ? <Callout tone="warning">{pollError}</Callout> : null
+          }
+          outcome={
+            outcomeTone
+              ? {
+                  tone: outcomeTone,
+                  heading: view.heading,
+                  body: view.body,
+                  check: view.showDiff ? data.check : null,
+                }
+              : null
+          }
+          record={
+            showTaskArea
+              ? {
+                  domain: data.domain,
+                  records: data.records,
+                  guideUrl: `/docs/${guide.slug}`,
+                  guideLabel: guide.name,
+                }
+              : null
+          }
+          beforeRecord={
+            showCloudflareFastpath ? (
+              <>
+                <CloudflareFastpathCard
+                  token={token}
+                  domain={data.domain}
+                  cloudflareOutcome={cloudflareOutcome}
+                />
+                <div className="flex items-center gap-3 text-xs text-faint-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or add it yourself
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </>
+            ) : null
+          }
+          afterRecord={
+            <AgentReveal
+              domain={data.domain}
+              records={data.records}
+              provider={data.provider}
             />
-          ) : null}
-
-          {showTaskArea ? (
-            <>
-              {showCloudflareFastpath ? (
-                <>
-                  <CloudflareFastpathCard
-                    token={token}
-                    domain={data.domain}
-                    cloudflareOutcome={cloudflareOutcome}
-                  />
-                  <div className="flex items-center gap-3 text-xs text-faint-foreground">
-                    <span className="h-px flex-1 bg-border" />
-                    or add it yourself
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                </>
-              ) : null}
-              <RecordCardSection
-                domain={data.domain}
-                records={data.records}
-                provider={data.provider}
-              />
-              <AgentReveal
-                domain={data.domain}
-                records={data.records}
-                provider={data.provider}
-              />
-            </>
-          ) : null}
-        </div>
+          }
+        />
       </div>
 
       {/* Matches `pb-8`/`max-[480px]:pb-8` below exactly, so "Secured by

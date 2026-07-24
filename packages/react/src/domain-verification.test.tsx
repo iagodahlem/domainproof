@@ -77,7 +77,9 @@ describe('DomainVerification', () => {
     render(<DomainVerification sessionToken="sess_123" />)
     await claimDomain(user)
 
-    expect(await screen.findByText('acme.test')).toBeTruthy()
+    expect(
+      await screen.findByText('Add this where you manage DNS for acme.test'),
+    ).toBeTruthy()
     expect(screen.getByText('_acme-challenge.acme.test')).toBeTruthy()
     expect(screen.getByText('acme-verify=abc123')).toBeTruthy()
     expect(screen.getByText('Pending')).toBeTruthy()

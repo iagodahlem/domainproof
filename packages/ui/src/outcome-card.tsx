@@ -1,5 +1,6 @@
 import { AlertCircle, Check } from 'lucide-react'
-import { Callout, cn, type CalloutTone } from '@domainproof/ui'
+import { Callout, type CalloutTone } from './callout'
+import { cn } from './cn'
 
 export interface OutcomeCardCheck {
   expected?: string

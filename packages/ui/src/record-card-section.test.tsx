@@ -16,7 +16,7 @@ describe('RecordCardSection', () => {
       <RecordCardSection
         domain="acme.co"
         records={RECORDS}
-        provider="unknown"
+        guideUrl="/docs/add-txt-record"
       />,
     )
     expect(screen.getByText('_acme-challenge.example.com')).toBeTruthy()
@@ -28,11 +28,11 @@ describe('RecordCardSection', () => {
       <RecordCardSection
         domain="acme.co"
         records={RECORDS}
-        provider="unknown"
+        guideUrl="/docs/add-txt-record"
       />,
     )
     expect(
-      screen.getByText(/Add this where you manage DNS for acme\.co/),
+      screen.getByText('Add this where you manage DNS for acme.co'),
     ).toBeTruthy()
   })
 
@@ -41,18 +41,19 @@ describe('RecordCardSection', () => {
       <RecordCardSection
         domain="acme.co"
         records={RECORDS}
-        provider="unknown"
+        guideUrl="/docs/add-txt-record"
       />,
     )
     expect(screen.getByText(/trailing/i)).toBeTruthy()
   })
 
-  it('links to the named provider guide when a provider is detected', () => {
+  it('links to the named provider guide when a guide label is passed', () => {
     render(
       <RecordCardSection
         domain="acme.co"
         records={RECORDS}
-        provider="cloudflare"
+        guideUrl="/docs/add-txt-record-cloudflare"
+        guideLabel="Cloudflare"
       />,
     )
     const link = screen.getByRole('link', {
@@ -61,12 +62,12 @@ describe('RecordCardSection', () => {
     expect(link.getAttribute('href')).toBe('/docs/add-txt-record-cloudflare')
   })
 
-  it('links to the generic guide, unnamed, when the provider is unknown', () => {
+  it('links to the generic guide, unnamed, when no guide label is passed', () => {
     render(
       <RecordCardSection
         domain="acme.co"
         records={RECORDS}
-        provider="unknown"
+        guideUrl="/docs/add-txt-record"
       />,
     )
     const link = screen.getByRole('link', { name: 'How to add it →' })

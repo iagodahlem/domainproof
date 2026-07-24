@@ -25,10 +25,14 @@
 @source '../../ui/src/cn.ts';
 @source '../../ui/src/copy-button.tsx';
 @source '../../ui/src/field.tsx';
+@source '../../ui/src/outcome-card.tsx';
 @source '../../ui/src/record-card.tsx';
+@source '../../ui/src/record-card-section.tsx';
 @source '../../ui/src/record-field.tsx';
 @source '../../ui/src/status-summary.tsx';
 @source '../../ui/src/text-field.tsx';
+@source '../../ui/src/verification-progress.tsx';
+@source '../../ui/src/verification-view.tsx';
 
 /* Design tokens + Tailwind utility mapping + focus-ring/pulse utilities —
    the same files apps/web imports, so this widget renders with the exact
