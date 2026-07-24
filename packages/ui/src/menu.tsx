@@ -52,17 +52,22 @@ const menuItemVariants = cva(
           'data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
         accent:
           'text-accent data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
+        // The global `:focus-visible` ring defaults to the accent color
+        // (see focus-ring.css) — Radix moves real DOM focus to a menu item
+        // on both keyboard nav and pointer hover, so without this override
+        // a danger item's ring stays accent-green even while its
+        // background/text have already flipped to danger red.
         danger:
-          'text-danger data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger focus-visible:[--focus-ring-color:var(--danger)]',
+          'data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger focus-visible:[--focus-ring-color:var(--danger)]',
       },
       active: {
         true: 'bg-surface-2 text-foreground',
         false: '',
       },
-      // Compact square item for icon-only controls; currently unused, kept
-      // for the planned account-menu redesign. Still a real
-      // DropdownMenuPrimitive.Item under the hood, so it stays in Radix's
-      // roving-focus/arrow-key collection rather than becoming an
+      // Compact square item for icon-only controls; currently unused — the
+      // account menu's theme control ended up needing `bare` instead. Still
+      // a real DropdownMenuPrimitive.Item under the hood, so it stays in
+      // Radix's roving-focus/arrow-key collection rather than becoming an
       // unreachable orphan (the menu swallows Tab).
       iconOnly: {
         true: 'h-8 w-8 shrink-0 justify-center border border-border-strong bg-surface p-0',
@@ -82,6 +87,19 @@ export interface MenuItemProps
     ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>,
     VariantProps<typeof menuItemVariants> {
   icon?: ReactNode
+  /**
+   * Skips the icon/label/check composition and `menuItemVariants` styling
+   * entirely, passing `children` straight through as the sole `asChild`
+   * target — for registering an already-fully-styled interactive element
+   * (e.g. the account menu's segmented theme control) as a real Radix Item.
+   * Radix traps Tab/Arrow-key navigation to its own registered Items once
+   * a menu is open, so a plain interactive element embedded in `MenuContent`
+   * without this becomes completely unreachable by keyboard — this is the
+   * escape hatch for that, still expected to pair with `asChild` and an
+   * `onSelect` that calls `preventDefault()` so selecting it doesn't close
+   * the menu.
+   */
+  bare?: boolean
 }
 
 export const MenuItem = forwardRef<
@@ -96,10 +114,24 @@ export const MenuItem = forwardRef<
     icon,
     children,
     asChild = false,
+    bare = false,
     ...props
   },
   ref,
 ) {
+  if (bare) {
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        asChild={asChild}
+        className={className}
+        {...props}
+      >
+        {children}
+      </DropdownMenuPrimitive.Item>
+    )
+  }
+
   const iconEl = icon ? (
     <span
       aria-hidden="true"
@@ -108,7 +140,7 @@ export const MenuItem = forwardRef<
         tone === 'accent'
           ? 'text-accent'
           : tone === 'danger'
-            ? 'text-danger'
+            ? 'text-faint-foreground group-data-[highlighted]:text-danger'
             : 'text-faint-foreground',
       )}
     >

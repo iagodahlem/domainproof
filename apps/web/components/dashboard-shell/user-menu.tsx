@@ -1,17 +1,19 @@
 'use client'
 
+import Link from 'next/link'
 import { cva } from 'class-variance-authority'
-import { Moon, Sun } from 'lucide-react'
+import { BookOpen, Monitor, Moon, Sun } from 'lucide-react'
 import {
   Menu,
   MenuContent,
   MenuItem,
   MenuSeparator,
   MenuTrigger,
+  SegmentedControl,
   cn,
   useTheme,
-  type ThemeOverride,
 } from '@domainproof/ui'
+import type { SegmentedControlOption, ThemePreference } from '@domainproof/ui'
 import { SignOutButton } from './sign-out-button'
 
 const triggerVariants = cva(
@@ -41,8 +43,8 @@ export interface UserMenuProps {
 }
 
 /**
- * Account menu trigger — avatar pill (initial circle + email) opening a
- * sign-out dropdown. Lives at the sidebar's bottom (board-conformant); the
+ * Account menu trigger — avatar pill (initial circle + email) opening the
+ * account dropdown. Lives at the sidebar's bottom (board-conformant); the
  * default trigger sizes to the width of its container (rather than a fixed
  * cap) so the email truncates within whatever space it's given instead of
  * overflowing it. The pill's padding matches the avatar's own radius on
@@ -79,43 +81,72 @@ export function UserMenu({
         aria-label="Account"
         className="w-64"
       >
-        {email ? (
-          <div className="px-3 py-2 text-xs break-words text-faint-foreground">
+        <div className="flex items-center gap-2.5 px-3 py-2">
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs font-bold text-accent"
+          >
+            {initial}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
             {email}
-          </div>
-        ) : null}
+          </span>
+        </div>
         <MenuSeparator />
-        <ThemeMenuItem />
+        <MenuItem asChild icon={<BookOpen aria-hidden="true" size={14} />}>
+          <Link href="/docs">Docs</Link>
+        </MenuItem>
         <SignOutButton variant="menu-item" />
+        <MenuSeparator />
+        <ThemeFooterRow />
       </MenuContent>
     </Menu>
   )
 }
 
-/** Flips the dashboard's light/dark override — labeled and iconed for the
- * theme it switches *to*, same word-to-icon pairing (dark/moon,
- * light/sun) as the design-system page's own toggle. Prevents Radix's
- * default select-closes-menu behavior so the user can see the flip and
- * toggle again without reopening the menu. */
-function ThemeMenuItem() {
-  const { theme, toggleTheme } = useTheme()
-  const next: ThemeOverride = theme === 'dark' ? 'light' : 'dark'
+const THEME_OPTIONS: SegmentedControlOption[] = [
+  {
+    value: 'system',
+    label: <Monitor aria-hidden="true" size={13} />,
+    tooltip: 'System',
+  },
+  {
+    value: 'light',
+    label: <Sun aria-hidden="true" size={13} />,
+    tooltip: 'Light',
+  },
+  {
+    value: 'dark',
+    label: <Moon aria-hidden="true" size={13} />,
+    tooltip: 'Dark',
+  },
+]
+
+/**
+ * The dropdown's own footer, not a `MenuItem` — a segmented control needs
+ * to stay interactive (click through System/Light/Dark repeatedly) without
+ * Radix treating the click as an item selection and closing the menu, which
+ * a `MenuItem`'s `onSelect` would do by default even with
+ * `preventDefault()` fighting it on every click.
+ */
+function ThemeFooterRow() {
+  const { preference, setThemePreference } = useTheme()
 
   return (
-    <MenuItem
-      icon={
-        next === 'dark' ? (
-          <Moon aria-hidden="true" size={14} />
-        ) : (
-          <Sun aria-hidden="true" size={14} />
-        )
-      }
-      onSelect={(event) => {
-        event.preventDefault()
-        toggleTheme()
-      }}
-    >
-      {next === 'dark' ? 'View dark' : 'View light'}
-    </MenuItem>
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <span className="text-xs font-semibold text-faint-foreground">Theme</span>
+      <SegmentedControl
+        aria-label="Theme"
+        size="sm"
+        options={THEME_OPTIONS}
+        value={preference}
+        onChange={(value) => setThemePreference(value as ThemePreference)}
+        renderTab={(tab) => (
+          <MenuItem asChild bare onSelect={(event) => event.preventDefault()}>
+            {tab}
+          </MenuItem>
+        )}
+      />
+    </div>
   )
 }

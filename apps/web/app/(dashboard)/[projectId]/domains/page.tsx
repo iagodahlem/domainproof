@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { Callout } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { HydrationBoundary } from '@tanstack/react-query'
 import type { DomainMode } from '@/lib/api/dashboard'
+import { domainsListQueryOptions } from '@/lib/query/domains'
+import { dehydrateStreaming, getQueryClient } from '@/lib/query/query-client'
 import { DomainsPageClient } from './_components/domains-page-client'
 
 export const metadata: Metadata = {
@@ -14,6 +14,7 @@ function resolveMode(value: string | string[] | undefined): DomainMode {
   return value === 'live' ? 'live' : 'test'
 }
 
+/** Prefetched (never awaited) into the query cache and streamed down — see `dehydrateStreaming`. A failed fetch surfaces through `[projectId]/error.tsx` once the client's own `useSuspenseQuery` retries and throws. */
 export default async function DomainsPage({
   params,
   searchParams,
@@ -25,35 +26,19 @@ export default async function DomainsPage({
   const { mode: rawMode } = await searchParams
   const mode = resolveMode(rawMode)
   const { getToken } = await auth()
-  const token = await getToken()
 
-  try {
-    const { domains, nextCursor } = await dashboardApi.listDomains(
-      token,
-      projectId,
-      { mode },
-    )
+  const queryClient = getQueryClient()
+  void queryClient.prefetchQuery(
+    domainsListQueryOptions(projectId, mode, getToken),
+  )
 
-    return (
-      // Remounts on mode change (see DomainsPageClient's own
-      // `useState`-seeded domain list) so a toggle-driven `?mode=`
-      // navigation actually replaces the table instead of leaving the
-      // previous mode's rows in place — same as EventsPage's `key={mode}`.
-      <DomainsPageClient
-        key={mode}
-        projectId={projectId}
-        mode={mode}
-        initialDomains={domains}
-        initialNextCursor={nextCursor}
-      />
-    )
-  } catch (error) {
-    return (
-      <Callout tone="warning">
-        {error instanceof ApiError
-          ? error.message
-          : "We couldn't load your domains. Please try again."}
-      </Callout>
-    )
-  }
+  return (
+    <HydrationBoundary state={dehydrateStreaming(queryClient)}>
+      {/* Remounts on mode change (see DomainsPageClient's own
+          `useSuspenseQuery`, keyed per mode) so a toggle-driven `?mode=`
+          navigation actually replaces the table instead of leaving the
+          previous mode's rows in place — same as EventsPage's `key={mode}`. */}
+      <DomainsPageClient key={mode} projectId={projectId} mode={mode} />
+    </HydrationBoundary>
+  )
 }

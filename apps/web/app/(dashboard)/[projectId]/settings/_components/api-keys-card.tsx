@@ -12,13 +12,13 @@ import {
 import { ApiError } from '@/lib/query/errors'
 import type { ApiKeyListItem, CreateKeyResult } from '@/lib/api/dashboard'
 import {
+  useApiKeys,
   useRotateOrRevokeApiKey,
   type RotateOrRevokeKeyInput,
 } from '@/lib/query/keys'
 
 export interface ApiKeysCardProps {
   projectId: string
-  initialKeys: ApiKeyListItem[]
 }
 
 type PendingAction = RotateOrRevokeKeyInput
@@ -57,8 +57,8 @@ function formatDate(iso: string): string {
  * shows a masked value, and the only place a full key appears is the
  * show-once panel produced by a successful rotate.
  */
-export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
-  const [keys, setKeys] = useState(initialKeys)
+export function ApiKeysCard({ projectId }: ApiKeysCardProps) {
+  const { data: keys } = useApiKeys(projectId)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [errorByKey, setErrorByKey] = useState<Record<string, string>>({})
   const [revealedKey, setRevealedKey] = useState<CreateKeyResult | null>(null)
@@ -77,7 +77,9 @@ export function ApiKeysCard({ projectId, initialKeys }: ApiKeysCardProps) {
       { keyId, kind },
       {
         onSuccess: (data) => {
-          setKeys(data.apiKeys)
+          // The mutation's own `onSuccess` already writes `data.apiKeys`
+          // into the query cache `keys` reads from — this callback only
+          // handles UI state local to this component.
           if (data.kind === 'rotate') setRevealedKey(data.result)
           setPendingAction(null)
         },

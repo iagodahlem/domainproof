@@ -3,7 +3,15 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { Badge, CopyButton, TableCell, TableRow, cn } from '@domainproof/ui'
+import {
+  Badge,
+  CopyButton,
+  Skeleton,
+  TableCell,
+  TableHeader,
+  TableRow,
+  cn,
+} from '@domainproof/ui'
 import type { ProjectEventSummary } from '@/lib/api/dashboard'
 import { formatTimestamp } from '@/lib/format-timestamp'
 
@@ -84,5 +92,41 @@ export function EventRow({ event }: EventRowProps) {
         </div>
       ) : null}
     </>
+  )
+}
+
+/** `EventRow`'s real 5-column head — same grid, shared by `EventsView` and `EventsSkeleton` so the two can never structurally drift apart. */
+export function EventTableHead() {
+  return (
+    <TableHeader className={cn(EVENT_GRID_COLS, 'max-[760px]:hidden')}>
+      <span>Type</span>
+      <span>Domain</span>
+      <span>Mode</span>
+      <span>Timestamp</span>
+      <span />
+    </TableHeader>
+  )
+}
+
+/** `EventRow`'s own skeleton, matching its 5-column shape exactly. */
+export function EventRowSkeleton() {
+  return (
+    <TableRow className={EVENT_GRID_COLS}>
+      <TableCell>
+        <Skeleton className="h-5.5 w-24 rounded-full" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-2/3" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5.5 w-12 rounded-full" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-3 w-28" />
+      </TableCell>
+      <TableCell className="justify-self-end">
+        <Skeleton className="h-4 w-4" />
+      </TableCell>
+    </TableRow>
   )
 }

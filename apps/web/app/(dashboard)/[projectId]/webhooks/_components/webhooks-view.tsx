@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { TriangleAlert, Zap } from 'lucide-react'
 import {
   Badge,
@@ -10,53 +11,42 @@ import {
   RecordField,
   Table,
   TableBody,
-  TableHeader,
-  cn,
 } from '@domainproof/ui'
-import type {
-  CreateWebhookEndpointResult,
-  WebhookEndpointSummary,
-} from '@/lib/api/dashboard'
+import type { CreateWebhookEndpointResult, Mode } from '@/lib/api/dashboard'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
+import { useWebhookEndpoints, webhookEndpointsKey } from '@/lib/query/webhooks'
 import { CreateEndpointForm } from './create-endpoint-form'
-import { EndpointRow, ENDPOINT_GRID_COLS } from './endpoint-row'
+import { EndpointRow, EndpointTableHead } from './endpoint-row'
 
 export interface WebhooksViewProps {
   projectId: string
-  initialEndpoints: WebhookEndpointSummary[]
+  mode: Mode
 }
 
 /**
  * Endpoints table (no outer card, per the board) plus the add-endpoint
  * drawer and the show-once signing-secret reveal a successful create
- * produces. All endpoint mutations (enable/disable/delete) are owned by
- * `EndpointRow`, which reports the result back up here so this component
- * only ever holds the flat list.
+ * produces. Enable/disable/delete are owned by `EndpointRow`'s own
+ * mutation hooks, which sync the query cache directly — this component
+ * only handles the one case where it holds data a mutation hook doesn't
+ * see on its own: prepending a just-created endpoint.
  */
-export function WebhooksView({
-  projectId,
-  initialEndpoints,
-}: WebhooksViewProps) {
-  const [endpoints, setEndpoints] = useState(initialEndpoints)
+export function WebhooksView({ projectId, mode }: WebhooksViewProps) {
+  const queryClient = useQueryClient()
+  const { data: endpoints } = useWebhookEndpoints(projectId, mode)
   const [showForm, setShowForm] = useState(false)
   const [revealed, setRevealed] = useState<CreateWebhookEndpointResult | null>(
     null,
   )
 
   function handleCreated(result: CreateWebhookEndpointResult) {
-    setEndpoints((prev) => [result.endpoint, ...prev])
+    queryClient.setQueryData(
+      webhookEndpointsKey(projectId, result.endpoint.mode),
+      (current: typeof endpoints | undefined) =>
+        current && [result.endpoint, ...current],
+    )
     setRevealed(result)
     setShowForm(false)
-  }
-
-  function handleUpdated(endpoint: WebhookEndpointSummary) {
-    setEndpoints((prev) =>
-      prev.map((item) => (item.id === endpoint.id ? endpoint : item)),
-    )
-  }
-
-  function handleDeleted(endpointId: string) {
-    setEndpoints((prev) => prev.filter((item) => item.id !== endpointId))
   }
 
   useTopbarSlot({
@@ -130,22 +120,12 @@ export function WebhooksView({
       ) : (
         <Table>
           <TableBody>
-            <TableHeader
-              className={cn(ENDPOINT_GRID_COLS, 'max-[760px]:hidden')}
-            >
-              <span />
-              <span>Endpoint URL</span>
-              <span>Events</span>
-              <span>Status</span>
-              <span />
-            </TableHeader>
+            <EndpointTableHead />
             {endpoints.map((endpoint) => (
               <EndpointRow
                 key={endpoint.id}
                 projectId={projectId}
                 endpoint={endpoint}
-                onUpdated={handleUpdated}
-                onDeleted={handleDeleted}
               />
             ))}
           </TableBody>

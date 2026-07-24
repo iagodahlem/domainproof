@@ -13,6 +13,9 @@ import { THEME_STORAGE_KEY } from './theme-storage-key'
 
 export type ThemeOverride = 'dark' | 'light'
 
+/** The tri-state a user actually picks from (e.g. the account menu's theme control): an explicit override, or `'system'` to follow the device and clear any stored override. `theme` stays the resolved binary every consumer other than that control cares about. */
+export type ThemePreference = 'system' | ThemeOverride
+
 const DEFAULT_THEME: ThemeOverride = 'dark'
 const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
 
@@ -20,9 +23,17 @@ function isThemeOverride(value: string | null): value is ThemeOverride {
   return value === 'dark' || value === 'light'
 }
 
+function resolveSystemTheme(): ThemeOverride {
+  return window.matchMedia(PREFERS_LIGHT_QUERY).matches ? 'light' : 'dark'
+}
+
 interface ThemeContextValue {
   theme: ThemeOverride
+  /** Whether the current `theme` is an explicit stored choice or the resolved device preference — drives which segment the account menu's theme control shows as active. */
+  preference: ThemePreference
   toggleTheme: () => void
+  /** Sets the tri-state preference: `'system'` clears the stored override (theme then follows the device live); `'light'`/`'dark'` stores that explicit choice, same as `toggleTheme`. */
+  setThemePreference: (preference: ThemePreference) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -56,6 +67,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeOverride>(DEFAULT_THEME)
+  const [preference, setPreferenceState] = useState<ThemePreference>('system')
 
   useLayoutEffect(() => {
     const attr = document.documentElement.getAttribute('data-theme')
@@ -66,6 +78,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // without one) — stamp the default so the DOM matches React's state.
       document.documentElement.setAttribute('data-theme', theme)
     }
+    // The DOM attribute alone can't distinguish "explicit dark" from
+    // "system resolved to dark" — that distinction only lives in
+    // localStorage, so `preference` is corrected from there instead.
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+    setPreferenceState(isThemeOverride(stored) ? stored : 'system')
     // Runs once on mount only; the toggle and the media-query handler below
     // each set the attribute themselves when they change `theme`.
   }, [])
@@ -91,12 +108,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const next: ThemeOverride = current === 'dark' ? 'light' : 'dark'
       window.localStorage.setItem(THEME_STORAGE_KEY, next)
       document.documentElement.setAttribute('data-theme', next)
+      setPreferenceState(next)
       return next
     })
   }, [])
 
+  const setThemePreference = useCallback((next: ThemePreference) => {
+    const resolved = next === 'system' ? resolveSystemTheme() : next
+    if (next === 'system') {
+      window.localStorage.removeItem(THEME_STORAGE_KEY)
+    } else {
+      window.localStorage.setItem(THEME_STORAGE_KEY, next)
+    }
+    document.documentElement.setAttribute('data-theme', resolved)
+    setThemeState(resolved)
+    setPreferenceState(next)
+  }, [])
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, preference, toggleTheme, setThemePreference }}
+    >
       {children}
     </ThemeContext.Provider>
   )

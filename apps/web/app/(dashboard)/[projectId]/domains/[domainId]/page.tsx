@@ -1,15 +1,26 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
-import { Callout } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { HydrationBoundary } from '@tanstack/react-query'
+import {
+  domainEventsQueryOptions,
+  domainQueryOptions,
+} from '@/lib/query/domains'
+import { dehydrateStreaming, getQueryClient } from '@/lib/query/query-client'
 import { DomainDetailClient } from '../_components/domain-detail-client'
 
 export const metadata: Metadata = {
   title: 'Domain — DomainProof',
 }
 
+/**
+ * The domain and its events timeline are the page's two primary queries,
+ * both prefetched (never awaited) in parallel so the server never blocks
+ * on either — see `dehydrateStreaming`. A 404 can no longer short-circuit
+ * here since that would require awaiting the domain fetch first; instead
+ * `DomainDetailClient` calls Next's `notFound()` itself once its own
+ * `useSuspenseQuery` throws a 404 `ApiError`. A non-404 failure surfaces
+ * through `[projectId]/error.tsx`.
+ */
 export default async function DomainDetailPage({
   params,
 }: {
@@ -17,36 +28,18 @@ export default async function DomainDetailPage({
 }) {
   const { projectId, domainId } = await params
   const { getToken } = await auth()
-  const token = await getToken()
 
-  let domain
-  try {
-    ;({ domain } = await dashboardApi.getDomain(token, projectId, domainId))
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      notFound()
-    }
-    return (
-      <Callout tone="warning">
-        {error instanceof ApiError
-          ? error.message
-          : "We couldn't load this domain. Please try again."}
-      </Callout>
-    )
-  }
-
-  const { events, nextCursor } = await dashboardApi.listDomainEvents(
-    token,
-    projectId,
-    domainId,
+  const queryClient = getQueryClient()
+  void queryClient.prefetchQuery(
+    domainQueryOptions(projectId, domainId, getToken),
+  )
+  void queryClient.prefetchQuery(
+    domainEventsQueryOptions(projectId, domainId, getToken),
   )
 
   return (
-    <DomainDetailClient
-      projectId={projectId}
-      initialDomain={domain}
-      initialEvents={events}
-      initialEventsNextCursor={nextCursor}
-    />
+    <HydrationBoundary state={dehydrateStreaming(queryClient)}>
+      <DomainDetailClient projectId={projectId} domainId={domainId} />
+    </HydrationBoundary>
   )
 }

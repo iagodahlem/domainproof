@@ -1,36 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useQueryClient } from '@tanstack/react-query'
 import { Activity } from 'lucide-react'
-import {
-  Button,
-  Callout,
-  Table,
-  TableBody,
-  TableHeader,
-  cn,
-} from '@domainproof/ui'
+import { Button, Callout, Table, TableBody } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
-// loadMore below still hand-rolls its own fetch/state; converting it to a
-// lib/query hook is a real behavior change (new request
-// de-duplication/caching semantics), so it's deliberately excluded from
-// this structural migration and left for an immediate follow-on PR (see
-// apps/web/ARCHITECTURE.md).
-// eslint-disable-next-line no-restricted-imports -- see note above
+import type { Mode } from '@/lib/api/dashboard'
 import {
-  dashboardApi,
-  type Mode,
-  type ProjectEventSummary,
-} from '@/lib/api/dashboard'
-import { EventRow, EVENT_GRID_COLS } from './event-row'
+  projectEventsKey,
+  useListProjectEvents,
+  useProjectEvents,
+} from '@/lib/query/events'
+import type { ProjectEventsPage } from '@/lib/query/events'
+import { EventRow, EventTableHead } from './event-row'
 
 export interface EventsViewProps {
   projectId: string
-  /** The mode this page's data was loaded for — passed through to `loadMore` so pagination doesn't drift onto the other mode's rows. */
   mode: Mode
-  initialEvents: ProjectEventSummary[]
-  initialCursor: string | null
 }
 
 /**
@@ -39,40 +25,36 @@ export interface EventsViewProps {
  * filter beyond cursor pagination and mode, and the board calls the table
  * short enough to scan directly.
  */
-export function EventsView({
-  projectId,
-  mode,
-  initialEvents,
-  initialCursor,
-}: EventsViewProps) {
-  const { getToken } = useAuth()
-  const [events, setEvents] = useState(initialEvents)
-  const [cursor, setCursor] = useState(initialCursor)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string>()
+export function EventsView({ projectId, mode }: EventsViewProps) {
+  const queryClient = useQueryClient()
+  const { data } = useProjectEvents(projectId, mode)
+  const { events, nextCursor: cursor } = data
+  const [loadMoreError, setLoadMoreError] = useState<string>()
 
-  async function loadMore() {
+  const loadMoreEvents = useListProjectEvents(projectId, mode)
+
+  function loadMore() {
     if (!cursor) return
-    setLoadingMore(true)
-    setError(undefined)
-    try {
-      const token = await getToken()
-      const result = await dashboardApi.listProjectEvents(token, projectId, {
-        cursor,
-        mode,
-      })
-      setEvents((prev) => [...prev, ...result.events])
-      setCursor(result.nextCursor)
-    } catch (err) {
-      console.error('Failed to load more events', err)
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      )
-    } finally {
-      setLoadingMore(false)
-    }
+    setLoadMoreError(undefined)
+    loadMoreEvents.mutate(cursor, {
+      onSuccess: (result) => {
+        queryClient.setQueryData<ProjectEventsPage>(
+          projectEventsKey(projectId, mode),
+          (current) => ({
+            events: [...(current?.events ?? []), ...result.events],
+            nextCursor: result.nextCursor,
+          }),
+        )
+      },
+      onError: (err) => {
+        console.error('Failed to load more events', err)
+        setLoadMoreError(
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+        )
+      },
+    })
   }
 
   if (events.length === 0) {
@@ -96,26 +78,20 @@ export function EventsView({
     <div className="flex flex-col gap-4">
       <Table>
         <TableBody>
-          <TableHeader className={cn(EVENT_GRID_COLS, 'max-[760px]:hidden')}>
-            <span>Type</span>
-            <span>Domain</span>
-            <span>Mode</span>
-            <span>Timestamp</span>
-            <span />
-          </TableHeader>
+          <EventTableHead />
           {events.map((event) => (
             <EventRow key={event.id} event={event} />
           ))}
         </TableBody>
       </Table>
 
-      {error ? <Callout tone="warning">{error}</Callout> : null}
+      {loadMoreError ? <Callout tone="warning">{loadMoreError}</Callout> : null}
 
       {cursor ? (
         <Button
           size="sm"
           onClick={loadMore}
-          loading={loadingMore}
+          loading={loadMoreEvents.isPending}
           className="self-start"
         >
           Load more

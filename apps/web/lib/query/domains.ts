@@ -1,7 +1,19 @@
-'use client'
-
+// No 'use client' here: this module is genuinely isomorphic now — the
+// `*QueryOptions` factories below have no client-only dependencies and are
+// called directly from server components (a route's `page.tsx`,
+// `prefetchQuery`); only the hooks that wrap them need a client boundary,
+// and they get one implicitly by only ever being imported from files that
+// already declare `'use client'` themselves. Marking the whole file client
+// would turn every export — including the plain factories — into an opaque
+// client reference server code can't call directly.
 import { useAuth } from '@clerk/nextjs'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { dashboardApi } from '@/lib/api/dashboard'
 import type {
   DomainDetail,
@@ -10,6 +22,16 @@ import type {
   DomainMode,
   DomainStatus,
 } from '@/lib/api/dashboard'
+
+/**
+ * `auth().getToken` (server, already resolved to a function by the time a
+ * page awaits `auth()`) and `useAuth().getToken` (client) share this exact
+ * shape — every `*QueryOptions` factory below takes one so the same
+ * options object can be `prefetchQuery`'d from a server component and
+ * built again with the client's own `getToken` for `useSuspenseQuery`,
+ * keyed identically so hydration lines the two up.
+ */
+type GetToken = () => Promise<string | null>
 
 /** Broad invalidation root — `invalidateQueries` matches by prefix, so this also covers `domainsListKey`'s mode-filtered variants below. */
 export function domainsKey(projectId: string) {
@@ -27,6 +49,11 @@ export function domainKey(projectId: string, domainId: string) {
 
 export function domainEventsKey(projectId: string, domainId: string) {
   return ['domains', projectId, domainId, 'events'] as const
+}
+
+/** The overview page's health-check snapshot — every domain across both modes, up to the dashboard API's max page size. A distinct key from `domainsListKey` since it's unfiltered and not paginated the way the table's own list is. */
+export function overviewDomainsKey(projectId: string) {
+  return [...domainsKey(projectId), 'overview'] as const
 }
 
 /** No further status change is possible without the caller re-verifying — same terminal set as the hosted page's own bounded poll. */
@@ -58,18 +85,13 @@ function boundedPollInterval(
   return POLL_INTERVALS_MS[index]
 }
 
-/**
- * Wraps `GET /dashboard/projects/:id/domains/:domainId` — seeded with the
- * server-rendered detail so there's no loading flash, then polls on the
- * schedule above while the domain hasn't reached a terminal status yet.
- */
-export function useDomain(
+/** Wraps `GET /dashboard/projects/:id/domains/:domainId` — the domain detail page's primary query, prefetched server-side and shared with `useDomain` via the same `domainKey`. */
+export function domainQueryOptions(
   projectId: string,
   domainId: string,
-  initialData: DomainDetail,
+  getToken: GetToken,
 ) {
-  const { getToken } = useAuth()
-  return useQuery({
+  return queryOptions({
     queryKey: domainKey(projectId, domainId),
     queryFn: async () => {
       const token = await getToken()
@@ -80,6 +102,28 @@ export function useDomain(
       )
       return domain
     },
+  })
+}
+
+/**
+ * Hydrated from the server prefetch on first render (no loading flash),
+ * then polls on the schedule above while the domain hasn't reached a
+ * terminal status yet. `initialData` is for the one caller with no
+ * server prefetch of its own to hydrate from — the onboarding
+ * walkthrough's `ClaimedDomainWalkthrough`, seeded from a plain prop
+ * (either the create-domain mutation's own response, or the overview
+ * page's `initialClaimedDomain`) — without it, that component would call
+ * `queryFn` on its very first render, including during SSR, where
+ * `useAuth()`'s `getToken` isn't safely callable yet.
+ */
+export function useDomain(
+  projectId: string,
+  domainId: string,
+  initialData?: DomainDetail,
+) {
+  const { getToken } = useAuth()
+  return useSuspenseQuery({
+    ...domainQueryOptions(projectId, domainId, getToken),
     initialData,
     refetchInterval: (query) => boundedPollInterval(query.state),
   })
@@ -90,21 +134,13 @@ export interface DomainEventsPage {
   nextCursor: string | null
 }
 
-/**
- * Wraps `GET /dashboard/.../events` (first page) — seeded with the
- * server-rendered timeline, then polls on the same bounded schedule as
- * `useDomain`, gated on that same domain query's cached state, so the
- * events timeline doesn't go stale while the status pill is still polling
- * and stops the moment the domain poll does.
- */
-export function useDomainEvents(
+/** Wraps `GET /dashboard/.../events` (first page) — the domain detail page's secondary query, prefetched alongside `domainQueryOptions`. */
+export function domainEventsQueryOptions(
   projectId: string,
   domainId: string,
-  initialData: DomainEventsPage,
+  getToken: GetToken,
 ) {
-  const { getToken } = useAuth()
-  const queryClient = useQueryClient()
-  return useQuery({
+  return queryOptions({
     queryKey: domainEventsKey(projectId, domainId),
     queryFn: async () => {
       const token = await getToken()
@@ -115,7 +151,20 @@ export function useDomainEvents(
       )
       return { events, nextCursor }
     },
-    initialData,
+  })
+}
+
+/**
+ * Hydrated from the server prefetch on first render, then polls on the
+ * same bounded schedule as `useDomain`, gated on that same domain query's
+ * cached state, so the events timeline doesn't go stale while the status
+ * pill is still polling and stops the moment the domain poll does.
+ */
+export function useDomainEvents(projectId: string, domainId: string) {
+  const { getToken } = useAuth()
+  const queryClient = useQueryClient()
+  return useSuspenseQuery({
+    ...domainEventsQueryOptions(projectId, domainId, getToken),
     refetchInterval: () =>
       boundedPollInterval(
         queryClient.getQueryState<DomainDetail>(domainKey(projectId, domainId)),
@@ -128,23 +177,13 @@ export interface DomainsListPage {
   nextCursor: string | null
 }
 
-/**
- * Wraps `GET /dashboard/projects/:id/domains` (first page) — seeded with
- * the server-rendered list so there's no loading flash. Unlike
- * `useDomain`/`useDomainEvents` this doesn't poll, but being a real query
- * (rather than local component state) means it has a cache entry
- * `useDeleteDomain`/`useCreateDomain` can actually invalidate — the list
- * used to be seeded once into `useState` and never reconciled with
- * invalidations, so deleting a domain left it in the table until a full
- * reload remounted the page with fresh props.
- */
-export function useDomainsList(
+/** Wraps `GET /dashboard/projects/:id/domains` (first page), filtered by mode — the domains table's primary query. */
+export function domainsListQueryOptions(
   projectId: string,
   mode: DomainMode,
-  initialData: DomainsListPage,
+  getToken: GetToken,
 ) {
-  const { getToken } = useAuth()
-  return useQuery({
+  return queryOptions({
     queryKey: domainsListKey(projectId, mode),
     queryFn: async () => {
       const token = await getToken()
@@ -155,7 +194,6 @@ export function useDomainsList(
       )
       return { domains, nextCursor }
     },
-    initialData,
   })
 }
 
@@ -195,6 +233,85 @@ export function useWatchDomainsList(
       return POLL_INTERVALS_MS[index]
     },
   })
+}
+
+/**
+ * Hydrated from the server prefetch on first render. Unlike
+ * `useDomain`/`useDomainEvents` this doesn't poll, but being a real query
+ * (rather than local component state) means it has a cache entry
+ * `useDeleteDomain`/`useCreateDomain` can actually invalidate — the list
+ * used to be seeded once into `useState` and never reconciled with
+ * invalidations, so deleting a domain left it in the table until a full
+ * reload remounted the page with fresh props.
+ */
+export function useDomainsList(projectId: string, mode: DomainMode) {
+  const { getToken } = useAuth()
+  return useSuspenseQuery(domainsListQueryOptions(projectId, mode, getToken))
+}
+
+// A snapshot for the overview page's health-check summary, not exhaustive
+// pagination — the max page size the dashboard API allows in one call.
+const OVERVIEW_DOMAINS_LIMIT = 100
+
+export interface OverviewSnapshot {
+  domains: DomainListItem[]
+  truncated: boolean
+  /** Whether this project has registered at least one webhook endpoint, in any mode — the checklist's third step. */
+  anyWebhookRegistered: boolean
+  /** The First-run walkthrough's sandbox domain, in full, if it's already been claimed — its source of truth so its state survives a remount. */
+  initialClaimedDomain: DomainDetail | null
+}
+
+/**
+ * The overview page's whole health-check snapshot — the domains list, the
+ * any-webhook-registered flag, and the claimed sandbox domain (if any) —
+ * as one query rather than three separate ones. All three used to be
+ * independent `await`ed calls in the server component itself; bundling
+ * them into a single `queryFn` keeps that same one-round-trip shape while
+ * letting the *query* (not the route) do the awaiting, so the route can
+ * `prefetchQuery` this without blocking and the client suspends on one
+ * skeleton for the whole snapshot instead of three.
+ */
+export function overviewSnapshotQueryOptions(
+  projectId: string,
+  getToken: GetToken,
+  sandboxDomain: string,
+) {
+  return queryOptions({
+    queryKey: overviewDomainsKey(projectId),
+    queryFn: async (): Promise<OverviewSnapshot> => {
+      const token = await getToken()
+      const [{ domains, nextCursor }, { endpoints }] = await Promise.all([
+        dashboardApi.listDomains(token, projectId, {
+          limit: OVERVIEW_DOMAINS_LIMIT,
+        }),
+        // No `mode` filter — the checklist only cares whether *any*
+        // endpoint exists, in either mode.
+        dashboardApi.listWebhookEndpoints(token, projectId),
+      ])
+      const sandboxSummary = domains.find(
+        (domain) => domain.mode === 'test' && domain.domain === sandboxDomain,
+      )
+      const initialClaimedDomain = sandboxSummary
+        ? (await dashboardApi.getDomain(token, projectId, sandboxSummary.id))
+            .domain
+        : null
+      return {
+        domains,
+        truncated: nextCursor !== null,
+        anyWebhookRegistered: endpoints.length > 0,
+        initialClaimedDomain,
+      }
+    },
+  })
+}
+
+/** Hydrated from the server prefetch on first render — see `overviewSnapshotQueryOptions`. */
+export function useOverviewSnapshot(projectId: string, sandboxDomain: string) {
+  const { getToken } = useAuth()
+  return useSuspenseQuery(
+    overviewSnapshotQueryOptions(projectId, getToken, sandboxDomain),
+  )
 }
 
 /** Wraps `POST /dashboard/projects/:id/domains` — the add-domain panel's submit handler. */

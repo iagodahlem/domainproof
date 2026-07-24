@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { dashboardApi } from '@/lib/api/dashboard'
+import { HydrationBoundary } from '@tanstack/react-query'
 import type { Mode } from '@/lib/api/dashboard'
+import { projectEventsQueryOptions } from '@/lib/query/events'
+import { dehydrateStreaming, getQueryClient } from '@/lib/query/query-client'
 import { EventsView } from './_components/events-view'
 
 export const metadata: Metadata = {
@@ -12,6 +14,7 @@ function resolveMode(value: string | string[] | undefined): Mode {
   return value === 'live' ? 'live' : 'test'
 }
 
+/** Prefetched (never awaited) into the query cache and streamed down — see `dehydrateStreaming`. A failed fetch surfaces through `[projectId]/error.tsx` once the client's own `useSuspenseQuery` retries and throws. */
 export default async function EventsPage({
   params,
   searchParams,
@@ -23,24 +26,19 @@ export default async function EventsPage({
   const { mode: rawMode } = await searchParams
   const mode = resolveMode(rawMode)
   const { getToken } = await auth()
-  const token = await getToken()
 
-  const { events, nextCursor } = await dashboardApi.listProjectEvents(
-    token,
-    projectId,
-    { mode },
+  const queryClient = getQueryClient()
+  void queryClient.prefetchQuery(
+    projectEventsQueryOptions(projectId, mode, getToken),
   )
 
   return (
-    // Remounts on mode change (see EventsView's own `useState`-seeded
-    // event list) so a toggle-driven `?mode=` navigation actually replaces
-    // the table instead of leaving the previous mode's rows in place.
-    <EventsView
-      key={mode}
-      projectId={projectId}
-      mode={mode}
-      initialEvents={events}
-      initialCursor={nextCursor}
-    />
+    <HydrationBoundary state={dehydrateStreaming(queryClient)}>
+      {/* Remounts on mode change (see EventsView's own `useSuspenseQuery`,
+          keyed per mode) so a toggle-driven `?mode=` navigation actually
+          replaces the table instead of leaving the previous mode's rows in
+          place. */}
+      <EventsView key={mode} projectId={projectId} mode={mode} />
+    </HydrationBoundary>
   )
 }

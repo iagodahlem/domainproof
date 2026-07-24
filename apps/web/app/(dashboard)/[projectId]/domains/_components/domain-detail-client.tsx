@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { notFound } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, CircleDashed, RefreshCw } from 'lucide-react'
 import {
@@ -14,11 +15,7 @@ import {
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import { hostedVerificationUrl } from '@/lib/hosted-verification-url'
-import type {
-  DomainCheck,
-  DomainDetail,
-  DomainEvent,
-} from '@/lib/api/dashboard'
+import type { DomainCheck, DomainDetail } from '@/lib/api/dashboard'
 import {
   domainEventsKey,
   domainKey,
@@ -42,9 +39,7 @@ import { DEFAULT_INTERVALS_MS, useBoundedPoll } from './use-bounded-poll'
 
 export interface DomainDetailClientProps {
   projectId: string
-  initialDomain: DomainDetail
-  initialEvents: DomainEvent[]
-  initialEventsNextCursor: string | null
+  domainId: string
 }
 
 function formatNextCheckDelay(ms: number): string {
@@ -54,16 +49,27 @@ function formatNextCheckDelay(ms: number): string {
 
 export function DomainDetailClient({
   projectId,
-  initialDomain,
-  initialEvents,
-  initialEventsNextCursor,
+  domainId,
 }: DomainDetailClientProps) {
   const queryClient = useQueryClient()
-  const { data: domain } = useDomain(projectId, initialDomain.id, initialDomain)
-  const { data: eventsPage } = useDomainEvents(projectId, initialDomain.id, {
-    events: initialEvents,
-    nextCursor: initialEventsNextCursor,
-  })
+
+  // `useSuspenseQuery` throws its error synchronously here rather than
+  // returning it — this is the client-side equivalent of the old server
+  // component's `catch (error) { if (error.status === 404) notFound() }`,
+  // moved here now that the server only prefetches (never awaits) this
+  // query and so can't know up front whether the domain exists.
+  let domainQuery: { data: DomainDetail }
+  try {
+    domainQuery = useDomain(projectId, domainId)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound()
+    }
+    throw error
+  }
+  const { data: domain } = domainQuery
+
+  const { data: eventsPage } = useDomainEvents(projectId, domainId)
   const { events, nextCursor: eventsNextCursor } = eventsPage
 
   const [lastCheck, setLastCheck] = useState<DomainCheck | null>(null)
