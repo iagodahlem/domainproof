@@ -48,8 +48,13 @@ export const DrawerContent = forwardRef<
           'sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:max-h-none sm:max-w-[88%] sm:rounded-none sm:border-t-0 sm:border-l',
           // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- drawer's fixed desktop panel width from the approved mock; no scale/token equivalent
           'sm:w-[440px]',
-          'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=open]:sm:slide-in-from-right',
-          'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=closed]:sm:slide-out-to-right',
+          // The unprefixed slide-in-from-bottom/slide-out-to-bottom stay
+          // active at the sm breakpoint too (mobile-first CSS), so without
+          // the -0 resets the desktop panel would slide in on both axes at
+          // once — a diagonal path from the bottom-right corner instead of
+          // a pure horizontal slide.
+          'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=open]:sm:slide-in-from-bottom-0 data-[state=open]:sm:slide-in-from-right',
+          'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=closed]:sm:slide-out-to-bottom-0 data-[state=closed]:sm:slide-out-to-right',
           className,
         )}
         {...props}
