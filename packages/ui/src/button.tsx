@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { Slot } from '@radix-ui/react-slot'
 import { cn } from './cn'
@@ -15,7 +15,7 @@ const buttonVariants = cva(
         ghost:
           'border-transparent bg-transparent text-muted-foreground hover:bg-surface-2 hover:text-foreground',
         'danger-ghost':
-          'border-danger-tint bg-transparent text-danger hover:bg-danger-soft',
+          'border-danger-tint bg-transparent text-danger hover:bg-danger-soft focus-visible:[--focus-ring-color:var(--danger)]',
       },
       size: {
         default: 'rounded-md px-4 py-2',
@@ -41,6 +41,8 @@ export interface ButtonProps
     ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   loading?: boolean
+  /** Leading icon shown before `children` — replaced by the spinner while `loading`, rather than sitting alongside it, so a click never shows two moving/static glyphs at once. Ignored on the `asChild` branch, same as `loading`. */
+  icon?: ReactNode
   /** Merge button props/styling onto the single child element instead of rendering a <button> — for wrapping a Link or other element that should carry the button's semantics. */
   asChild?: boolean
 }
@@ -53,6 +55,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       shape,
       loading = false,
+      icon,
       disabled,
       type = 'button',
       asChild = false,
@@ -82,7 +85,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, shape }), className)}
         {...props}
       >
-        {loading ? <ButtonSpinner /> : null}
+        {loading ? <ButtonSpinner /> : icon}
         {children}
       </button>
     )

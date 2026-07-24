@@ -15,6 +15,8 @@ export interface TopbarSlotContent {
   back?: TopbarBackLink
   /** The page's own primary action button, rendered right of the mode toggle. */
   action?: ReactNode
+  /** Opts this page out of the dashboard-wide mode toggle even though its route matches `MODE_TOGGLE_SEGMENTS` — e.g. a domain's own detail page, where the mode is a fixed fact about that domain (shown in its meta rail) rather than something to switch. */
+  hideModeToggle?: boolean
 }
 
 // Split into two contexts rather than one `{ content, setContent }` value:

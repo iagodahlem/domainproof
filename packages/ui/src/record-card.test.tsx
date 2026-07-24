@@ -42,4 +42,13 @@ describe('RecordCard', () => {
     )
     expect(screen.getByText('✓').className).toContain('text-success')
   })
+
+  it('applies the danger step tone', () => {
+    render(
+      <RecordCard step="✕" stepTone="danger" title="What we found">
+        <RecordField label="Expected" value="acme-verify=abc" />
+      </RecordCard>,
+    )
+    expect(screen.getByText('✕').className).toContain('text-danger')
+  })
 })

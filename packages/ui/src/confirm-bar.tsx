@@ -17,8 +17,11 @@ export interface ConfirmBarProps {
 /**
  * Inline destructive-action confirmation: a danger callout with the
  * warning message on the left and Cancel/Confirm actions on the right,
- * expanded in place below the control that triggered it (no modal in this
- * design system — see `record-field.tsx`'s rotate/revoke call sites).
+ * expanded in place below the control that triggered it — for a control
+ * with a natural inline slot to expand into (see `record-field.tsx`'s
+ * rotate/revoke call sites). For a trigger with no such slot (an
+ * overflow-menu item), or an action weighty enough that interrupting the
+ * whole page reads as appropriate, use `ConfirmDialog` instead.
  */
 export function ConfirmBar({
   message,

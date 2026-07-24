@@ -44,7 +44,7 @@ export const MenuContent = forwardRef<
 })
 
 const menuItemVariants = cva(
-  'group flex cursor-pointer items-center rounded-md text-left text-sm font-semibold text-muted-foreground outline-none transition-colors duration-150',
+  'group flex cursor-pointer items-center rounded-md text-left text-sm font-semibold text-muted-foreground outline-none transition-colors duration-150 data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[disabled]:data-[highlighted]:bg-transparent data-[disabled]:data-[highlighted]:text-muted-foreground',
   {
     variants: {
       tone: {
@@ -53,7 +53,7 @@ const menuItemVariants = cva(
         accent:
           'text-accent data-[highlighted]:bg-surface-2 data-[highlighted]:text-foreground',
         danger:
-          'data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger',
+          'text-danger data-[highlighted]:bg-danger-soft data-[highlighted]:text-danger focus-visible:[--focus-ring-color:var(--danger)]',
       },
       active: {
         true: 'bg-surface-2 text-foreground',
@@ -108,7 +108,7 @@ export const MenuItem = forwardRef<
         tone === 'accent'
           ? 'text-accent'
           : tone === 'danger'
-            ? 'text-faint-foreground group-data-[highlighted]:text-danger'
+            ? 'text-danger'
             : 'text-faint-foreground',
       )}
     >

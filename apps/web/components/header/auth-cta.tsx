@@ -90,13 +90,15 @@ export function AuthCta({
         disabled={!isLoaded}
         loading={starting}
         onClick={() => void startGoogleSignIn()}
+        icon={
+          showIcon ? (
+            /* Fixed-height slot (matches the label's line-height), same as ThemeToggle's icon — so the button is the same height icon-only below `sm` as it is with the label showing. */
+            <span className="inline-flex h-4 w-4 items-center justify-center">
+              <GoogleIcon size={iconSize} />
+            </span>
+          ) : null
+        }
       >
-        {showIcon ? (
-          /* Fixed-height slot (matches the label's line-height), same as ThemeToggle's icon — so the button is the same height icon-only below `sm` as it is with the label showing. */
-          <span className="inline-flex h-4 w-4 items-center justify-center">
-            <GoogleIcon size={iconSize} />
-          </span>
-        ) : null}
         <span className={labelClassName}>Continue with Google</span>
       </Button>
       {error ? (

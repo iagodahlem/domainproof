@@ -2,14 +2,27 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, RefreshCw, RotateCw, Trash2 } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  CircleDashed,
+  MoreVertical,
+  RefreshCw,
+  RotateCw,
+  Trash2,
+} from 'lucide-react'
 import {
   Badge,
   Button,
   Callout,
+  CopyButton,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
   RecordCard,
   RecordField,
-  StatusPill,
   StatusSummary,
   VerificationLog,
 } from '@domainproof/ui'
@@ -31,17 +44,25 @@ import {
 import type { DomainEventsPage } from '@/lib/query/domains'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { domainStatusPresentation } from '@/lib/domain-status'
-import { formatRelativeTime } from '@/lib/format-relative-time'
 import { domainStatusSteps } from './domain-status-steps'
 import { checkOutcomePresentation } from './domain-check-outcome'
 import { toVerificationLogEntries } from './domain-event-log'
-import { DeleteConfirm } from './delete-confirm'
+import { DeleteDomainDialog } from './delete-domain-dialog'
+import { HostedLinkCard } from './hosted-link-card'
+import { DomainMetaRail } from './domain-meta-rail'
+import { WhatWeFound } from './what-we-found'
+import { DEFAULT_INTERVALS_MS, useBoundedPoll } from './use-bounded-poll'
 
 export interface DomainDetailClientProps {
   projectId: string
   initialDomain: DomainDetail
   initialEvents: DomainEvent[]
   initialEventsNextCursor: string | null
+}
+
+function formatNextCheckDelay(ms: number): string {
+  if (ms < 60_000) return `in ~${Math.round(ms / 1000)}s`
+  return `in ~${Math.round(ms / 60_000)} min`
 }
 
 export function DomainDetailClient({
@@ -63,9 +84,14 @@ export function DomainDetailClient({
 
   const [regenerateError, setRegenerateError] = useState<string | undefined>()
 
-  const [deleteConfirming, setDeleteConfirming] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const verifyDomain = useVerifyDomain(projectId, domain.id)
+  // A second, independent mutation instance for the bounded auto-check
+  // below — sharing `verifyDomain` would make the header's "Check now"
+  // button flash into a loading state on every unattended auto-check tick,
+  // not just when a builder actually clicks it.
+  const autoVerifyDomain = useVerifyDomain(projectId, domain.id)
   const regenerateDomain = useRegenerateDomain(projectId, domain.id)
   const loadMoreEvents = useListDomainEvents(projectId, domain.id)
 
@@ -129,7 +155,39 @@ export function DomainDetailClient({
     })
   }
 
+  // Fires a real verify check on the bounded schedule below while the
+  // domain is `pending` — not just a passive re-read of the current state
+  // (that's `useDomain`'s own polling, unchanged) — so a sandbox domain
+  // flips to `verified` and a real domain's DNS propagation is caught
+  // within seconds to minutes, without a manual "Check now" click. Errors
+  // (a transient DNS/network hiccup) are swallowed rather than surfaced:
+  // the manual button remains available, and the schedule just tries again
+  // on its next tick.
+  async function autoCheck() {
+    try {
+      const result = await autoVerifyDomain.mutateAsync()
+      queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
+      queryClient.setQueryData(domainEventsKey(projectId, domain.id), {
+        events: result.events,
+        nextCursor: result.nextCursor,
+      })
+      setLastCheck(result.check)
+    } catch {
+      // swallowed — see doc comment above
+    }
+  }
+
+  const { attempts: autoCheckAttempts } = useBoundedPoll(
+    autoCheck,
+    domain.status === 'pending',
+  )
+
   useTopbarSlot({
+    // A domain's mode is a fixed fact, already shown in its own meta rail —
+    // the dashboard-wide toggle here is noise, not to mention it was the
+    // main reason this row wrapped onto multiple lines at normal desktop
+    // widths.
+    hideModeToggle: true,
     back: {
       href: `/${projectId}/domains`,
       label: 'Back to domains',
@@ -142,126 +200,172 @@ export function DomainDetailClient({
         <Badge tone={presentation.tone}>{presentation.label}</Badge>
       </div>
     ),
-  })
-
-  return (
-    <div>
-      <RecordCard
-        className="mb-6"
-        step={
-          domain.status === 'verified' ? (
-            <Check aria-hidden="true" size={10} />
-          ) : (
-            '1'
-          )
-        }
-        stepTone={domain.status === 'verified' ? 'success' : 'accent'}
-        title="Ownership record"
-        trailing={
-          domain.records[0] ? (
-            <Badge tone="accent">{domain.records[0].type}</Badge>
-          ) : null
-        }
-      >
-        {domain.records.map((record) => (
-          <div key={record.name}>
-            <RecordField label="Host / Name" value={record.name} copyable />
-            <RecordField label="Value" value={record.value} copyable />
-          </div>
-        ))}
-      </RecordCard>
-
-      <StatusSummary
-        statusBadge={
-          <StatusPill
-            tone={presentation.tone}
-            size="default"
-            pulse={domain.status === 'pending'}
-          >
-            {presentation.label}
-          </StatusPill>
-        }
-        meta={[
-          {
-            label: 'Last checked',
-            value: formatRelativeTime(domain.updatedAt),
-          },
-        ]}
-        steps={domainStatusSteps(domain)}
-      />
-
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+    action: (
+      <div className="flex flex-nowrap items-center gap-2">
+        <CopyButton
+          value={domain.verificationUrl}
+          className="max-[420px]:hidden"
+        >
+          Copy verification link
+        </CopyButton>
+        <CopyButton
+          value={domain.verificationUrl}
+          size="icon"
+          iconOnly
+          aria-label="Copy verification link"
+          className="hidden max-[420px]:flex"
+        >
+          Copy verification link
+        </CopyButton>
         <Button
           variant="primary"
           size="sm"
           onClick={handleVerify}
           loading={verifyDomain.isPending}
+          icon={<RefreshCw aria-hidden="true" size={13} />}
         >
-          <RefreshCw aria-hidden="true" size={13} />
-          Verify now
+          <span className="max-[420px]:sr-only">Check now</span>
         </Button>
-        <Button
-          size="sm"
-          onClick={handleRegenerate}
-          loading={regenerateDomain.isPending}
-        >
-          <RotateCw aria-hidden="true" size={13} />
-          Regenerate challenge
-        </Button>
-        {!deleteConfirming ? (
-          <Button
-            variant="danger-ghost"
-            size="sm"
-            onClick={() => setDeleteConfirming(true)}
+        <Menu>
+          <MenuTrigger asChild>
+            <Button size="sm" className="px-2" aria-label="More actions">
+              <MoreVertical aria-hidden="true" size={15} />
+            </Button>
+          </MenuTrigger>
+          <MenuContent align="end">
+            <MenuItem
+              icon={<RotateCw aria-hidden="true" size={14} />}
+              disabled={regenerateDomain.isPending}
+              onSelect={handleRegenerate}
+            >
+              Regenerate challenge
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem
+              tone="danger"
+              icon={<Trash2 aria-hidden="true" size={14} />}
+              onSelect={() => setDeleteDialogOpen(true)}
+            >
+              Delete domain
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+      </div>
+    ),
+  })
+
+  const nextCheck =
+    domain.status === 'pending'
+      ? {
+          value: formatNextCheckDelay(
+            DEFAULT_INTERVALS_MS[
+              Math.min(autoCheckAttempts, DEFAULT_INTERVALS_MS.length - 1)
+            ] ?? 0,
+          ),
+          note: 'Auto, while propagating',
+        }
+      : domain.status === 'failed'
+        ? { value: 'Paused', note: 'Use "Check now" to retry' }
+        : undefined
+
+  return (
+    <div>
+      <div
+        // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- 272px is the approved mock's fixed meta-rail width; no mapped token equivalent for a track size
+        className="grid grid-cols-[1fr_272px] items-start gap-6 max-[980px]:grid-cols-1"
+      >
+        <div className="min-w-0">
+          <StatusSummary steps={domainStatusSteps(domain, lastCheck)} />
+
+          <RecordCard
+            className="mb-6"
+            step={
+              domain.status === 'verified' ? (
+                <Check aria-hidden="true" size={10} />
+              ) : (
+                <CircleDashed aria-hidden="true" size={10} />
+              )
+            }
+            stepTone={domain.status === 'verified' ? 'success' : 'accent'}
+            title="Ownership record"
+            trailing={
+              domain.records[0] ? (
+                <Badge tone="accent">{domain.records[0].type}</Badge>
+              ) : null
+            }
           >
-            <Trash2 aria-hidden="true" size={13} />
-            Delete domain
-          </Button>
-        ) : null}
+            {domain.records.map((record) => (
+              <div key={record.name}>
+                <RecordField label="Host / Name" value={record.name} copyable />
+                <RecordField label="Value" value={record.value} copyable />
+              </div>
+            ))}
+          </RecordCard>
+
+          {outcome && domain.status !== 'failed' ? (
+            <Callout tone={outcome.tone} className="mb-6">
+              <OutcomeBody outcome={outcome} check={lastCheck} />
+            </Callout>
+          ) : null}
+          {verifyError ? (
+            <Callout tone="warning" className="mb-6">
+              {verifyError}
+            </Callout>
+          ) : null}
+          {regenerateError ? (
+            <Callout tone="warning" className="mb-6">
+              {regenerateError}
+            </Callout>
+          ) : null}
+
+          {domain.status === 'failed' ? (
+            <WhatWeFound
+              domain={domain}
+              check={lastCheck}
+              onRetry={handleVerify}
+              retrying={verifyDomain.isPending}
+            />
+          ) : null}
+
+          <HostedLinkCard
+            verificationUrl={domain.verificationUrl}
+            verified={domain.status === 'verified'}
+          />
+
+          <VerificationLog
+            meta={`${events.length} ${events.length === 1 ? 'entry' : 'entries'}`}
+            entries={toVerificationLogEntries(events)}
+          />
+          {eventsNextCursor ? (
+            <div className="mt-3 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLoadMoreEvents}
+                loading={loadMoreEvents.isPending}
+              >
+                Load more events
+                <ChevronDown aria-hidden="true" size={14} />
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <DomainMetaRail
+          mode={domain.mode}
+          createdAt={domain.createdAt}
+          updatedAt={domain.updatedAt}
+          nextCheck={nextCheck}
+        />
       </div>
 
-      {outcome ? (
-        <Callout tone={outcome.tone} className="mb-6">
-          <OutcomeBody outcome={outcome} check={lastCheck} />
-        </Callout>
-      ) : null}
-      {verifyError ? (
-        <Callout tone="warning" className="mb-6">
-          {verifyError}
-        </Callout>
-      ) : null}
-      {regenerateError ? (
-        <Callout tone="warning" className="mb-6">
-          {regenerateError}
-        </Callout>
-      ) : null}
-
-      {deleteConfirming ? (
-        <DeleteConfirm
-          projectId={projectId}
-          domainId={domain.id}
-          domainName={domain.domain}
-          onCancel={() => setDeleteConfirming(false)}
-        />
-      ) : null}
-
-      <VerificationLog
-        meta={`${events.length} ${events.length === 1 ? 'entry' : 'entries'}`}
-        entries={toVerificationLogEntries(events)}
+      <DeleteDomainDialog
+        projectId={projectId}
+        domainId={domain.id}
+        domainName={domain.domain}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
       />
-      {eventsNextCursor ? (
-        <div className="mt-3 flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLoadMoreEvents}
-            loading={loadMoreEvents.isPending}
-          >
-            Load more events
-            <ChevronDown aria-hidden="true" size={14} />
-          </Button>
-        </div>
-      ) : null}
     </div>
   )
 }

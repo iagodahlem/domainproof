@@ -23,10 +23,12 @@ export interface TopbarProps {
  * domains/webhooks/events/settings. Title/back/action come from whichever
  * page has registered a `useTopbarSlot` override (see `./topbar-slot`);
  * absent that, the title falls back to the active nav route's label. The
- * mode toggle's visibility is route-derived rather than opt-in per page —
- * `MODE_TOGGLE_SEGMENTS` names the routes whose data the toggle actually
- * changes (`nav-items.ts`), which also covers a domain's own detail page for
- * free since its path starts with the `domains` segment.
+ * mode toggle's visibility is route-derived by default — `MODE_TOGGLE_SEGMENTS`
+ * names the routes whose data the toggle actually changes (`nav-items.ts`),
+ * which also covers a domain's own detail page for free since its path
+ * starts with the `domains` segment — but a page can opt back out via its
+ * `useTopbarSlot`'s `hideModeToggle`, for a route where the mode is a fixed
+ * fact rather than something to switch (see the domain detail page).
  */
 export function Topbar({ projectId }: TopbarProps) {
   const pathname = usePathname()
@@ -34,9 +36,11 @@ export function Topbar({ projectId }: TopbarProps) {
   const activeItem = DASHBOARD_NAV_ITEMS.find((item) =>
     isNavItemActive(pathname, projectId, item.segment),
   )
-  const showModeToggle = MODE_TOGGLE_SEGMENTS.some((segment) =>
-    pathname.startsWith(`/${projectId}/${segment}`),
-  )
+  const showModeToggle =
+    !slot?.hideModeToggle &&
+    MODE_TOGGLE_SEGMENTS.some((segment) =>
+      pathname.startsWith(`/${projectId}/${segment}`),
+    )
 
   return (
     <Header
