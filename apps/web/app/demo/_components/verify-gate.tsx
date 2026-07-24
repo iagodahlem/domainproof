@@ -13,6 +13,16 @@ const GATE_BENEFITS = [
   'One DNS record — no code changes to your site',
 ]
 
+/**
+ * Same default/override as `lib/api/frontend.ts`'s `frontendApiBaseUrl` —
+ * duplicated rather than imported, since that module lives under
+ * `lib/api/*` (fetch-calling code only client components reach through a
+ * `lib/query/*` hook) and this is a plain config value, not a fetch.
+ */
+function frontendApiBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_FRONTEND_API_URL ?? 'http://localhost:3001'
+}
+
 export interface VerifyGateProps {
   domain: string
   hostedUrl: string | null
@@ -48,7 +58,7 @@ export function VerifyGate({
   }
 
   return (
-    <div className="mt-7 grid grid-cols-1 overflow-hidden rounded-sg-lg border border-sg-line-strong shadow-sg-card md:grid-cols-2">
+    <div className="mt-7 grid grid-cols-1 overflow-hidden rounded-sg-lg border border-sg-line-strong shadow-sg-card">
       <div className="bg-sg-violet-soft p-7">
         <h4 className="mb-3 font-sg-display text-lg leading-snug text-sg-violet-strong italic">
           Own {domain}? Verify to unlock the full report.
@@ -104,6 +114,7 @@ export function VerifyGate({
             </p>
             <DomainVerification
               frontendToken={frontendToken}
+              baseUrl={frontendApiBaseUrl()}
               theme="dark"
               onVerified={onVerified}
             />
@@ -127,6 +138,7 @@ export function VerifyGate({
             </p>
             <DomainVerification
               sessionToken={sessionToken}
+              baseUrl={frontendApiBaseUrl()}
               theme="dark"
               onVerified={onVerified}
             />

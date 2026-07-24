@@ -143,20 +143,6 @@ test('onboarding polish: sandbox timing, checklist, drawer hint, skeleton', asyn
 test('demo: embedded widget binds to the domain claimed at scan time', async ({
   page,
 }) => {
-  // `@domainproof/react` has no local-dev base-URL wiring in the demo app
-  // (pre-existing gap, not part of this branch — neither `verify-gate.tsx`
-  // nor `sitegrade-app.tsx` wraps the widget in a `DomainProofProvider`),
-  // so it always falls back to its hardcoded production default. Redirect
-  // just for this capture so the embedded widget's own fetches land on the
-  // local api instead of the real one.
-  await page.route('https://frontend.api.domainproof.dev/**', async (route) => {
-    const url = new URL(route.request().url())
-    const response = await route.fetch({
-      url: `http://localhost:5401${url.pathname}${url.search}`,
-    })
-    await route.fulfill({ response })
-  })
-
   await page.goto('/demo')
   await page.getByLabel('Domain to scan').fill('github.com')
   await page.getByRole('button', { name: 'Scan for free' }).click()
@@ -244,18 +230,6 @@ test('demo: a claim whose domain got deleted elsewhere self-heals into a fresh o
   const boundStatusText = page.getByText(
     'Live status for the domain we just claimed above',
   )
-
-  // `@domainproof/react` has no local-dev base-URL wiring in the demo app
-  // (see the "Item 4" test above), so it always falls back to its
-  // hardcoded production default — redirect just for this test so the
-  // widget's own fetches land on the local api instead of the real one.
-  await page.route('https://frontend.api.domainproof.dev/**', async (route) => {
-    const url = new URL(route.request().url())
-    const response = await route.fetch({
-      url: `${apiBaseUrl}${url.pathname}${url.search}`,
-    })
-    await route.fulfill({ response })
-  })
 
   await page.goto('/demo')
   await page.getByLabel('Domain to scan').fill(domain)
