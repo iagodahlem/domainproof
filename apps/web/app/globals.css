@@ -19,6 +19,75 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Sitegrade (/demo) tokens — a deliberately distinct, always-light warm-paper
+   palette for the demo consumer app, scoped by the `sg-` prefix so it can't
+   collide with the site's own `@domainproof/ui` tokens above. Values match
+   the approved design board exactly; /demo is the only route that uses
+   these utilities. */
+@theme {
+  --color-sg-paper: #fbf3e7;
+  --color-sg-paper-2: #f6ead6;
+  --color-sg-paper-3: #f0dfc2;
+  --color-sg-ink: #2b2318;
+  --color-sg-ink-soft: #6e5f49;
+  --color-sg-ink-faint: #a5937a;
+  --color-sg-violet: #5b4cf0;
+  --color-sg-violet-strong: #4939d6;
+  --color-sg-violet-soft: #ece9fe;
+  --color-sg-violet-line: #cfc7fb;
+  --color-sg-amber: #c98a1f;
+  --color-sg-amber-soft: #fbebce;
+  --color-sg-amber-text: #8a5c12;
+  --color-sg-sage: #6e8f5c;
+  --color-sg-sage-soft: #e6eedd;
+  --color-sg-sage-text: #43592e;
+  --color-sg-red: #c1462b;
+  --color-sg-red-soft: #fbe2d9;
+  --color-sg-red-text: #832c17;
+  --color-sg-line: #e4d5be;
+  --color-sg-line-strong: #d8c4a3;
+
+  /* The embedded @domainproof/react widget keeps its own dark, single-green
+     look — these three tokens style only the frame around it (the
+     "Embedded" tag chip), matching that widget's own bg/surface/muted-text
+     so the seam reads as intentional. */
+  --color-sg-dp-bg: #171d24;
+  --color-sg-dp-surface: #1f262e;
+  --color-sg-dp-text-muted: #93a0aa;
+
+  --radius-sg-sm: 12px;
+  --radius-sg-md: 18px;
+  --radius-sg-lg: 26px;
+
+  --font-sg-display:
+    Georgia, 'Iowan Old Style', 'Noto Serif', 'Times New Roman', serif;
+  --font-sg-body:
+    'Century Gothic', 'Avenir Next', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-sg-mono: 'Courier New', Courier, monospace;
+
+  --shadow-sg-card:
+    0 1px 2px rgba(43, 35, 24, 0.05), 0 18px 40px rgba(43, 35, 24, 0.1);
+  --shadow-sg-frame:
+    0 1px 1px rgba(43, 35, 24, 0.04), 0 24px 48px rgba(43, 35, 24, 0.14);
+
+  --animate-sg-scan-progress: sg-scan-progress 1.6s
+    cubic-bezier(0.77, 0, 0.175, 1) infinite;
+}
+
+@keyframes sg-scan-progress {
+  0% {
+    transform: translateX(-40%);
+    width: 30%;
+  }
+  50% {
+    width: 55%;
+  }
+  100% {
+    transform: translateX(160%);
+    width: 30%;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
