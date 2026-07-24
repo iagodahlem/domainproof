@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import type { NextRequest } from 'next/server'
 
 /**
  * Project routes live at the root (`/<projectId>/...`), so there's no
@@ -20,9 +21,26 @@ const isPublicRoute = createRouteMatcher([
   '/demo(.*)',
 ])
 
+/**
+ * Every single-segment path is a project route match (`/<projectId>/...`
+ * above), so a logged-out hit on an unpredictable or mistyped path would
+ * otherwise bounce straight to hosted Clerk sign-in with no sign-in button
+ * ever clicked. Send it to the landing page instead — it carries the
+ * sign-in CTA — and keep the original path as `redirect_url` so a future
+ * landing-side handler can round-trip it.
+ */
+function loggedOutRedirectUrl(req: NextRequest) {
+  const url = new URL('/', req.url)
+  url.searchParams.set(
+    'redirect_url',
+    req.nextUrl.pathname + req.nextUrl.search,
+  )
+  return url.toString()
+}
+
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    await auth.protect({ unauthenticatedUrl: loggedOutRedirectUrl(req) })
   }
 })
 
