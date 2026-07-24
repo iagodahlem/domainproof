@@ -80,6 +80,10 @@ export function DomainsPageClient({
     goToDomain(created.id)
   }
 
+  function handleAddFormOpenChange(open: boolean) {
+    if (!open) setAddFormState({ open: false })
+  }
+
   function handleLoadMore() {
     if (!nextCursor) return
     setLoadMoreError(undefined)
@@ -105,7 +109,7 @@ export function DomainsPageClient({
   }
 
   useTopbarSlot({
-    action: !addFormState.open ? (
+    action: (
       <Button
         variant="primary"
         size="sm"
@@ -114,29 +118,26 @@ export function DomainsPageClient({
         <Plus aria-hidden="true" size={13} />
         Add domain
       </Button>
-    ) : undefined,
+    ),
   })
 
   return (
     <div>
-      {addFormState.open ? (
-        <AddDomainForm
-          projectId={projectId}
-          initialDomain={addFormState.prefill}
-          defaultMode={mode}
-          onCreated={handleCreated}
-          onCancel={() => setAddFormState({ open: false })}
-        />
-      ) : null}
+      <AddDomainForm
+        projectId={projectId}
+        open={addFormState.open}
+        onOpenChange={handleAddFormOpenChange}
+        initialDomain={addFormState.open ? addFormState.prefill : undefined}
+        defaultMode={mode}
+        onCreated={handleCreated}
+      />
 
       {domains.length === 0 ? (
-        addFormState.open ? null : (
-          <DomainEmptyState
-            onVerifyFirstDomain={() =>
-              setAddFormState({ open: true, prefill: SANDBOX_DOMAIN_PREFILL })
-            }
-          />
-        )
+        <DomainEmptyState
+          onVerifyFirstDomain={() =>
+            setAddFormState({ open: true, prefill: SANDBOX_DOMAIN_PREFILL })
+          }
+        />
       ) : (
         <DomainTable>
           <DomainTableHead />

@@ -1,8 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Button, Callout, Select, TextField } from '@domainproof/ui'
+import {
+  Button,
+  Callout,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  Select,
+  TextField,
+} from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { DomainDetail, DomainMode } from '@/lib/api/dashboard'
 import { useCreateDomain } from '@/lib/query/domains'
@@ -14,25 +24,28 @@ const MODE_OPTIONS = [
 
 export interface AddDomainFormProps {
   projectId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
   /** Pre-fills the domain field — used by the empty state's sandbox-domain shortcut. */
   initialDomain?: string
   /** Mode the select starts on — the page's own active mode filter, so claiming a domain from the Live tab doesn't silently default to Test. */
   defaultMode?: DomainMode
   onCreated: (domain: DomainDetail) => void
-  onCancel: () => void
 }
 
 /**
- * The "+ Add domain" panel: domain input + mode select + Add/Cancel, laid
- * out in one row with `items-end` so the buttons line up with the fields'
- * inputs rather than their labels.
+ * The "Add domain" drawer: domain input + mode select + Add/Cancel pinned
+ * to the footer. Stays mounted (just hidden) between opens, same as
+ * `DeleteDomainDialog` — so field/error state resets on every open rather
+ * than lingering from the previous attempt.
  */
 export function AddDomainForm({
   projectId,
+  open,
+  onOpenChange,
   initialDomain = '',
   defaultMode = 'test',
   onCreated,
-  onCancel,
 }: AddDomainFormProps) {
   const [domain, setDomain] = useState(initialDomain)
   const [mode, setMode] = useState<DomainMode>(defaultMode)
@@ -40,6 +53,15 @@ export function AddDomainForm({
   const [formError, setFormError] = useState<string | undefined>()
 
   const createDomain = useCreateDomain(projectId)
+
+  useEffect(() => {
+    if (open) {
+      setDomain(initialDomain)
+      setMode(defaultMode)
+      setFieldError(undefined)
+      setFormError(undefined)
+    }
+  }, [open, initialDomain, defaultMode])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -68,13 +90,27 @@ export function AddDomainForm({
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-border p-6">
-      <div className="mb-4 font-mono text-xs font-semibold tracking-label text-muted-foreground uppercase">
-        Add a domain
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-56 flex-1">
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!createDomain.isPending) onOpenChange(next)
+      }}
+    >
+      <DrawerContent
+        onEscapeKeyDown={(event) => {
+          if (createDomain.isPending) event.preventDefault()
+        }}
+        onPointerDownOutside={(event) => {
+          if (createDomain.isPending) event.preventDefault()
+        }}
+      >
+        <DrawerHeader title="Add a domain" />
+        <DrawerBody>
+          <form
+            id="add-domain-form"
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-5"
+          >
             <TextField
               label="Domain"
               placeholder="example.com"
@@ -84,37 +120,40 @@ export function AddDomainForm({
               autoComplete="off"
               autoFocus
             />
-          </div>
-          <div className="w-32">
             <Select
               label="Mode"
               options={MODE_OPTIONS}
               value={mode}
               onChange={(event) => setMode(event.target.value as DomainMode)}
             />
-          </div>
-          <Button
-            type="submit"
-            variant="primary"
-            loading={createDomain.isPending}
-          >
-            Add domain
-          </Button>
+            {formError ? <Callout tone="warning">{formError}</Callout> : null}
+            <p className="text-sm text-muted-foreground">
+              We&rsquo;ll generate a unique TXT record and a hosted verification
+              link right after this — same record shown on the domain&rsquo;s
+              detail page.
+            </p>
+          </form>
+        </DrawerBody>
+        <DrawerFooter>
           <Button
             type="button"
-            onClick={onCancel}
+            className="justify-center"
+            onClick={() => onOpenChange(false)}
             disabled={createDomain.isPending}
           >
             Cancel
           </Button>
-        </div>
-        {formError ? <Callout tone="warning">{formError}</Callout> : null}
-        <p className="text-sm text-muted-foreground">
-          We&rsquo;ll generate a unique TXT record and a hosted verification
-          link right after this — same record shown on the domain&rsquo;s detail
-          page.
-        </p>
-      </form>
-    </div>
+          <Button
+            type="submit"
+            form="add-domain-form"
+            variant="primary"
+            className="justify-center"
+            loading={createDomain.isPending}
+          >
+            Add domain
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   )
 }

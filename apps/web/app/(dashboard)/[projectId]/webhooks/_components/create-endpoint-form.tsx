@@ -1,8 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Button, Callout, Checkbox, Select, TextField } from '@domainproof/ui'
+import {
+  Button,
+  Callout,
+  Checkbox,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  Select,
+  TextField,
+} from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type {
   CreateWebhookEndpointResult,
@@ -16,8 +27,9 @@ import {
 
 export interface CreateEndpointFormProps {
   projectId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onCreated: (result: CreateWebhookEndpointResult) => void
-  onCancel: () => void
 }
 
 const MODE_OPTIONS = [
@@ -32,15 +44,16 @@ const DEFAULT_EVENT_TYPES: WebhookEventType[] = [
 ]
 
 /**
- * Inline expanding panel (dashed border, no modal in this design system —
- * see `ConfirmBar`'s doc comment for the same convention) for adding a
- * webhook endpoint: URL, mode, and a checkbox per subscribable event type
- * from the API's event map.
+ * The "Add endpoint" drawer: URL, mode, and a checkbox per subscribable
+ * event type from the API's event map. Stays mounted (just hidden) between
+ * opens, same as `AddDomainForm` — so field/error state resets on every
+ * open rather than lingering from the previous attempt.
  */
 export function CreateEndpointForm({
   projectId,
+  open,
+  onOpenChange,
   onCreated,
-  onCancel,
 }: CreateEndpointFormProps) {
   const [url, setUrl] = useState('')
   const [mode, setMode] = useState<Mode>('test')
@@ -51,6 +64,16 @@ export function CreateEndpointForm({
   const [formError, setFormError] = useState<string>()
 
   const createEndpoint = useCreateWebhookEndpoint(projectId)
+
+  useEffect(() => {
+    if (open) {
+      setUrl('')
+      setMode('test')
+      setEventTypes(new Set(DEFAULT_EVENT_TYPES))
+      setUrlError(undefined)
+      setFormError(undefined)
+    }
+  }, [open])
 
   function toggleEventType(type: WebhookEventType) {
     setEventTypes((prev) => {
@@ -97,69 +120,90 @@ export function CreateEndpointForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mb-6 flex flex-col gap-4 rounded-lg border border-dashed border-border-strong bg-surface p-6"
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!createEndpoint.isPending) onOpenChange(next)
+      }}
     >
-      <h3 className="text-sm font-heading text-foreground">Add an endpoint</h3>
-
-      <TextField
-        label="Endpoint URL"
-        type="url"
-        placeholder="https://api.yourapp.com/webhooks/domainproof"
-        value={url}
-        onChange={(changeEvent) => {
-          setUrl(changeEvent.target.value)
-          setUrlError(undefined)
+      <DrawerContent
+        onEscapeKeyDown={(event) => {
+          if (createEndpoint.isPending) event.preventDefault()
         }}
-        error={urlError}
-        autoComplete="off"
-      />
-
-      <Select
-        label="Mode"
-        options={MODE_OPTIONS}
-        value={mode}
-        onChange={(changeEvent) => setMode(changeEvent.target.value as Mode)}
-      />
-
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          Events to send
-        </span>
-        <div className="flex flex-col gap-1">
-          {WEBHOOK_EVENT_TYPES.map((type) => (
-            <Checkbox
-              key={type}
-              label={type}
-              checked={eventTypes.has(type)}
-              onChange={() => toggleEventType(type)}
-              className="font-mono text-xs"
+        onPointerDownOutside={(event) => {
+          if (createEndpoint.isPending) event.preventDefault()
+        }}
+      >
+        <DrawerHeader title="Add an endpoint" />
+        <DrawerBody>
+          <form
+            id="add-endpoint-form"
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-4"
+          >
+            <TextField
+              label="Endpoint URL"
+              type="url"
+              placeholder="https://api.yourapp.com/webhooks/domainproof"
+              value={url}
+              onChange={(changeEvent) => {
+                setUrl(changeEvent.target.value)
+                setUrlError(undefined)
+              }}
+              error={urlError}
+              autoComplete="off"
+              autoFocus
             />
-          ))}
-        </div>
-      </div>
 
-      {formError ? <Callout tone="warning">{formError}</Callout> : null}
+            <Select
+              label="Mode"
+              options={MODE_OPTIONS}
+              value={mode}
+              onChange={(changeEvent) =>
+                setMode(changeEvent.target.value as Mode)
+              }
+            />
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          variant="primary"
-          size="sm"
-          loading={createEndpoint.isPending}
-        >
-          Add endpoint
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={onCancel}
-          disabled={createEndpoint.isPending}
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Events to send
+              </span>
+              <div className="flex flex-col gap-1">
+                {WEBHOOK_EVENT_TYPES.map((type) => (
+                  <Checkbox
+                    key={type}
+                    label={type}
+                    checked={eventTypes.has(type)}
+                    onChange={() => toggleEventType(type)}
+                    className="font-mono text-xs"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {formError ? <Callout tone="warning">{formError}</Callout> : null}
+          </form>
+        </DrawerBody>
+        <DrawerFooter>
+          <Button
+            type="button"
+            className="justify-center"
+            onClick={() => onOpenChange(false)}
+            disabled={createEndpoint.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="add-endpoint-form"
+            variant="primary"
+            className="justify-center"
+            loading={createEndpoint.isPending}
+          >
+            Add endpoint
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   )
 }

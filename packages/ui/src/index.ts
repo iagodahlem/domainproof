@@ -102,4 +102,15 @@ export {
   ConfirmDialog,
   type ConfirmDialogProps,
 } from './dialog'
+export {
+  Drawer,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  type DrawerContentProps,
+  DrawerHeader,
+  type DrawerHeaderProps,
+  DrawerBody,
+  DrawerFooter,
+} from './drawer'
 export { cn } from './cn'
