@@ -41,3 +41,15 @@
 @import '@domainproof/ui/theme.css';
 @import '@domainproof/ui/focus-ring.css';
 @import '@domainproof/ui/pulse.css';
+
+/* apps/web sets its own base text color via `body { @apply text-foreground }`
+   in globals.css — this widget has no equivalent host, so any element
+   inside it that doesn't carry an explicit text utility (RecordCard's
+   title, Stepper's done/upcoming step labels) would otherwise inherit
+   whatever color the embedding host page happens to set on its own body,
+   which can read as low-contrast against the widget's own surface. `:root`
+   becomes `.dp-widget` (see build-css.mjs), so this sets the color directly
+   on the widget's own root, same as every other token above. */
+:root {
+  color: var(--text);
+}

@@ -13,6 +13,8 @@ export interface StoredClaim {
   domainId: string
   verificationUrl: string
   createdAt: number
+  /** The scan this visitor unlocked by claiming, if the claim came from a prior `POST /demo/api/scan` (see claim/route.ts) rather than a bare `{ domain }`. Pins `fullReport` to the scan this visitor actually saw, so a later rescan of the same domain by someone else can't swap out what they unlock. */
+  scanId?: string
 }
 
 // Single-process, in-memory storage — fine for a public demo (same
@@ -56,6 +58,24 @@ export function getScanById(scanId: string): StoredScan | null {
 
 export function getLatestScanForDomain(domain: string): StoredScan | null {
   return scansByDomain.get(domain) ?? null
+}
+
+/**
+ * The scan a claim's `fullReport` should come from: the exact scan the
+ * visitor unlocked, not whatever the domain's most recent scan happens to
+ * be now (someone else could have rescanned the same domain since). Only
+ * falls back to the latest-for-domain scan once the exact one has aged out
+ * of `scansById`'s TTL — at that point there's nothing exact left to show,
+ * and the latest scan is a better answer than no report at all.
+ */
+export function resolveScanForClaim(
+  claim: Pick<StoredClaim, 'scanId' | 'domain'>,
+): StoredScan | null {
+  if (claim.scanId) {
+    const exact = getScanById(claim.scanId)
+    if (exact) return exact
+  }
+  return getLatestScanForDomain(claim.domain)
 }
 
 export function saveClaim(

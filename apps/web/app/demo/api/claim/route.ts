@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
     domain,
     domainId: claimResult.data.id,
     verificationUrl: claimResult.data.verificationUrl,
+    scanId: scanId ?? undefined,
   })
 
   const res = NextResponse.json({
