@@ -24,7 +24,7 @@ export function RecordCardSection({
           {`Add this where you manage DNS for ${domain} — `}
           <Link
             href={`/docs/${guide.slug}`}
-            className="text-accent underline-offset-4 hover:underline"
+            className="whitespace-nowrap text-accent underline-offset-4 hover:underline"
           >
             {`how to add it${guide.name ? ` on ${guide.name}` : ''} →`}
           </Link>
