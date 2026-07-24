@@ -54,6 +54,27 @@ export {
   type StepperStepStatus,
 } from './status-summary'
 export {
+  VerificationProgress,
+  type VerificationProgressProps,
+  type VerificationStatusTone,
+} from './verification-progress'
+export {
+  OutcomeCard,
+  type OutcomeCardProps,
+  type OutcomeCardCheck,
+} from './outcome-card'
+export {
+  RecordCardSection,
+  type RecordCardSectionProps,
+  type RecordCardSectionRecord,
+} from './record-card-section'
+export {
+  VerificationView,
+  type VerificationViewProps,
+  type VerificationViewOutcome,
+  type VerificationViewRecord,
+} from './verification-view'
+export {
   CodePanel,
   type CodePanelProps,
   type CodePanelTab,
