@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, projects } from '@infra/db/schema'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 import { createAccountsRepository } from './repository'
 
 // Runs against the postgres service defined in the repo's compose.yaml
@@ -113,7 +114,7 @@ describe('findEmailByProjectId', () => {
       .values({
         accountId: created.id,
         name: 'Test project',
-        slug: `test-project-${randomUUID().slice(0, 8)}`,
+        slug: uniqueSlug('test-project'),
       })
       .returning({ id: projects.id })
     if (!project) throw new Error('setup failed: could not create test project')
@@ -137,7 +138,7 @@ describe('findEmailByProjectId', () => {
       .values({
         accountId: created.id,
         name: 'Test project',
-        slug: `test-project-${randomUUID().slice(0, 8)}`,
+        slug: uniqueSlug('test-project'),
       })
       .returning({ id: projects.id })
     if (!project) throw new Error('setup failed: could not create test project')

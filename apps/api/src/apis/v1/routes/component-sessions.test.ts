@@ -11,6 +11,7 @@ import {
   projects,
 } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 
 /**
  * End-to-end coverage of `POST /v1/component-sessions`: real api-key auth,
@@ -45,7 +46,7 @@ async function createTestApiKey(
     .values({
       accountId: account.id,
       name: 'Component Session Mint Test',
-      slug: `cst-${randomUUID().slice(0, 8)}`,
+      slug: uniqueSlug('cst'),
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

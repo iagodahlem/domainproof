@@ -6,6 +6,7 @@ import { createApp } from '../../../app'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 
 /**
  * End-to-end coverage of the Frontend API plane: claims a domain through
@@ -32,7 +33,7 @@ async function createTestApiKey(
   const mode = overrides.mode ?? 'test'
   const clerkUserId = `user_${randomUUID()}`
   createdClerkUserIds.push(clerkUserId)
-  const slug = `fpt-${randomUUID().slice(0, 8)}`
+  const slug = uniqueSlug('fpt')
 
   const [account] = await db
     .insert(accounts)

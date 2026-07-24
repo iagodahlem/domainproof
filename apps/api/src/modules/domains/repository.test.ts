@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, challenges, domains, projects } from '@infra/db/schema'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 import { createDomainsRepository } from './repository'
 
 const DATABASE_URL =
@@ -28,7 +29,7 @@ async function createTestProject(): Promise<string> {
     .values({
       accountId: account.id,
       name: 'Test project',
-      slug: `test-${randomUUID().slice(0, 8)}`,
+      slug: uniqueSlug('test'),
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

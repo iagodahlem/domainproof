@@ -12,6 +12,7 @@ import {
   projects,
 } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 
 /**
  * End-to-end coverage of the full component-session journey: mint via
@@ -49,7 +50,7 @@ async function createTestApiKey(
     .values({
       accountId: account.id,
       name: overrides.projectName ?? 'Component Session Test',
-      slug: `cst-${randomUUID().slice(0, 8)}`,
+      slug: uniqueSlug('cst'),
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

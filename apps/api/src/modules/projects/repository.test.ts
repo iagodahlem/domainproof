@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts } from '@infra/db/schema'
+import { uniqueSlug } from '@shared/testing/unique-slug'
 import {
   createProjectsRepository,
   type ProjectApiKeyInsert,
@@ -41,15 +42,6 @@ function keyMaterial(mode: 'test' | 'live'): ProjectApiKeyInsert {
     last4: suffix.slice(-4),
     name: null,
   }
-}
-
-// Same reasoning as `keyMaterial` above, now that `projects.slug` also
-// carries a real unique constraint: a fixed literal like 'skylane-hr' would
-// collide with this same file's other tests running concurrently, or with
-// another test file's own fixed literal (see `apis/dashboard/routes/
-// projects.test.ts`'s "Skylane HR").
-function uniqueSlug(base: string): string {
-  return `${base}-${randomUUID().slice(0, 8)}`
 }
 
 afterEach(async () => {
