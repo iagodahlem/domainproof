@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Code, Component, Info, Link2, Sparkles } from 'lucide-react'
 import { Callout, PathChooser, VerticalTimeline } from '@domainproof/ui'
 import type { PathChooserOption } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { DomainDetail } from '@/lib/api/dashboard'
 import {
+  domainKey,
   useCreateDomain,
   useDomain,
   useVerifyDomain,
@@ -19,6 +21,7 @@ import { buildHostedPathSteps } from './onboarding-hosted-path'
 import type { IntegrationPath } from './onboarding-storage'
 import { useOnboardingTab, useRefreshOnVerified } from './onboarding-storage'
 import { PathDelegate } from './path-delegate'
+import { useBoundedPoll } from './use-bounded-poll'
 
 const PATH_OPTIONS: PathChooserOption[] = [
   {
@@ -151,7 +154,7 @@ export function OnboardingPanel({
           <code className="rounded-sm bg-surface-2 px-1 py-0.5 font-mono text-accent">
             {SANDBOX_DOMAIN}
           </code>
-          , a sandbox domain that verifies itself in about 45 seconds.
+          , a sandbox domain that verifies itself in about 15 seconds.
         </p>
       </Callout>
 
@@ -240,6 +243,15 @@ interface ClaimedDomainWalkthroughProps {
  * hydrate from, and without a seed it would call `queryFn` on its very
  * first render, including during SSR, where `useAuth()`'s `getToken`
  * isn't safely callable yet.
+ *
+ * Also drives an active auto-verify while `pending`, same bounded-backoff
+ * schedule and same `useBoundedPoll` hook as the domain detail page (see
+ * its own `autoCheck`) — without it, this walkthrough's only way to
+ * discover a status change is `useDomain`'s passive GET poll, which never
+ * itself triggers a DNS check; the domain would sit `pending` until the
+ * background recheck worker's own schedule got around to it (a minute or
+ * more), instead of catching the sandbox domain's fast fixture propagation
+ * within seconds.
  */
 function ClaimedDomainWalkthrough({
   projectId,
@@ -249,8 +261,15 @@ function ClaimedDomainWalkthrough({
   claimError,
   onClaim,
 }: ClaimedDomainWalkthroughProps) {
+  const queryClient = useQueryClient()
   const { data: domain } = useDomain(projectId, initialDomain.id, initialDomain)
   const verifyDomain = useVerifyDomain(projectId, domain.id)
+  // A second, independent mutation instance for the bounded auto-check
+  // below — sharing `verifyDomain` would flash the "Recheck now" button
+  // into a loading state on every unattended auto-check tick, not just
+  // when a builder actually clicks it (same reasoning as
+  // `domain-detail-client.tsx`'s `autoVerifyDomain`).
+  const autoVerifyDomain = useVerifyDomain(projectId, domain.id)
   const [verifyError, setVerifyError] = useState<string | undefined>()
   useRefreshOnVerified(domain.status)
 
@@ -266,6 +285,18 @@ function ClaimedDomainWalkthrough({
       },
     })
   }
+
+  async function autoCheck() {
+    try {
+      const result = await autoVerifyDomain.mutateAsync()
+      queryClient.setQueryData(domainKey(projectId, domain.id), result.domain)
+    } catch {
+      // Swallowed — a transient hiccup just tries again on the next tick;
+      // the manual "Recheck now" button stays available regardless.
+    }
+  }
+
+  useBoundedPoll(autoCheck, domain.status === 'pending')
 
   const steps =
     path === 'api'

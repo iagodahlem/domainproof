@@ -49,7 +49,13 @@ export function ClaimStepContent({
         </Button>
         <span className="text-xs text-faint-foreground">
           Hits <code className="font-mono">{SANDBOX_DOMAIN}</code> — no real DNS
-          needed.
+          needed.{' '}
+          <Link
+            href="/docs/sandbox"
+            className="focus-ring-text text-accent underline"
+          >
+            See all sandbox domains
+          </Link>
         </span>
       </div>
       {claimError ? <Callout tone="warning">{claimError}</Callout> : null}

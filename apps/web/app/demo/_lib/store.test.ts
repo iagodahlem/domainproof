@@ -53,6 +53,7 @@ describe('claim store', () => {
       domain: 'example.com',
       domainId: 'dom_1',
       verificationUrl: 'https://domainproof.dev/verify/abc',
+      frontendToken: 'abc',
     })
     expect(getClaim('visitor_1')).toMatchObject({
       domain: 'example.com',
@@ -65,6 +66,7 @@ describe('claim store', () => {
       domain: 'example.com',
       domainId: 'dom_1',
       verificationUrl: 'https://domainproof.dev/verify/abc',
+      frontendToken: 'abc',
       scanId: 'scan_1',
     })
     expect(getClaim('visitor_1')?.scanId).toBe('scan_1')
@@ -75,11 +77,13 @@ describe('claim store', () => {
       domain: 'first.com',
       domainId: 'dom_1',
       verificationUrl: 'https://domainproof.dev/verify/1',
+      frontendToken: '1',
     })
     saveClaim('visitor_1', {
       domain: 'second.com',
       domainId: 'dom_2',
       verificationUrl: 'https://domainproof.dev/verify/2',
+      frontendToken: '2',
     })
     expect(getClaim('visitor_1')?.domain).toBe('second.com')
   })

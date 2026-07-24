@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check as CheckIcon, Copy } from 'lucide-react'
 import { DomainVerification } from '@domainproof/react'
 import type { Verification } from '@domainproof/react'
@@ -13,9 +13,21 @@ const GATE_BENEFITS = [
   'One DNS record — no code changes to your site',
 ]
 
+/**
+ * Same default/override as `lib/api/frontend.ts`'s `frontendApiBaseUrl` —
+ * duplicated rather than imported, since that module lives under
+ * `lib/api/*` (fetch-calling code only client components reach through a
+ * `lib/query/*` hook) and this is a plain config value, not a fetch.
+ */
+function frontendApiBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_FRONTEND_API_URL ?? 'http://localhost:3001'
+}
+
 export interface VerifyGateProps {
   domain: string
   hostedUrl: string | null
+  /** `domain`'s own claim, already made server-side — lets the widget render already bound to it, instead of asking to claim it again. `null` until the claim resolves. */
+  frontendToken: string | null
   sessionToken: string | null
   onVerified: (verification: Verification) => void
 }
@@ -23,10 +35,16 @@ export interface VerifyGateProps {
 export function VerifyGate({
   domain,
   hostedUrl,
+  frontendToken,
   sessionToken,
   onVerified,
 }: VerifyGateProps) {
   const [copied, setCopied] = useState(false)
+  // Lets a visitor claim a domain other than the one already scanned/claimed
+  // — reset per scan (`domain` changes) so a prior scan's choice doesn't
+  // carry over into the next one.
+  const [verifyOther, setVerifyOther] = useState(false)
+  useEffect(() => setVerifyOther(false), [domain])
 
   async function handleCopy() {
     if (!hostedUrl) return
@@ -40,7 +58,7 @@ export function VerifyGate({
   }
 
   return (
-    <div className="mt-7 grid grid-cols-1 overflow-hidden rounded-sg-lg border border-sg-line-strong shadow-sg-card md:grid-cols-2">
+    <div className="mt-7 grid grid-cols-1 overflow-hidden rounded-sg-lg border border-sg-line-strong shadow-sg-card">
       <div className="bg-sg-violet-soft p-7">
         <h4 className="mb-3 font-sg-display text-lg leading-snug text-sg-violet-strong italic">
           Own {domain}? Verify to unlock the full report.
@@ -87,7 +105,30 @@ export function VerifyGate({
         <span className="absolute top-0 right-0 rounded-bl-sg-sm border-b border-l border-white/10 bg-sg-dp-surface px-3 py-1.5 font-sg-mono text-3xs tracking-wide text-sg-dp-text-muted uppercase">
           Embedded &middot; @domainproof/react
         </span>
-        {sessionToken ? (
+        {frontendToken && !verifyOther ? (
+          <>
+            <p className="mb-4 font-sg-body text-xs leading-relaxed text-sg-dp-text-muted">
+              Live status for the domain we just claimed above — the exact same
+              claim, rendered right here by{' '}
+              <code className="font-sg-mono">@domainproof/react</code>.
+            </p>
+            <DomainVerification
+              frontendToken={frontendToken}
+              baseUrl={frontendApiBaseUrl()}
+              theme="dark"
+              onVerified={onVerified}
+            />
+            {sessionToken ? (
+              <button
+                type="button"
+                onClick={() => setVerifyOther(true)}
+                className="mt-4 self-start font-sg-body text-2xs text-sg-dp-text-muted underline hover:text-sg-dp-text"
+              >
+                Verify a different domain instead
+              </button>
+            ) : null}
+          </>
+        ) : sessionToken ? (
           <>
             <p className="mb-4 font-sg-body text-xs leading-relaxed text-sg-dp-text-muted">
               Try DomainProof right here. Verifying your own domain over real
@@ -97,9 +138,19 @@ export function VerifyGate({
             </p>
             <DomainVerification
               sessionToken={sessionToken}
+              baseUrl={frontendApiBaseUrl()}
               theme="dark"
               onVerified={onVerified}
             />
+            {frontendToken ? (
+              <button
+                type="button"
+                onClick={() => setVerifyOther(false)}
+                className="mt-4 self-start font-sg-body text-2xs text-sg-dp-text-muted underline hover:text-sg-dp-text"
+              >
+                Back to {domain}
+              </button>
+            ) : null}
           </>
         ) : (
           <div className="font-sg-body text-xs text-sg-dp-text-muted">

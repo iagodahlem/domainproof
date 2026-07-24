@@ -19,6 +19,8 @@ export interface ReportViewProps {
   /** A domain verified through the embedded widget, which may differ from `domain` — see VerifyGate's sandbox-domain framing. */
   widgetVerifiedDomain: string | null
   hostedUrl: string | null
+  /** `domain`'s own claim, already made server-side — lets the widget render already bound to it instead of asking to claim it again. `null` only if the claim response's `verificationUrl` was ever shaped unexpectedly. */
+  frontendToken: string | null
   sessionToken: string | null
   onVerified: (verification: Verification) => void
 }
@@ -33,6 +35,7 @@ export function ReportView({
   verifiedAt,
   widgetVerifiedDomain,
   hostedUrl,
+  frontendToken,
   sessionToken,
   onVerified,
 }: ReportViewProps) {
@@ -108,6 +111,7 @@ export function ReportView({
       <VerifyGate
         domain={domain}
         hostedUrl={hostedUrl}
+        frontendToken={frontendToken}
         sessionToken={sessionToken}
         onVerified={onVerified}
       />

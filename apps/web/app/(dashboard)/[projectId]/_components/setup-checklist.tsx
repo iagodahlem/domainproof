@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronUp } from 'lucide-react'
-import { Badge, cn } from '@domainproof/ui'
+import { Check, ChevronDown, X } from 'lucide-react'
+import { Badge, Button, cn } from '@domainproof/ui'
 import type { ProjectSummary } from '@/lib/api/dashboard'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import type { ChecklistProgress, ChecklistStepInfo } from './checklist-progress'
@@ -33,21 +33,20 @@ export interface SetupChecklistProps {
 
 /**
  * The Overview's "Get started" checklist — 3 steps derived entirely from
- * real project data (see `deriveChecklistProgress`), collapsing to a slim
- * strip once the two required steps are done. The optional third step
- * (webhook) never blocks that collapse; a builder can still expand the
- * strip back open by hand at any time; that manual choice — not just the
- * data-derived default — is what persists across a reload.
+ * real project data (see `deriveChecklistProgress`). Stays open as a full
+ * card even once the two required steps are done — finishing onboarding
+ * shouldn't yank the card out from under whoever's mid-walkthrough — with a
+ * success-toned progress fill as its "you're set" treatment and an explicit
+ * "Dismiss" control (shown only once required steps are done) for a
+ * builder who's ready to close it. That dismissal — not a data-derived
+ * default — is what persists across a reload.
  */
 export function SetupChecklist({
   project,
   progress,
   firstRunContent,
 }: SetupChecklistProps) {
-  const [collapsed, setCollapsed] = useChecklistCollapsed(
-    project.id,
-    progress.requiredDone,
-  )
+  const [collapsed, setCollapsed] = useChecklistCollapsed(project.id)
 
   if (collapsed) {
     return (
@@ -56,7 +55,10 @@ export function SetupChecklist({
         onClick={() => setCollapsed(false)}
         className="mb-6 inline-flex items-center gap-3 rounded-full border border-border bg-surface py-2 pr-3 pl-2 text-sm text-muted-foreground transition-colors duration-150 hover:border-border-strong"
       >
-        <ProgressRing doneCount={progress.doneCount} />
+        <ProgressRing
+          doneCount={progress.doneCount}
+          complete={progress.requiredDone}
+        />
         <span>
           <strong className="font-semibold text-foreground">Setup:</strong>{' '}
           {progress.doneCount} of 3 done
@@ -80,19 +82,22 @@ export function SetupChecklist({
           </span>
           <span className="h-1 w-24 flex-shrink-0 overflow-hidden rounded-full bg-surface-3">
             <span
-              className="block h-full rounded-full bg-accent"
+              className={cn(
+                'block h-full rounded-full',
+                progress.requiredDone ? 'bg-success' : 'bg-accent',
+              )}
               style={{ width: `${(progress.doneCount / 3) * 100}%` }}
             />
           </span>
           {progress.requiredDone ? (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCollapsed(true)}
-              aria-label="Collapse checklist"
-              className="focus-ring-text text-faint-foreground transition-colors duration-150 hover:text-foreground"
+              icon={<X aria-hidden="true" size={13} />}
             >
-              <ChevronUp aria-hidden="true" size={16} />
-            </button>
+              Dismiss
+            </Button>
           ) : null}
         </div>
       </div>
@@ -112,13 +117,21 @@ export function SetupChecklist({
   )
 }
 
-function ProgressRing({ doneCount }: { doneCount: number }) {
+function ProgressRing({
+  doneCount,
+  complete,
+}: {
+  doneCount: number
+  /** Required steps are done — draws the ring in the same success tone the individual step rows use, instead of the in-progress accent. */
+  complete: boolean
+}) {
   const percent = (doneCount / 3) * 100
+  const fill = complete ? 'var(--color-success)' : 'var(--color-accent)'
   return (
     <span
       className="relative flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full"
       style={{
-        background: `conic-gradient(var(--color-accent) 0% ${percent}%, var(--color-surface-3) ${percent}% 100%)`,
+        background: `conic-gradient(${fill} 0% ${percent}%, var(--color-surface-3) ${percent}% 100%)`,
       }}
     >
       <span className="absolute inset-1 rounded-full bg-surface" />
