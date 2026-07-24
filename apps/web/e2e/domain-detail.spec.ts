@@ -31,7 +31,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   // no-FOUC script (which reads this before anything else) starts dark,
   // the mock's primary presentation, rather than whatever the browser
   // defaulted to.
-  await page.evaluate(() => localStorage.setItem('dp_theme', 'dark'))
+  await page.evaluate(() => localStorage.setItem('dp-theme', 'dark'))
 
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/new$/)
@@ -59,9 +59,14 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     fullPage: true,
   })
 
-  // Copy verification link
-  await page.getByRole('button', { name: 'Copy verification link' }).click()
-  await expect(page.getByText('Copied')).toBeVisible()
+  // Copy verification link — now a low-emphasis Actions menu item, not its
+  // own header button.
+  const verificationUrl = await page.locator('input[readonly]').inputValue()
+  await page.getByRole('button', { name: 'Actions' }).click()
+  await page.getByRole('menuitem', { name: 'Copy verification link' }).click()
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(verificationUrl)
   await page.screenshot({
     path: path.join(ARTIFACTS, '02-copy-link-copied.png'),
   })
@@ -73,11 +78,12 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     fullPage: true,
   })
 
-  // --- Phone-width icon-only collapse (below the 420px breakpoint) ---
+  // --- Phone width — one primary button + one low-emphasis Actions menu
+  // button, both fully labeled (no icon-only collapse needed with only
+  // two header actions left). ---
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(
-    page.getByRole('button', { name: 'Copy verification link' }),
-  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check now' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Actions' })).toBeVisible()
   await page.screenshot({
     path: path.join(ARTIFACTS, '03b-pending-phone-icon-collapse.png'),
     fullPage: true,
@@ -98,7 +104,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   await expect(page.getByRole('menuitem', { name: 'View dark' })).toHaveCount(0)
 
   // --- Delete dialog (domain), cancel it ---
-  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('button', { name: 'Actions' }).click()
   await page.getByRole('menuitem', { name: 'Delete domain' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(
@@ -200,7 +206,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
       }),
     })
   })
-  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('button', { name: 'Actions' }).click()
   await page.getByRole('menuitem', { name: 'Delete domain' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm delete' }).click()
@@ -263,7 +269,7 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     await new Promise((resolve) => setTimeout(resolve, 500))
     return route.fallback()
   })
-  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('button', { name: 'Actions' }).click()
   await page.getByRole('menuitem', { name: 'Delete domain' }).click()
   await page.getByRole('button', { name: 'Confirm delete' }).click()
   await expect(

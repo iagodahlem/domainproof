@@ -15,3 +15,20 @@
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: -2px;
 }
+
+/* rounded variant for text-like focusables — a disclosure summary, an
+   inline link, a ghost text button — that carry no border-radius of their
+   own. The universal rule's -2px inset reads fine against a filled
+   button/input's own box, but on bare text it cuts straight through the
+   glyphs. Same width/color as the rule above (still resolved from
+   --focus-ring-width/--focus-ring-color); this only adds a radius, which
+   the outline then rounds itself against, and a small positive offset so
+   the ring has room to breathe. This has to stay a plain, unlayered rule
+   (not a Tailwind `@utility`, which would land in the utilities layer)
+   to actually win the cascade against the universal rule above on the
+   same focused element — see the two rules' relative specificity. Opt in
+   with the `focus-ring-text` class on any real focusable element. */
+.focus-ring-text:focus-visible {
+  border-radius: var(--radius-sm);
+  outline-offset: 3px;
+}

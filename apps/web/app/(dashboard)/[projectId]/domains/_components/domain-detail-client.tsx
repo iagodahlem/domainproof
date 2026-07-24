@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   CircleDashed,
+  Copy,
   MoreVertical,
   RefreshCw,
   RotateCw,
@@ -15,7 +16,6 @@ import {
   Badge,
   Button,
   Callout,
-  CopyButton,
   Menu,
   MenuContent,
   MenuItem,
@@ -204,18 +204,6 @@ export function DomainDetailClient({
     ),
     action: (
       <div className="flex flex-nowrap items-center gap-2">
-        <CopyButton value={verificationUrl} className="max-[420px]:hidden">
-          Copy verification link
-        </CopyButton>
-        <CopyButton
-          value={verificationUrl}
-          size="icon"
-          iconOnly
-          aria-label="Copy verification link"
-          className="hidden max-[420px]:flex"
-        >
-          Copy verification link
-        </CopyButton>
         <Button
           variant="primary"
           size="sm"
@@ -223,15 +211,27 @@ export function DomainDetailClient({
           loading={verifyDomain.isPending}
           icon={<RefreshCw aria-hidden="true" size={13} />}
         >
-          <span className="max-[420px]:sr-only">Check now</span>
+          Check now
         </Button>
         <Menu>
           <MenuTrigger asChild>
-            <Button size="sm" className="px-2" aria-label="More actions">
-              <MoreVertical aria-hidden="true" size={15} />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<MoreVertical aria-hidden="true" size={15} />}
+            >
+              Actions
             </Button>
           </MenuTrigger>
           <MenuContent align="end">
+            <MenuItem
+              icon={<Copy aria-hidden="true" size={14} />}
+              onSelect={() => {
+                void navigator.clipboard.writeText(domain.verificationUrl)
+              }}
+            >
+              Copy verification link
+            </MenuItem>
             <MenuItem
               icon={<RotateCw aria-hidden="true" size={14} />}
               disabled={regenerateDomain.isPending}
@@ -295,8 +295,18 @@ export function DomainDetailClient({
           >
             {domain.records.map((record) => (
               <div key={record.name}>
-                <RecordField label="Host / Name" value={record.name} copyable />
-                <RecordField label="Value" value={record.value} copyable />
+                <RecordField
+                  label="Host / Name"
+                  value={record.name}
+                  copyable
+                  truncateValue
+                />
+                <RecordField
+                  label="Value"
+                  value={record.value}
+                  copyable
+                  truncateValue
+                />
               </div>
             ))}
           </RecordCard>

@@ -45,7 +45,7 @@ export function PathChooser({
             aria-selected={active}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex w-44 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
+              'flex w-max shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
               active && 'border-accent bg-accent-soft',
             )}
           >
@@ -57,16 +57,16 @@ export function PathChooser({
             >
               {option.icon}
             </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex flex-col gap-0.5">
               <span
                 className={cn(
-                  'truncate text-sm font-heading',
+                  'text-sm font-heading whitespace-nowrap',
                   active && 'text-accent',
                 )}
               >
                 {option.label}
               </span>
-              <span className="truncate text-2xs leading-caption text-faint-foreground">
+              <span className="text-2xs leading-caption whitespace-nowrap text-faint-foreground">
                 {option.sub}
               </span>
             </span>
