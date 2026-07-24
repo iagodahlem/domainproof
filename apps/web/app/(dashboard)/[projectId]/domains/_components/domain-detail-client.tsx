@@ -27,6 +27,7 @@ import {
   VerificationLog,
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
+import { hostedVerificationUrl } from '@/lib/hosted-verification-url'
 import type {
   DomainCheck,
   DomainDetail,
@@ -97,6 +98,7 @@ export function DomainDetailClient({
 
   const presentation = domainStatusPresentation(domain.status)
   const outcome = lastCheck ? checkOutcomePresentation(lastCheck.outcome) : null
+  const verificationUrl = hostedVerificationUrl(domain.frontendToken)
 
   function handleVerify() {
     setVerifyError(undefined)
@@ -202,14 +204,11 @@ export function DomainDetailClient({
     ),
     action: (
       <div className="flex flex-nowrap items-center gap-2">
-        <CopyButton
-          value={domain.verificationUrl}
-          className="max-[420px]:hidden"
-        >
+        <CopyButton value={verificationUrl} className="max-[420px]:hidden">
           Copy verification link
         </CopyButton>
         <CopyButton
-          value={domain.verificationUrl}
+          value={verificationUrl}
           size="icon"
           iconOnly
           aria-label="Copy verification link"
@@ -328,7 +327,7 @@ export function DomainDetailClient({
           ) : null}
 
           <HostedLinkCard
-            verificationUrl={domain.verificationUrl}
+            verificationUrl={verificationUrl}
             verified={domain.status === 'verified'}
           />
 
