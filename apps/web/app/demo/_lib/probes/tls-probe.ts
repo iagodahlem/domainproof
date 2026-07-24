@@ -1,4 +1,6 @@
 import * as tls from 'node:tls'
+import type { ResolveAllFn } from '../ssrf-guard'
+import { resolveVettedAddress } from '../ssrf-guard'
 
 const DEFAULT_TIMEOUT_MS = 8_000
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -32,6 +34,7 @@ export type TlsProbeResult = TlsProbeSuccess | TlsProbeFailure
 export interface TlsProbeOptions {
   timeoutMs?: number
   connect?: typeof tls.connect
+  resolveAll?: ResolveAllFn
 }
 
 /**
@@ -41,18 +44,35 @@ export interface TlsProbeOptions {
  * untrusted/expired cert is exactly the thing this check exists to report,
  * so the handshake has to succeed far enough to read it rather than
  * throwing before `httpsTlsCheck` gets a chance to grade it.
+ *
+ * Connects to a resolved-and-vetted IP address rather than letting
+ * `tls.connect` resolve `domain` itself (see `../ssrf-guard.ts`) —
+ * `servername` still carries the original hostname so SNI/certificate
+ * validation are unaffected.
  */
-export function runTlsProbe(
+export async function runTlsProbe(
   domain: string,
   options: TlsProbeOptions = {},
 ): Promise<TlsProbeResult> {
   const connectImpl = options.connect ?? tls.connect
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
+  const vetted = await resolveVettedAddress(domain, options.resolveAll)
+  if (!vetted.ok) {
+    return {
+      ok: false,
+      reason: 'connection_error',
+      message:
+        vetted.reason === 'no_address'
+          ? 'DNS resolution failed'
+          : 'Resolved address is not allowed',
+    }
+  }
+
   return new Promise((resolve) => {
     let settled = false
     const socket = connectImpl({
-      host: domain,
+      host: vetted.address,
       port: 443,
       servername: domain,
       timeout: timeoutMs,

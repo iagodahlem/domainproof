@@ -73,4 +73,29 @@ describe('createNodeFetchWebhookSender', () => {
     expect(seenInit?.headers).toEqual(REQUEST.headers)
     expect(seenInit?.body).toBe(REQUEST.body)
   })
+
+  it('refuses to deliver to a hostname that resolves to a private address, using the real fetch (not the injectable fetchImpl, which a mock would bypass the dispatcher for)', async () => {
+    const sender = createNodeFetchWebhookSender({
+      resolveAll: async () => [{ address: '169.254.169.254', family: 4 }],
+    })
+
+    const result = await sender.send({
+      ...REQUEST,
+      url: 'https://internal.example/webhooks/domainproof',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.status).toBeUndefined()
+  })
+
+  it('refuses to deliver to a real hostname (localhost) that resolves to loopback — no fake DNS involved', async () => {
+    const sender = createNodeFetchWebhookSender({})
+
+    const result = await sender.send({
+      ...REQUEST,
+      url: 'https://localhost/webhooks/domainproof',
+    })
+
+    expect(result.ok).toBe(false)
+  })
 })

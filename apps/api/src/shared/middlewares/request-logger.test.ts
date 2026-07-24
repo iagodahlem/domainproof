@@ -142,6 +142,34 @@ describe('sanitizeBodyForLogging', () => {
     })
   })
 
+  it('redacts fields matched by substring, not just the fixed exact-match list', () => {
+    const body = JSON.stringify({
+      frontendToken: 'ft_abc123',
+      sessionToken: 'st_abc123',
+      clientSecret: 'shh',
+      safe: 'value',
+    })
+
+    expect(sanitizeBodyForLogging(body)).toEqual({
+      frontendToken: '[redacted]',
+      sessionToken: '[redacted]',
+      clientSecret: '[redacted]',
+      safe: 'value',
+    })
+  })
+
+  it('does not over-redact legitimate fields that merely contain "key"', () => {
+    const body = JSON.stringify({
+      apiKey: { keyId: 'key_abc', mode: 'live' },
+      apiKeys: [{ keyId: 'key_abc', mode: 'live' }],
+    })
+
+    expect(sanitizeBodyForLogging(body)).toEqual({
+      apiKey: { keyId: 'key_abc', mode: 'live' },
+      apiKeys: [{ keyId: 'key_abc', mode: 'live' }],
+    })
+  })
+
   it('redacts sensitive fields inside arrays', () => {
     const body = JSON.stringify({
       apiKeys: [{ key: 'dp_live_a' }, { key: 'dp_live_b' }],

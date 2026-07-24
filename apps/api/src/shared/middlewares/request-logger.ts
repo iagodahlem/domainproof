@@ -17,25 +17,41 @@ const TRUNCATED_MARKER = '...[truncated]'
 const REDACTED_VALUE = '[redacted]'
 
 /**
- * Body field names that must never reach a log line, matched
+ * Body field names that must never reach a log line in the clear, matched
  * case-insensitively against every object key at any depth of a
  * request/response body. `key` is `modules/keys/service.ts`'s
  * `CreateKeyResult.key` — the one-time full api key
  * (`dp_<mode>_<keyId>_<secret>`) returned by `POST /dashboard/keys` and
  * `POST /dashboard/keys/:keyId/rotate`, the one payload this api's own
  * routes actually return that contains a raw secret today.
- * `secret`/`secrethash`/`token`/`password` are defensive, shape-based
- * matches for anything with the same sensitivity a future route might
- * add. Authorization/cookie *headers* are redacted separately, via
- * `infra/logging/logger.ts`'s pino `redact.paths` config.
+ *
+ * `key` is matched as an EXACT name only, not a substring — this api also
+ * returns `apiKey`/`apiKeys` (the non-secret list/summary shape from
+ * `KeysService.toListItem`) and `keyId` (a public identifier) in ordinary
+ * responses, and substring-matching "key" would blank out those entire
+ * objects instead of just the one field inside them that's actually
+ * secret.
+ *
+ * `secret`/`token`/`password` are matched as SUBSTRINGS instead: unlike
+ * `key`, nothing in this api's response shapes legitimately has one of
+ * these as part of a non-secret field name, so the wider match has no
+ * over-redaction cost — and it's what's needed to catch fields this exact
+ * list doesn't spell out today, like `frontendToken`/`sessionToken`
+ * (`apis/dashboard/routes/domains.ts`, `apis/v1/routes/component-sessions.ts`)
+ * and `clientSecret`/`secretHash`, plus whatever a future route adds with
+ * the same shape. Authorization/cookie *headers* are redacted separately,
+ * via `infra/logging/logger.ts`'s pino `redact.paths` config.
  */
-const SENSITIVE_BODY_FIELDS = new Set([
-  'key',
-  'secret',
-  'secrethash',
-  'token',
-  'password',
-])
+const SENSITIVE_EXACT_FIELDS = new Set(['key'])
+const SENSITIVE_FIELD_SUBSTRINGS = ['secret', 'token', 'password']
+
+function isSensitiveField(field: string): boolean {
+  const lower = field.toLowerCase()
+  return (
+    SENSITIVE_EXACT_FIELDS.has(lower) ||
+    SENSITIVE_FIELD_SUBSTRINGS.some((substring) => lower.includes(substring))
+  )
+}
 
 // Guards against a pathological/malicious payload, not a realistic shape
 // any route in this api produces.
@@ -55,7 +71,7 @@ function redactBody(value: unknown, depth: number): unknown {
     for (const [field, fieldValue] of Object.entries(
       value as Record<string, unknown>,
     )) {
-      result[field] = SENSITIVE_BODY_FIELDS.has(field.toLowerCase())
+      result[field] = isSensitiveField(field)
         ? REDACTED_VALUE
         : redactBody(fieldValue, depth + 1)
     }
