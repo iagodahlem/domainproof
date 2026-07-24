@@ -11,10 +11,7 @@ export default async function LandingPage() {
   const { userId } = await auth()
 
   return (
-    <div
-      // eslint-disable-next-line better-tailwindcss/no-restricted-classes -- min-h-[calc(100vh-4rem)] accounts for the 4rem-tall sticky Header the marketing layout renders as a sibling above this page, same treatment as docs-sidebar.tsx's h-[calc(100vh-4rem)]
-      className="flex min-h-[calc(100vh-4rem)] flex-col bg-background"
-    >
+    <div className="flex flex-1 flex-col bg-background">
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
         <div className="flex max-w-[62ch] flex-col gap-4">
           <p className="font-mono text-xs font-semibold tracking-widest text-accent uppercase">
