@@ -222,3 +222,85 @@ test('demo: report survives a refresh and re-entering the same domain', async ({
   await expect(gateHeading).toBeVisible({ timeout: 15_000 })
   await expect(boundStatusText).toBeVisible({ timeout: 15_000 })
 })
+
+// --- Round 3: the owner deletes the claimed domain (e.g. from the
+// dashboard) after the demo already claimed it — the stored claim must
+// never be served as-is once it stops resolving.
+test('demo: a claim whose domain got deleted elsewhere self-heals into a fresh one', async ({
+  page,
+}) => {
+  const apiKey = process.env.DEMO_DOMAINPROOF_API_KEY
+  test.skip(
+    !apiKey,
+    'DEMO_DOMAINPROOF_API_KEY not set — see apps/web/.env.example',
+  )
+  const apiBaseUrl =
+    process.env.DEMO_DOMAINPROOF_BASE_URL ?? 'http://localhost:3001'
+
+  const domain = 'wikipedia.org'
+  const gateHeading = page.getByRole('heading', {
+    name: `Own ${domain}? Verify to unlock the full report.`,
+  })
+  const boundStatusText = page.getByText(
+    'Live status for the domain we just claimed above',
+  )
+
+  // `@domainproof/react` has no local-dev base-URL wiring in the demo app
+  // (see the "Item 4" test above), so it always falls back to its
+  // hardcoded production default — redirect just for this test so the
+  // widget's own fetches land on the local api instead of the real one.
+  await page.route('https://frontend.api.domainproof.dev/**', async (route) => {
+    const url = new URL(route.request().url())
+    const response = await route.fetch({
+      url: `${apiBaseUrl}${url.pathname}${url.search}`,
+    })
+    await route.fulfill({ response })
+  })
+
+  await page.goto('/demo')
+  await page.getByLabel('Domain to scan').fill(domain)
+  await page.getByRole('button', { name: 'Scan for free' }).click()
+  await expect(gateHeading).toBeVisible({ timeout: 15_000 })
+  await expect(boundStatusText).toBeVisible({ timeout: 15_000 })
+
+  // Delete the domain out from under the claim, the same way a project
+  // owner would from the dashboard's domain list.
+  const listResponse = await page.request.get(
+    `${apiBaseUrl}/v1/domains?domain=${encodeURIComponent(domain)}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  )
+  const { domains } = (await listResponse.json()) as {
+    domains: { id: string }[]
+  }
+  const claimedDomain = domains[0]
+  expect(claimedDomain).toBeTruthy()
+  await page.request.delete(`${apiBaseUrl}/v1/domains/${claimedDomain?.id}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+
+  // The demo's own status endpoint (it shares the browser's visitor
+  // cookie) must never keep surfacing the dead claim — either this poll or
+  // the page's own background one (every 5s, see sitegrade-app.tsx) has to
+  // reclaim the domain fresh. Racing the page's own poll means the first
+  // request here might already see the healed state rather than catch the
+  // reclaim itself, so poll until it's unambiguously healthy rather than
+  // asserting on a single response.
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get('/demo/api/status')
+        const body = (await res.json()) as { claimed?: boolean }
+        return res.ok() && body.claimed === true
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true)
+
+  // The embedded widget must pick up the fresh claim on its own next poll
+  // rather than getting stuck showing "Verification not found" for a claim
+  // that no longer exists.
+  await expect(
+    page.getByRole('button', { name: /^Check now$|^Checking…$/ }),
+  ).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Verification not found')).toHaveCount(0)
+})

@@ -36,6 +36,17 @@ interface StatusResponse {
   verified: boolean
   verifiedAt?: string | null
   fullReport: CheckResult[] | null
+  /**
+   * The claim's current token/link, present on every poll once claimed —
+   * kept in sync with `claim` below so that if the domain went dead (its
+   * owner deleted it) and got reclaimed fresh server-side, the embedded
+   * widget rebinds to the new live claim instead of staying stuck on one
+   * that 404s forever. Not necessarily from *this* poll's own reclaim: a
+   * concurrent poll can just as easily be the one that lands after the
+   * store's already updated.
+   */
+  frontendToken?: string | null
+  hostedUrl?: string | null
 }
 
 type Phase = 'idle' | 'scanning' | 'unreachable' | 'report'
@@ -225,6 +236,23 @@ export function SitegradeApp() {
       if (!response.ok) return
       const data = (await response.json()) as StatusResponse
       setStatus(data)
+      // Re-syncs `claim`'s own token/link from the store's current values
+      // on every poll (see status/route.ts) — not just the one poll that
+      // happened to trigger a dead-claim reclaim, since a concurrent poll
+      // can land after the store's already updated and would otherwise
+      // never learn the new token, leaving the widget stuck rebinding to
+      // one that 404s forever.
+      if (data.frontendToken) {
+        setClaim((prev) =>
+          prev && prev.frontendToken !== data.frontendToken
+            ? {
+                ...prev,
+                frontendToken: data.frontendToken ?? null,
+                hostedUrl: data.hostedUrl ?? prev.hostedUrl,
+              }
+            : prev,
+        )
+      }
     } catch {
       // Next poll tick retries — no need to surface a transient network error.
     }

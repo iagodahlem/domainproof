@@ -6,6 +6,7 @@ import { checkRateLimit } from '../../_lib/rate-limit'
 import { clientIpFromHeaders } from '../../_lib/request-ip'
 import { getDemoDomainProofClient } from '../../_lib/sdk-client'
 import { getScanById, saveClaim } from '../../_lib/store'
+import { frontendTokenFromVerificationUrl } from '../../_lib/verification-url'
 
 const CLAIM_RATE_LIMIT = { limit: 10, windowMs: 60 * 60 * 1000 }
 
@@ -20,26 +21,6 @@ function errorResponse(status: number, code: string, message: string) {
 
 function statusFromSdkError(status: number): number {
   return status >= 400 && status < 600 ? status : 502
-}
-
-/**
- * A claim's `frontendToken` is the last path segment of its
- * `verificationUrl` — the public v1 API only ever exposes the URL, never
- * the raw token (see `apps/api/src/shared/verification-url.ts`'s
- * `buildVerificationUrl`), so this is the intended way to recover it.
- * `null` only if the URL is ever shaped unexpectedly.
- */
-function frontendTokenFromVerificationUrl(
-  verificationUrl: string,
-): string | null {
-  try {
-    const segments = new URL(verificationUrl).pathname
-      .split('/')
-      .filter(Boolean)
-    return segments.at(-1) ?? null
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -122,14 +103,27 @@ export async function POST(req: NextRequest) {
     // this domain already sees.
     const existing = await client.domains.list({ domain, limit: 1 })
     const found = existing.data?.domains[0]
-    if (!found) {
-      return errorResponse(
-        statusFromSdkError(claimResult.error.status),
-        claimResult.error.code,
-        claimResult.error.message,
-      )
+    if (found) {
+      domainData = found
+    } else {
+      // The domain that caused the conflict is already gone by the time we
+      // looked it up — most likely its owner deleted it via the dashboard
+      // between the claim attempt above and this lookup. The (project,
+      // domain, mode) slot is free again, so retry the claim fresh instead
+      // of surfacing a conflict that's no longer real.
+      const retry = await client.domains.claim({
+        domain,
+        externalId: visitorId,
+      })
+      if (retry.error) {
+        return errorResponse(
+          statusFromSdkError(retry.error.status),
+          retry.error.code,
+          retry.error.message,
+        )
+      }
+      domainData = retry.data
     }
-    domainData = found
   } else {
     domainData = claimResult.data
   }
