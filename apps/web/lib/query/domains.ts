@@ -159,6 +159,44 @@ export function useDomainsList(
   })
 }
 
+/**
+ * Bounded poll of the domains list — the Overview's "Agents & CLI" tab's
+ * own "watch it land" step, active only while that tab is showing. An
+ * agent claiming a domain through the MCP server or CLI happens outside
+ * this browser tab entirely, so nothing would otherwise tell this page to
+ * refetch. Same interval ladder as `useDomain`/`useDomainEvents`, but
+ * gated on `enabled` rather than a terminal status — a list has no single
+ * terminal state to stop on, only "the tab watching it is still active."
+ */
+export function useWatchDomainsList(
+  projectId: string,
+  mode: DomainMode,
+  enabled: boolean,
+) {
+  const { getToken } = useAuth()
+  return useQuery({
+    queryKey: [...domainsListKey(projectId, mode), 'watch'] as const,
+    queryFn: async () => {
+      const token = await getToken()
+      const { domains } = await dashboardApi.listDomains(token, projectId, {
+        mode,
+      })
+      return domains
+    },
+    enabled,
+    refetchInterval: (query) => {
+      if (!enabled || query.state.dataUpdateCount > MAX_POLL_ATTEMPTS) {
+        return false as const
+      }
+      const index = Math.min(
+        query.state.dataUpdateCount,
+        POLL_INTERVALS_MS.length - 1,
+      )
+      return POLL_INTERVALS_MS[index]
+    },
+  })
+}
+
 /** Wraps `POST /dashboard/projects/:id/domains` — the add-domain panel's submit handler. */
 export function useCreateDomain(projectId: string) {
   const { getToken } = useAuth()

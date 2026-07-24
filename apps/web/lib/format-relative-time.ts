@@ -23,5 +23,12 @@ export function formatRelativeTime(
         ? [Math.round(absMs / HOUR_MS), 'hr']
         : [Math.round(absMs / DAY_MS), 'd']
 
-  return diffMs > 0 ? `in ~${amount} ${unit}` : `${amount} ${unit} ago`
+  // The single-letter day unit sits flush against its number ("2d"), same
+  // as most relative-time UIs — "min"/"hr" keep their space since they
+  // read as words, not a unit symbol.
+  const separator = unit === 'd' ? '' : ' '
+
+  return diffMs > 0
+    ? `in ~${amount}${separator}${unit}`
+    : `${amount}${separator}${unit} ago`
 }

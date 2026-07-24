@@ -5,6 +5,7 @@ export { CenteredMain } from './centered-main'
 export { Logo, type LogoProps } from './logo'
 export { BrowserChrome, type BrowserChromeProps } from './browser-chrome'
 export { CopyButton, type CopyButtonProps } from './copy-button'
+export { CopyField, type CopyFieldProps } from './copy-field'
 export {
   Badge,
   type BadgeProps,

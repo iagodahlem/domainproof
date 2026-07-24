@@ -30,7 +30,7 @@ export function PathChooser({
     <div
       role="tablist"
       className={cn(
-        'mb-8 flex flex-nowrap gap-3 max-[780px]:flex-col',
+        'flex snap-x flex-nowrap gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
       {...props}
@@ -45,7 +45,7 @@ export function PathChooser({
             aria-selected={active}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors duration-150 hover:border-border-strong max-[780px]:w-full',
+              'flex w-44 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-border-strong',
               active && 'border-accent bg-accent-soft',
             )}
           >

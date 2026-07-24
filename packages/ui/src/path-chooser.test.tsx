@@ -45,7 +45,7 @@ describe('PathChooser', () => {
     expect(onChange).toHaveBeenCalledWith('hosted')
   })
 
-  it('stacks into full-width cards under 780px instead of wrapping text', () => {
+  it('never wraps or stacks — stays one row and scrolls horizontally instead', () => {
     render(
       <PathChooser
         options={OPTIONS}
@@ -56,11 +56,12 @@ describe('PathChooser', () => {
     )
     expect(screen.getByTestId('chooser').className).toContain('flex-nowrap')
     expect(screen.getByTestId('chooser').className).not.toContain('flex-wrap')
-    expect(screen.getByTestId('chooser').className).toContain(
-      'max-[780px]:flex-col',
-    )
+    expect(screen.getByTestId('chooser').className).not.toContain('flex-col')
+    expect(screen.getByTestId('chooser').className).toContain('overflow-x-auto')
+    // Fixed-width, non-shrinking cards — the row scrolls instead of
+    // squeezing cards down to nothing at narrow widths.
     expect(screen.getByRole('tab', { name: /API/ }).className).toContain(
-      'max-[780px]:w-full',
+      'shrink-0',
     )
   })
 
