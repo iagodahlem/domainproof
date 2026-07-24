@@ -88,6 +88,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
 `DomainProofProvider` is optional — every hook falls back to production on
 its own.
 
+## Rendering an existing claim
+
+If you already claimed the domain some other way (server-side, via
+`@domainproof/sdk`'s `domains.claim`) and just want this component to show
+that claim's live status, pass `frontendToken` instead of `sessionToken` —
+it skips the claim step entirely and renders the record card right away.
+`frontendToken` is the last path segment of the claim's own
+`verificationUrl` (the same token the hosted verification page,
+`/verify/:token`, uses):
+
+```tsx
+<DomainVerification
+  frontendToken={verificationUrl.split('/').pop()}
+  onVerified={(verification) => console.log(`${verification.domain} verified`)}
+/>
+```
+
+`sessionToken` and `frontendToken` are mutually exclusive — pass exactly
+one.
+
 ## Headless hooks
 
 Compose these directly instead of `<DomainVerification />` for full control

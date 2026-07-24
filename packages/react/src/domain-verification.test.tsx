@@ -171,4 +171,53 @@ describe('DomainVerification', () => {
     expect(await screen.findByText(/wait a moment/i)).toBeTruthy()
     expect(screen.getByLabelText('Domain')).toBeTruthy()
   })
+
+  describe('bound to an existing claim via frontendToken', () => {
+    it('skips the claim step and renders the record card directly', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+        Promise.resolve(jsonResponse(claimResult())),
+      )
+
+      render(<DomainVerification frontendToken="ft_123" />)
+
+      expect(
+        await screen.findByText('Add this where you manage DNS for acme.test'),
+      ).toBeTruthy()
+      expect(screen.getByText('_acme-challenge.acme.test')).toBeTruthy()
+      expect(screen.getByText('Pending')).toBeTruthy()
+      expect(screen.queryByLabelText('Domain')).toBeNull()
+      expect(screen.queryByRole('button', { name: /claim domain/i })).toBeNull()
+    })
+
+    it('calls onVerified once a bound claim reaches verified', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+        Promise.resolve(jsonResponse(claimResult({ status: 'verified' }))),
+      )
+
+      const onVerified = vi.fn()
+      render(
+        <DomainVerification frontendToken="ft_123" onVerified={onVerified} />,
+      )
+
+      await waitFor(() =>
+        expect(screen.getAllByText('Verified').length).toBe(2),
+      )
+      expect(onVerified).toHaveBeenCalledTimes(1)
+      expect(onVerified.mock.calls[0]![0]).toMatchObject({ status: 'verified' })
+    })
+
+    it('shows a terminal message when the token is unknown', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        jsonResponse(
+          { error: { code: 'not_found', message: 'Verification not found' } },
+          404,
+        ),
+      )
+
+      render(<DomainVerification frontendToken="ft_missing" />)
+
+      expect(await screen.findByText('Verification not found')).toBeTruthy()
+      expect(screen.queryByLabelText('Domain')).toBeNull()
+    })
+  })
 })

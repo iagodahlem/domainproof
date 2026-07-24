@@ -26,6 +26,7 @@ interface ClaimSuccess {
   domainId: string
   domain: string
   hostedUrl: string
+  frontendToken: string | null
   sessionToken: string | null
 }
 
@@ -231,6 +232,7 @@ export function SitegradeApp() {
             verifiedAt={status?.verifiedAt ?? null}
             widgetVerifiedDomain={widgetVerifiedDomain}
             hostedUrl={claim?.hostedUrl ?? null}
+            frontendToken={claim?.frontendToken ?? null}
             sessionToken={claim?.sessionToken ?? null}
             onVerified={handleWidgetVerified}
           />

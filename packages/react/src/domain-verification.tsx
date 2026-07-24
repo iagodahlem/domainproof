@@ -19,8 +19,25 @@ import { absoluteGuideUrl, guideForProvider } from './provider-guide'
 import type { Verification } from './types'
 
 export interface DomainVerificationProps {
-  /** A single-use session token minted server-side via `@domainproof/sdk`'s `componentSessions.create`. */
-  sessionToken: string
+  /**
+   * A single-use session token minted server-side via `@domainproof/sdk`'s
+   * `componentSessions.create` — the component claims a domain itself via
+   * the "Verify a domain" input. Mutually exclusive with `frontendToken`;
+   * provide exactly one.
+   */
+  sessionToken?: string
+  /**
+   * Renders already bound to an existing claim, identified by its
+   * `frontendToken` — skips the claim step entirely and shows that claim's
+   * live status right away. Use when the domain was already claimed some
+   * other way (e.g. server-side, via `@domainproof/sdk`'s
+   * `domains.claim`) and this component only needs to display and
+   * auto-check its progress. A claim's `frontendToken` is the last path
+   * segment of its `verificationUrl` — the same token the hosted
+   * verification page (`/verify/:token`) uses. Mutually exclusive with
+   * `sessionToken`; takes priority if both are somehow given.
+   */
+  frontendToken?: string
   /** Overrides `DomainProofProvider`'s `baseUrl` for this instance. */
   baseUrl?: string
   /** Called once, the first time this claim's status reaches `'verified'`. */
@@ -67,23 +84,26 @@ function isClaimRetryable(
  */
 export function DomainVerification({
   sessionToken,
+  frontendToken: boundFrontendToken,
   baseUrl,
   onVerified,
   className,
   style,
   theme,
 }: DomainVerificationProps) {
+  const isBound = boundFrontendToken != null
   const [domainInput, setDomainInput] = useState('')
   const {
     status: claimStatus,
     data: claimData,
     error: claimError,
     claim,
-  } = useClaimDomain(sessionToken, { baseUrl })
+  } = useClaimDomain(sessionToken ?? '', { baseUrl })
 
-  const frontendToken = claimData?.frontendToken ?? null
+  const frontendToken = boundFrontendToken ?? claimData?.frontendToken ?? null
   const {
     verification,
+    status: verificationStatus,
     error: verificationError,
     isPolling,
     isVerifying,
@@ -107,7 +127,39 @@ export function DomainVerification({
 
   const rootClassName = cn('dp-widget', className)
 
-  if (!claimData) {
+  if (isBound && !verification) {
+    if (verificationStatus === 'error') {
+      return (
+        <div className={rootClassName} style={style} data-theme={theme}>
+          <Card>
+            <CardBody>
+              <h3 className="mb-3 text-lg font-heading">Verify a domain</h3>
+              <Callout tone="danger">
+                {verificationError?.kind === 'http'
+                  ? verificationError.message
+                  : "Couldn't load this verification. Try again shortly."}
+              </Callout>
+            </CardBody>
+          </Card>
+        </div>
+      )
+    }
+
+    return (
+      <div className={rootClassName} style={style} data-theme={theme}>
+        <Card>
+          <CardBody>
+            <div
+              aria-hidden="true"
+              className="h-40 w-full animate-pulse rounded-md bg-surface-2"
+            />
+          </CardBody>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!isBound && !claimData) {
     if (claimStatus === 'error' && !isClaimRetryable(claimError)) {
       return (
         <div className={rootClassName} style={style} data-theme={theme}>
@@ -172,17 +224,22 @@ export function DomainVerification({
     )
   }
 
-  const currentStatus = verification?.status ?? claimData.status
-  const check = verification?.check ?? claimData.check
-  const records = verification?.records ?? claimData.records
-  const provider = verification?.provider ?? claimData.provider
-  const projectName = verification?.projectName ?? claimData.projectName
+  // One of `verification` (bound mode, or after the auto-load that follows
+  // a fresh claim) or `claimData` (the instant after a fresh claim, before
+  // that auto-load resolves) is always populated here — the two guards
+  // above return early otherwise.
+  const domain = verification?.domain ?? claimData?.domain ?? ''
+  const currentStatus = verification?.status ?? claimData?.status ?? 'pending'
+  const check = verification?.check ?? claimData?.check ?? null
+  const records = verification?.records ?? claimData?.records ?? []
+  const provider = verification?.provider ?? claimData?.provider ?? 'unknown'
+  const projectName = verification?.projectName ?? claimData?.projectName ?? ''
   const isTerminal = currentStatus === 'verified' || currentStatus === 'failed'
 
   const view = describeStatus({
     status: currentStatus,
     check,
-    domain: claimData.domain,
+    domain,
     projectName,
   })
   const outcomeTone = view.tone === 'pending' ? null : view.tone
@@ -209,7 +266,7 @@ export function DomainVerification({
         record={
           guide
             ? {
-                domain: claimData.domain,
+                domain,
                 records,
                 guideUrl: absoluteGuideUrl(guide),
                 guideLabel: guide.name,

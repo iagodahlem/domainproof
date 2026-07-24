@@ -23,6 +23,26 @@ function statusFromSdkError(status: number): number {
 }
 
 /**
+ * A claim's `frontendToken` is the last path segment of its
+ * `verificationUrl` — the public v1 API only ever exposes the URL, never
+ * the raw token (see `apps/api/src/shared/verification-url.ts`'s
+ * `buildVerificationUrl`), so this is the intended way to recover it.
+ * `null` only if the URL is ever shaped unexpectedly.
+ */
+function frontendTokenFromVerificationUrl(
+  verificationUrl: string,
+): string | null {
+  try {
+    const segments = new URL(verificationUrl).pathname
+      .split('/')
+      .filter(Boolean)
+    return segments.at(-1) ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Accepts either `{ scanId }` (the normal flow — reuses the exact domain a
  * prior `POST /demo/api/scan` reported on) or `{ domain }` directly. The
  * two are decoupled on purpose: DomainProof's own `.test` sandbox never
@@ -91,11 +111,16 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const frontendToken = frontendTokenFromVerificationUrl(
+    claimResult.data.verificationUrl,
+  )
+
   saveClaim(visitorId, {
     domain,
     domainId: claimResult.data.id,
     verificationUrl: claimResult.data.verificationUrl,
     scanId: scanId ?? undefined,
+    frontendToken,
   })
 
   const res = NextResponse.json({
@@ -103,9 +128,15 @@ export async function POST(req: NextRequest) {
     domain,
     records: claimResult.data.records,
     hostedUrl: claimResult.data.verificationUrl,
+    // The claim already made above — lets the embedded widget render
+    // already bound to it (see verify-gate.tsx) instead of asking the
+    // visitor to claim the same domain a second time.
+    frontendToken,
     // A failed component-session mint doesn't invalidate the claim itself —
     // the hosted link above is a complete fallback on its own — so this
-    // stays a soft null rather than failing the whole request.
+    // stays a soft null rather than failing the whole request. Still minted
+    // unconditionally: it's the escape hatch for verifying a *different*
+    // domain than the one already claimed above.
     sessionToken: sessionResult.error ? null : sessionResult.data.sessionToken,
     sessionExpiresAt: sessionResult.error ? null : sessionResult.data.expiresAt,
   })

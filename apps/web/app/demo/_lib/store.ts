@@ -12,6 +12,8 @@ export interface StoredClaim {
   domain: string
   domainId: string
   verificationUrl: string
+  /** Parsed from `verificationUrl`'s own last path segment — see `claim/route.ts`. `null` only if that URL is ever shaped unexpectedly. */
+  frontendToken: string | null
   createdAt: number
   /** The scan this visitor unlocked by claiming, if the claim came from a prior `POST /demo/api/scan` (see claim/route.ts) rather than a bare `{ domain }`. Pins `fullReport` to the scan this visitor actually saw, so a later rescan of the same domain by someone else can't swap out what they unlock. */
   scanId?: string
