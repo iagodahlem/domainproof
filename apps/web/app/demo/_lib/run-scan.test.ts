@@ -33,6 +33,12 @@ function connectingTls() {
   })
 }
 
+// Stands in for real DNS so the TLS probe's resolve-then-vet step (see
+// ssrf-guard.ts) doesn't depend on outbound network access in these tests.
+const resolveToPublicAddress = async () => [
+  { address: '93.184.216.34', family: 4 },
+]
+
 describe('runScan', () => {
   it('returns the unreachable outcome when DNS lookup fails, without running any probe', async () => {
     const fetchImpl = vi.fn()
@@ -62,7 +68,7 @@ describe('runScan', () => {
     const result = await runScan('down.example', {
       lookup: async () => ({ address: '203.0.113.1', family: 4 }),
       fetchOptions: { fetchImpl: fetchImpl as unknown as typeof fetch },
-      tlsOptions: { connect },
+      tlsOptions: { connect, resolveAll: resolveToPublicAddress },
       dnsResolver: fakeResolver(),
     })
 
@@ -81,7 +87,10 @@ describe('runScan', () => {
     const result = await runScan('example.com', {
       lookup: async () => ({ address: '93.184.216.34', family: 4 }),
       fetchOptions: { fetchImpl: fetchImpl as unknown as typeof fetch },
-      tlsOptions: { connect: connectingTls() },
+      tlsOptions: {
+        connect: connectingTls(),
+        resolveAll: resolveToPublicAddress,
+      },
       dnsResolver: fakeResolver({
         resolveMx: vi.fn(async () => [
           { exchange: 'mail.example.com', priority: 10 },
@@ -111,7 +120,10 @@ describe('runScan', () => {
     const result = await runScan('flaky.example', {
       lookup: async () => ({ address: '203.0.113.2', family: 4 }),
       fetchOptions: { fetchImpl: fetchImpl as unknown as typeof fetch },
-      tlsOptions: { connect: connectingTls() },
+      tlsOptions: {
+        connect: connectingTls(),
+        resolveAll: resolveToPublicAddress,
+      },
       dnsResolver: fakeResolver(),
     })
 

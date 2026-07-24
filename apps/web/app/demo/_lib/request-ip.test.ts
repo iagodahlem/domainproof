@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { clientIpFromHeaders } from './request-ip'
 
 describe('clientIpFromHeaders', () => {
+  it('prefers x-vercel-forwarded-for over a client-supplied x-forwarded-for', () => {
+    expect(
+      clientIpFromHeaders(
+        new Headers({
+          'x-vercel-forwarded-for': '1.2.3.4',
+          'x-forwarded-for': '6.6.6.6',
+        }),
+      ),
+    ).toBe('1.2.3.4')
+  })
+
   it('takes the first hop from x-forwarded-for', () => {
     expect(
       clientIpFromHeaders(
