@@ -45,7 +45,7 @@ async function createTestApiKey(
     .values({
       accountId: account.id,
       name: 'Component Session Mint Test',
-      slug: 'cst',
+      slug: `cst-${randomUUID().slice(0, 8)}`,
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

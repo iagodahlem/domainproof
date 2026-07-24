@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto'
+
 /**
  * The default brand for the verification record when a builder hasn't
  * configured their own. Preserves the original hard-coded behavior for
@@ -155,4 +157,40 @@ export const FALLBACK_PROJECT_SLUG = 'app'
  */
 export function deriveProjectSlug(name: string): string {
   return slugFromName(name) ?? FALLBACK_PROJECT_SLUG
+}
+
+/**
+ * Characters a random slug suffix is drawn from — a subset of
+ * {@link BRAND_SLUG_PATTERN}'s alphabet, so a suffix never needs its own
+ * validation pass. Not a security token (it only needs to disambiguate a
+ * name collision, not resist guessing), so `randomBytes` % alphabet-length
+ * is fine despite its slight modulo bias.
+ */
+const SLUG_SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SLUG_SUFFIX_LENGTH = 5
+
+function randomSlugSuffix(): string {
+  let suffix = ''
+  for (const byte of randomBytes(SLUG_SUFFIX_LENGTH)) {
+    suffix += SLUG_SUFFIX_ALPHABET[byte % SLUG_SUFFIX_ALPHABET.length]
+  }
+  return suffix
+}
+
+/**
+ * Appends a fresh random suffix to `baseSlug` for the caller
+ * (`modules/projects/service.ts`'s `createProject`) to retry a project
+ * creation that lost the race for `baseSlug` against `projects.slug`'s
+ * unique constraint. Truncates `baseSlug` first when needed so the result
+ * never exceeds {@link MAX_BRAND_SLUG_LENGTH}, and strips a trailing
+ * hyphen truncation can expose — the same two steps {@link slugFromName}
+ * takes for the same reason. The suffix alphabet and `baseSlug` having
+ * already passed {@link validateBrandSlug} together guarantee the result
+ * is valid without re-checking it.
+ */
+export function withRandomSuffix(baseSlug: string): string {
+  const suffix = randomSlugSuffix()
+  const maxBaseLength = MAX_BRAND_SLUG_LENGTH - suffix.length - 1
+  const truncatedBase = baseSlug.slice(0, maxBaseLength).replace(/-+$/, '')
+  return `${truncatedBase}-${suffix}`
 }

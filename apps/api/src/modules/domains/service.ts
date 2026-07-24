@@ -439,17 +439,18 @@ function toSummary(
  * notion of which domain claim they "belong to". Ordinarily that is exactly
  * right (a stray or stale record at the same label is still useful
  * diagnostic information). But `recordHost` is derived from `(brandSlug,
- * domain)` alone, and slugs carry no uniqueness constraint (see
- * `infra/db/schema.ts`'s `projects.slug` doc comment), so two unrelated
- * domain claims can end up sharing one host. When that happens, a detected
- * value that exactly matches another domain's own real challenge token
- * isn't a diagnostic stray — it's that other claim's live verification
- * secret leaking across the tenant boundary through every plane that reads
- * `detectedValues` (dashboard, v1, and the anonymous hosted verification
- * page). An exact match against a 128-bit CSPRNG token is proof of
- * cross-tenant origin, not coincidence, so this only ever drops values that
- * are provably someone else's — a garden-variety typo'd or unrelated TXT
- * record is untouched.
+ * domain)` alone, and — for a project row created before `projects.slug`'s
+ * unique constraint (see `infra/db/schema.ts`'s doc comment), or a domain
+ * whose challenge predates that migration and hasn't been regenerated or
+ * re-verified since — two unrelated domain claims can still end up sharing
+ * one host. When that happens, a detected value that exactly matches
+ * another domain's own real challenge token isn't a diagnostic stray — it's
+ * that other claim's live verification secret leaking across the tenant
+ * boundary through every plane that reads `detectedValues` (dashboard, v1,
+ * and the anonymous hosted verification page). An exact match against a
+ * 128-bit CSPRNG token is proof of cross-tenant origin, not coincidence, so
+ * this only ever drops values that are provably someone else's — a
+ * garden-variety typo'd or unrelated TXT record is untouched.
  */
 async function filterCrossTenantDetectedValues(
   repository: DomainsRepository,

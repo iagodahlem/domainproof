@@ -113,7 +113,7 @@ describe('findEmailByProjectId', () => {
       .values({
         accountId: created.id,
         name: 'Test project',
-        slug: 'test-project',
+        slug: `test-project-${randomUUID().slice(0, 8)}`,
       })
       .returning({ id: projects.id })
     if (!project) throw new Error('setup failed: could not create test project')
@@ -137,7 +137,7 @@ describe('findEmailByProjectId', () => {
       .values({
         accountId: created.id,
         name: 'Test project',
-        slug: 'test-project',
+        slug: `test-project-${randomUUID().slice(0, 8)}`,
       })
       .returning({ id: projects.id })
     if (!project) throw new Error('setup failed: could not create test project')

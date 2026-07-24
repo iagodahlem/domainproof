@@ -53,7 +53,7 @@ async function createTestApiKey(
     .values({
       accountId: account.id,
       name: 'Cloudflare OAuth Test',
-      slug: 'cft',
+      slug: `cft-${randomUUID().slice(0, 8)}`,
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

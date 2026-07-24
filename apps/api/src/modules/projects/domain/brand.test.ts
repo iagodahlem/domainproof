@@ -7,6 +7,7 @@ import {
   deriveProjectSlug,
   slugFromName,
   validateBrandSlug,
+  withRandomSuffix,
 } from './brand'
 
 describe('validateBrandSlug', () => {
@@ -197,5 +198,40 @@ describe('deriveProjectSlug', () => {
       ok: true,
       slug: FALLBACK_PROJECT_SLUG,
     })
+  })
+})
+
+describe('withRandomSuffix', () => {
+  it('appends a hyphen and a suffix drawn from the valid slug alphabet', () => {
+    const result = withRandomSuffix('skylane')
+    expect(result).toMatch(/^skylane-[a-z0-9]{5}$/)
+  })
+
+  it('produces a result that passes validateBrandSlug', () => {
+    const result = withRandomSuffix('skylane')
+    expect(validateBrandSlug(result)).toEqual({ ok: true, slug: result })
+  })
+
+  it('produces different suffixes on successive calls', () => {
+    const results = new Set(
+      Array.from({ length: 20 }, () => withRandomSuffix('skylane')),
+    )
+    expect(results.size).toBeGreaterThan(1)
+  })
+
+  it('truncates a maximum-length base slug so the result still fits within 32 characters', () => {
+    const base = `a${'b'.repeat(30)}c`
+    expect(base).toHaveLength(32)
+
+    const result = withRandomSuffix(base)
+    expect(result).toHaveLength(32)
+    expect(validateBrandSlug(result)).toEqual({ ok: true, slug: result })
+  })
+
+  it('does not leave a trailing hyphen when truncation lands on one', () => {
+    const base = `${'a'.repeat(25)}-bbbbb`
+    const result = withRandomSuffix(base)
+    const [truncatedBase] = result.split(/-[a-z0-9]{5}$/)
+    expect(truncatedBase?.endsWith('-')).toBe(false)
   })
 })

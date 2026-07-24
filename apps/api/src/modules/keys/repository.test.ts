@@ -28,7 +28,7 @@ async function createTestProject(): Promise<string> {
     .values({
       accountId: account.id,
       name: 'Test project',
-      slug: 'test-project',
+      slug: `test-project-${randomUUID().slice(0, 8)}`,
     })
     .returning({ id: projects.id })
   if (!project) throw new Error('failed to create test project')

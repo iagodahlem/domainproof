@@ -184,6 +184,64 @@ describe('createProject', () => {
       service.createProject('user_123', 'Skylane HR'),
     ).rejects.toThrow(/expected both a test and a live key/)
   })
+
+  it('retries with a randomly-suffixed slug when the default is already taken', async () => {
+    const attemptedSlugs: string[] = []
+    const repository = fakeProjectsRepository({
+      async createProject(accountId, name, slug, keys) {
+        attemptedSlugs.push(slug)
+        if (slug === 'skylane-hr') {
+          return undefined // simulates the unique constraint conflict
+        }
+        const project = projectRow({ accountId, name, slug })
+        return {
+          project,
+          apiKeys: keys.map((key, index) => ({
+            id: `key_row_${index}`,
+            projectId: project.id,
+            mode: key.mode,
+            keyId: key.keyId,
+            secretHash: key.secretHash,
+            last4: key.last4,
+            name: key.name,
+            revokedAt: null,
+            lastUsedAt: null,
+            createdAt: new Date('2026-01-01T00:00:00Z'),
+          })),
+        }
+      },
+    })
+    const service = createProjectsService(
+      repository,
+      fakeAccountsService('account_1'),
+      fakeKeysService(),
+    )
+
+    const result = await service.createProject('user_123', 'Skylane HR')
+
+    expect(attemptedSlugs).toHaveLength(2)
+    expect(attemptedSlugs[0]).toBe('skylane-hr')
+    expect(attemptedSlugs[1]).toMatch(/^skylane-hr-[a-z0-9]{5}$/)
+    expect(result.project.slug).toBe(attemptedSlugs[1])
+    expect(result.project.name).toBe('Skylane HR')
+  })
+
+  it('throws after exhausting every retry attempt against a persistent conflict', async () => {
+    const repository = fakeProjectsRepository({
+      async createProject() {
+        return undefined // every attempt conflicts
+      },
+    })
+    const service = createProjectsService(
+      repository,
+      fakeAccountsService(),
+      fakeKeysService(),
+    )
+
+    await expect(
+      service.createProject('user_123', 'Skylane HR'),
+    ).rejects.toThrow(/no unique slug found/)
+  })
 })
 
 describe('resolveOwnedProject', () => {

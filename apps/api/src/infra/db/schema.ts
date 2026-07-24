@@ -75,11 +75,17 @@ export const projects = pgTable('projects', {
    * names and values (`_<slug>-challenge.<domain>`, `<slug>-verify=<token>`
    * — see `@domainproof/core`'s `record.ts`). Derived from the project name
    * via `modules/projects/domain/brand.ts`'s `deriveProjectSlug` at
-   * creation time; no app code ever leaves this unset, but the column
-   * itself carries no uniqueness constraint — two projects can share a
-   * slug (e.g. both falling back to the same default).
+   * creation time. `challengeHost` is a pure function of `(slug, domain)`
+   * alone, and the DNS namespace it publishes into is global (anyone can
+   * query `_<slug>-challenge.<domain>`) — so two projects sharing a slug
+   * could end up with the identical challenge host on a shared domain,
+   * ambiguous about whose verification record was actually seen. The
+   * `unique()` below closes that at the source: `deriveProjectSlug`'s
+   * caller (`modules/projects/service.ts`'s `createProject`) retries with a
+   * random suffix on conflict, so every project's slug — default or
+   * suffixed — is globally unique, not just unique per account.
    */
-  slug: text('slug').notNull(),
+  slug: text('slug').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

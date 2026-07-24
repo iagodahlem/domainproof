@@ -1297,12 +1297,14 @@ describe('verifyDomain', () => {
   })
 
   it('wrong_value: filters out a detected value that is actually a different domain’s own live token at a shared recordHost', async () => {
-    // Two projects whose slugs collide (allowed — see infra/db/schema.ts's
-    // `projects.slug` doc comment) claiming the same domain end up with the
-    // identical `_<slug>-challenge.<domain>` host (record.ts's
-    // `challengeHost` is a pure function of slug + domain alone). This
-    // models that: project B's check must not echo back project A's real
-    // token just because it happens to answer at the same host.
+    // Two projects whose slugs collide (pre-dates projects.slug's unique
+    // constraint — see infra/db/schema.ts's doc comment — but a domain
+    // whose challenge was issued before that migration, or a project row
+    // that predates it, can still exhibit this) claiming the same domain
+    // end up with the identical `_<slug>-challenge.<domain>` host (record
+    // .ts's `challengeHost` is a pure function of slug + domain alone).
+    // This models that: project B's check must not echo back project A's
+    // real token just because it happens to answer at the same host.
     const repository = fakeRepository()
     const projectsService = fakeProjectsService({
       project_a: 'skylane',
