@@ -88,6 +88,15 @@ export interface MenuItemProps
     VariantProps<typeof menuItemVariants> {
   icon?: ReactNode
   /**
+   * Optional secondary line stacked beneath the main label, e.g. a slug
+   * that disambiguates two items sharing a label. Stacked rather than
+   * placed beside the label so the two never compete for the same
+   * horizontal space — sharing a row let a fixed-width slug (plus the
+   * active check) crush the label down to zero width, hiding the name
+   * entirely on some rows.
+   */
+  secondary?: ReactNode
+  /**
    * Skips the icon/label/check composition and `menuItemVariants` styling
    * entirely, passing `children` straight through as the sole `asChild`
    * target — for registering an already-fully-styled interactive element
@@ -112,6 +121,7 @@ export const MenuItem = forwardRef<
     active = false,
     iconOnly = false,
     icon,
+    secondary,
     children,
     asChild = false,
     bare = false,
@@ -150,6 +160,26 @@ export const MenuItem = forwardRef<
   const checkEl = active ? (
     <Check aria-hidden="true" size={14} className="shrink-0 text-accent" />
   ) : null
+  const secondaryEl = secondary ? (
+    <span className="truncate font-mono text-xs leading-none text-faint-foreground">
+      {secondary}
+    </span>
+  ) : null
+
+  // No `secondary`: unchanged from before — a single truncating span.
+  // With `secondary`: stacked in its own column so the label always gets
+  // the row's full width on its own line, never sharing it with the slug
+  // (see the `secondary` doc comment above for why that sharing crushed
+  // the label).
+  const renderLabel = (label: ReactNode) =>
+    secondaryEl ? (
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate leading-none">{label}</span>
+        {secondaryEl}
+      </span>
+    ) : (
+      <span className="flex-1 truncate">{label}</span>
+    )
 
   // Radix's Slot (used under `asChild`) requires exactly one element
   // child — so the icon/label/check can't be siblings of that element
@@ -163,14 +193,14 @@ export const MenuItem = forwardRef<
       undefined,
       <>
         {iconEl}
-        <span className="flex-1 truncate">{children.props.children}</span>
+        {renderLabel(children.props.children)}
         {checkEl}
       </>,
     )
   ) : (
     <>
       {iconEl}
-      <span className="flex-1 truncate">{children}</span>
+      {renderLabel(children)}
       {checkEl}
     </>
   )
