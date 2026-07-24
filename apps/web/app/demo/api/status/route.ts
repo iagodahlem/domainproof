@@ -1,8 +1,19 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getVisitorId } from '../../_lib/cookies'
+import { validateHostname } from '../../_lib/hostname'
+import { checkRateLimit } from '../../_lib/rate-limit'
+import { clientIpFromHeaders } from '../../_lib/request-ip'
+import { runScan, SCAN_RATE_LIMIT } from '../../_lib/run-scan'
 import { getDemoDomainProofClient } from '../../_lib/sdk-client'
-import { getClaim, resolveScanForClaim, saveClaim } from '../../_lib/store'
+import {
+  getClaim,
+  getScanById,
+  resolveScanForClaim,
+  saveClaim,
+  saveScan,
+  type StoredClaim,
+} from '../../_lib/store'
 import { frontendTokenFromVerificationUrl } from '../../_lib/verification-url'
 
 function errorResponse(status: number, code: string, message: string) {
@@ -13,9 +24,75 @@ function statusFromSdkError(status: number): number {
   return status >= 400 && status < 600 ? status : 502
 }
 
+/**
+ * Recovers a visitor's claim when this instance's `claimsByVisitor` never
+ * saw it — a different serverless instance handled the original claim (see
+ * `store.ts`'s own doc comment on why the store is instance-local at all).
+ * `domainHint` is client-supplied and used only as a lookup key; what
+ * actually authorizes the result is the API's own `externalId` filter,
+ * scoped server-side to this visitor's httpOnly cookie — a hint for a
+ * domain this visitor never claimed simply matches nothing.
+ */
+async function recoverClaim(
+  visitorId: string,
+  domainHint: string,
+  scanIdHint: string | null,
+): Promise<StoredClaim | null> {
+  const validation = validateHostname(domainHint)
+  if (!validation.ok) return null
+
+  const client = getDemoDomainProofClient()
+  const found = await client.domains.list({
+    domain: validation.domain,
+    externalId: visitorId,
+    limit: 1,
+  })
+  const domainData = found.data?.domains[0]
+  if (!domainData) return null
+
+  const frontendToken = frontendTokenFromVerificationUrl(
+    domainData.verificationUrl,
+  )
+  saveClaim(visitorId, {
+    domain: validation.domain,
+    domainId: domainData.id,
+    verificationUrl: domainData.verificationUrl,
+    scanId: scanIdHint ?? undefined,
+    frontendToken,
+  })
+  return getClaim(visitorId)
+}
+
+/**
+ * Re-runs the exact scan a verified claim unlocked when this instance's
+ * `scansById` lost it (TTL, restart, or another instance's memory) —
+ * same probes `POST /demo/api/scan` runs, saved back under the claim's own
+ * `scanId` so `resolveScanForClaim` and a concurrent `GET /demo/api/scan`
+ * restore agree on the same report. Shares that route's rate budget, since
+ * it's the same expensive network work; skips quietly, leaving `fullReport`
+ * null for this tick, rather than failing the whole status response when
+ * the budget's spent — the next poll tries again.
+ */
+async function recoverScan(domain: string, scanId: string, ip: string) {
+  if (!checkRateLimit(`scan:${ip}`, SCAN_RATE_LIMIT).allowed) return null
+  const outcome = await runScan(domain)
+  if (!outcome.ok) return null
+  saveScan(scanId, domain, outcome.report)
+  return getScanById(scanId)
+}
+
 export async function GET(req: NextRequest) {
   const visitorId = getVisitorId(req)
-  const claim = visitorId ? getClaim(visitorId) : null
+  let claim = visitorId ? getClaim(visitorId) : null
+
+  const domainHint = req.nextUrl.searchParams.get('domain')
+  if (!claim && visitorId && domainHint) {
+    claim = await recoverClaim(
+      visitorId,
+      domainHint,
+      req.nextUrl.searchParams.get('scanId'),
+    )
+  }
 
   if (!visitorId || !claim) {
     return NextResponse.json({ claimed: false, verified: false })
@@ -79,7 +156,17 @@ export async function GET(req: NextRequest) {
   }
 
   const verified = result.data.status === 'verified'
-  const scan = resolveScanForClaim(claim)
+  let scan = resolveScanForClaim(claim)
+  // The claim did unlock a real scan (`claim.scanId` set), but this
+  // instance's `scansById` lost it — recover it rather than reporting
+  // `fullReport: null` for a claim that has every right to one.
+  if (verified && !scan && claim.scanId) {
+    scan = await recoverScan(
+      claim.domain,
+      claim.scanId,
+      clientIpFromHeaders(req.headers),
+    )
+  }
 
   return NextResponse.json({
     claimed: true,

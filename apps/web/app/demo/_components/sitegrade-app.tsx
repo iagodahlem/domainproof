@@ -149,10 +149,15 @@ export function SitegradeApp() {
       setPhase('report')
       // Pins the report to the URL so a refresh can restore it (see the
       // mount-time restore effect below) instead of losing it back to the
-      // empty form — this state otherwise lives only in memory.
-      router.replace(`/demo?scan=${encodeURIComponent(data.scanId)}`, {
-        scroll: false,
-      })
+      // empty form — this state otherwise lives only in memory. `domain`
+      // rides along too: it's the recovery hint the scan-restore fetch (and,
+      // once claimed, the status poll) needs to rehydrate server-side state
+      // that a restart or a different serverless instance lost — see
+      // status/route.ts and scan/route.ts's own doc comments.
+      router.replace(
+        `/demo?scan=${encodeURIComponent(data.scanId)}&domain=${encodeURIComponent(data.domain)}`,
+        { scroll: false },
+      )
     },
     [router],
   )
@@ -186,13 +191,14 @@ export function SitegradeApp() {
   useEffect(() => {
     const scanId = searchParams.get('scan')
     if (!scanId) return
+    const domain = searchParams.get('domain')
 
     let cancelled = false
     void (async () => {
       try {
-        const response = await fetch(
-          `/demo/api/scan?scanId=${encodeURIComponent(scanId)}`,
-        )
+        const restoreParams = new URLSearchParams({ scanId })
+        if (domain) restoreParams.set('domain', domain)
+        const response = await fetch(`/demo/api/scan?${restoreParams}`)
         if (!response.ok) throw new Error('scan not found')
         const data = (await response.json()) as ScanSuccess
         if (cancelled) return
@@ -240,7 +246,17 @@ export function SitegradeApp() {
 
   const refreshStatus = useCallback(async () => {
     try {
-      const response = await fetch('/demo/api/status')
+      // Sends what the client itself durably knows — its own state, not
+      // this instance's memory — so the poll can rehydrate server-side
+      // state a restart or a different serverless instance lost (see
+      // status/route.ts's `recoverClaim`/`recoverScan`).
+      const params = new URLSearchParams()
+      if (scanResult?.domain) params.set('domain', scanResult.domain)
+      if (scanResult?.scanId) params.set('scanId', scanResult.scanId)
+      const query = params.toString()
+      const response = await fetch(
+        `/demo/api/status${query ? `?${query}` : ''}`,
+      )
       if (!response.ok) return
       const data = (await response.json()) as StatusResponse
       setStatus(data)
@@ -264,7 +280,7 @@ export function SitegradeApp() {
     } catch {
       // Next poll tick retries — no need to surface a transient network error.
     }
-  }, [])
+  }, [scanResult?.domain, scanResult?.scanId])
 
   // Drives `refreshStatus` on a schedule that never dies while the claim is
   // still pending: quick at first, then — past `STATUS_POLL_MAX_ATTEMPTS` —

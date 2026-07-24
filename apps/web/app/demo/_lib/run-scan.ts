@@ -21,6 +21,14 @@ import type { CheckResult, ScanOutcome } from './types'
 
 const LOOKUP_TIMEOUT_MS = 8_000
 
+/**
+ * Shared by every caller that can trigger a scan — `POST /demo/api/scan`
+ * and the stateless-recovery re-scans in `GET /demo/api/scan` and
+ * `GET /demo/api/status` (see their own doc comments) — since they're all
+ * the same expensive network probe, just reached from different routes.
+ */
+export const SCAN_RATE_LIMIT = { limit: 10, windowMs: 5 * 60 * 1000 }
+
 const NO_DNS_REASONS = [
   'No A or AAAA record found for this host',
   'The domain may not exist, or DNS has not propagated yet',
