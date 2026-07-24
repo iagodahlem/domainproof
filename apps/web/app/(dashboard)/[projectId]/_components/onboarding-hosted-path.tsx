@@ -3,6 +3,7 @@ import { BrowserChrome, Callout, CopyField, StatusPill } from '@domainproof/ui'
 import type { VerticalTimelineStep } from '@domainproof/ui'
 import type { DomainDetail } from '@/lib/api/dashboard'
 import { domainStatusPresentation } from '@/lib/domain-status'
+import { hostedVerificationUrl } from '@/lib/hosted-verification-url'
 import { ClaimStepContent } from './onboarding-claim-step'
 import { WALKTHROUGH_SURFACE_MAX_WIDTH } from './onboarding-constants'
 import { LiveBadge } from './live-badge'
@@ -13,22 +14,6 @@ export interface HostedPathStepsInput {
   isClaiming: boolean
   claimError?: string
   onClaim: () => void
-}
-
-/**
- * `verificationUrl` is always the production `https://domainproof.dev/verify/…`
- * absolute URL (see each plane's `routes/domains.ts`, `VERIFICATION_BASE_URL`) —
- * correct to copy/send as-is, but wrong to embed as this preview's iframe
- * `src` outside of production itself, where it would silently point at a
- * domain this environment never claimed. Deriving a root-relative path from
- * the same token instead resolves against whatever origin is actually
- * serving this page — the real production URL in production, this app's
- * own dev server in dev — so the live preview always shows the domain this
- * walkthrough itself just claimed.
- */
-function hostedPreviewPath(verificationUrl: string): string {
-  const token = verificationUrl.split('/').pop()
-  return `/verify/${token}`
 }
 
 /**
@@ -82,14 +67,14 @@ export function buildHostedPathSteps({
       content: domain ? (
         <>
           <CopyField
-            value={domain.verificationUrl}
+            value={hostedVerificationUrl(domain.frontendToken)}
             className={WALKTHROUGH_SURFACE_MAX_WIDTH}
           />
           <div className="flex max-w-md flex-col gap-2">
             <LiveBadge />
-            <BrowserChrome url={domain.verificationUrl}>
+            <BrowserChrome url={hostedVerificationUrl(domain.frontendToken)}>
               <iframe
-                src={hostedPreviewPath(domain.verificationUrl)}
+                src={`/verify/${domain.frontendToken}`}
                 title={`Verify ${domain.domain}`}
                 className="h-72 w-full border-0"
               />

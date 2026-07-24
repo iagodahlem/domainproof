@@ -16,7 +16,7 @@ function fakeDomain(overrides: Partial<DomainDetail> = {}): DomainDetail {
     createdAt: '2026-07-23T09:41:00.000Z',
     updatedAt: '2026-07-23T09:41:00.000Z',
     verifiedAt: null,
-    verificationUrl: 'https://domainproof.dev/verify/tok_1',
+    frontendToken: 'tok_1',
     records: [
       {
         type: 'TXT',
