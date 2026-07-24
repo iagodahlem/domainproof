@@ -98,6 +98,24 @@ describe('buildStyles', () => {
     expect(sawBareRoot).toBe(false)
   })
 
+  it('sets its own base text color on the widget root, not the host page', async () => {
+    const result = await compile()
+    outDir = result.outDir
+    const root = postcss.parse(result.css)
+
+    // Elements without an explicit text utility (RecordCard's title,
+    // Stepper's done/upcoming step labels) would otherwise inherit
+    // whatever color the host page sets on its own body — this declares
+    // `color` directly on `.dp-widget` so the widget stays legible
+    // regardless of the embedding page's own theme.
+    const colorDeclSelectors: string[] = []
+    root.walkDecls('color', (decl) => {
+      if (decl.parent?.type === 'rule')
+        colorDeclSelectors.push(...decl.parent.selectors)
+    })
+    expect(colorDeclSelectors).toContain(WIDGET_SELECTOR)
+  })
+
   it('only includes the @domainproof/ui components DomainVerification actually renders', async () => {
     const result = await compile()
     outDir = result.outDir

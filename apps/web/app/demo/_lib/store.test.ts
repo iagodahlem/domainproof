@@ -4,6 +4,7 @@ import {
   getLatestScanForDomain,
   getScanById,
   resetStoreForTests,
+  resolveScanForClaim,
   saveClaim,
   saveScan,
 } from './store'
@@ -59,6 +60,16 @@ describe('claim store', () => {
     })
   })
 
+  it('retains the scanId a claim was made with', () => {
+    saveClaim('visitor_1', {
+      domain: 'example.com',
+      domainId: 'dom_1',
+      verificationUrl: 'https://domainproof.dev/verify/abc',
+      scanId: 'scan_1',
+    })
+    expect(getClaim('visitor_1')?.scanId).toBe('scan_1')
+  })
+
   it('overwrites a visitor’s previous claim with a new one', () => {
     saveClaim('visitor_1', {
       domain: 'first.com',
@@ -75,5 +86,43 @@ describe('claim store', () => {
 
   it('returns null for a visitor with no claim', () => {
     expect(getClaim('nobody')).toBeNull()
+  })
+})
+
+describe('resolveScanForClaim', () => {
+  it('resolves the exact scan the claim pinned, not whatever is latest for the domain', () => {
+    saveScan('scan_1', 'example.com', report('example.com'))
+    // A different visitor rescans the same domain after the claim was made.
+    saveScan('scan_2', 'example.com', report('example.com'))
+
+    expect(
+      resolveScanForClaim({ scanId: 'scan_1', domain: 'example.com' })?.scanId,
+    ).toBe('scan_1')
+  })
+
+  it('falls back to the latest scan for the domain once the pinned scan has expired', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    saveScan('scan_1', 'example.com', report('example.com'))
+    vi.setSystemTime(3 * 60 * 60 * 1000)
+    saveScan('scan_2', 'example.com', report('example.com'))
+
+    expect(
+      resolveScanForClaim({ scanId: 'scan_1', domain: 'example.com' })?.scanId,
+    ).toBe('scan_2')
+  })
+
+  it('falls back to the latest scan for the domain when the claim has no pinned scanId', () => {
+    saveScan('scan_1', 'example.com', report('example.com'))
+
+    expect(
+      resolveScanForClaim({ scanId: undefined, domain: 'example.com' })?.scanId,
+    ).toBe('scan_1')
+  })
+
+  it('returns null when neither the pinned nor the latest scan exists', () => {
+    expect(
+      resolveScanForClaim({ scanId: undefined, domain: 'unscanned.com' }),
+    ).toBeNull()
   })
 })

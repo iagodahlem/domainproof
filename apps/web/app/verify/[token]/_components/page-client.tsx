@@ -40,6 +40,7 @@ export function VerificationPageClient({
 }: VerificationPageClientProps) {
   const [data, setData] = useState(initialData)
   const [pollError, setPollError] = useState<string | null>(null)
+  const [pollTerminated, setPollTerminated] = useState(false)
   const triggeredOptimisticRecheck = useRef(false)
 
   const poll = useCallback(async () => {
@@ -51,15 +52,20 @@ export function VerificationPageClient({
       setPollError(
         "We're having trouble reaching DomainProof — we'll keep trying.",
       )
+    } else {
+      // A non-network error here (most often a 404 for a claim whose
+      // domain was deleted mid-session) means the token this tab is
+      // polling no longer resolves to anything — there's nothing left to
+      // recover by retrying, so stop polling and show the same terminal
+      // state as an expired link instead of freezing on stale "checking…"
+      // copy forever.
+      setPollTerminated(true)
     }
-    // An http error here (e.g. a 404 for a claim released mid-session) is
-    // left alone rather than tearing down an otherwise-working page out
-    // from under a live background poll.
   }, [token])
 
   const { isPolling } = useBoundedPoll(
     poll,
-    !TERMINAL_STATUSES.has(data.status),
+    !TERMINAL_STATUSES.has(data.status) && !pollTerminated,
   )
 
   // A successful Cloudflare one-click setup writes the record
@@ -93,12 +99,16 @@ export function VerificationPageClient({
     projectName: data.projectName,
   })
 
-  // Expired and invalid links get the same treatment: there's no live claim
-  // left to anchor a context header or stepper to, so both stay a single
-  // centered card rather than showing "record added" progress for a link
-  // that can no longer progress. An invalid token never reaches this
-  // component at all (page.tsx 404s it before render).
-  if (data.status === 'failed' && data.check?.outcome === 'expired') {
+  // Expired, invalid, and mid-session-deleted links get the same
+  // treatment: there's no live claim left to anchor a context header or
+  // stepper to, so all three stay a single centered card rather than
+  // showing "record added" progress for a link that can no longer
+  // progress. An invalid token never reaches this component at all
+  // (page.tsx 404s it before render).
+  if (
+    pollTerminated ||
+    (data.status === 'failed' && data.check?.outcome === 'expired')
+  ) {
     return <ExpiredLinkCard projectName={data.projectName} />
   }
 

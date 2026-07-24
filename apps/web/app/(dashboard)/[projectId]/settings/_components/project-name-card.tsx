@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button, Card, CardBody, TextField } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
@@ -24,6 +25,7 @@ const SAVED_BUTTON_CLASSES =
  * disabled until the value actually differs from what's persisted.
  */
 export function ProjectNameCard({ project }: ProjectNameCardProps) {
+  const router = useRouter()
   const [savedName, setSavedName] = useState(project.name)
   const [draft, setDraft] = useState(project.name)
   const [status, setStatus] = useState<SaveStatus>('idle')
@@ -51,6 +53,10 @@ export function ProjectNameCard({ project }: ProjectNameCardProps) {
         setSavedName(updated.name)
         setDraft(updated.name)
         setStatus('saved')
+        // The sidebar switcher and topbar get the project list from the
+        // layout's server-side `listProjects()` fetch, not this mutation —
+        // refresh so they pick up the new name without a hard reload.
+        router.refresh()
         setTimeout(
           () =>
             setStatus((current) => (current === 'saved' ? 'idle' : current)),

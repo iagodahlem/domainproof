@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getVisitorId } from '../../_lib/cookies'
 import { getDemoDomainProofClient } from '../../_lib/sdk-client'
-import { getClaim, getLatestScanForDomain } from '../../_lib/store'
+import { getClaim, resolveScanForClaim } from '../../_lib/store'
 
 function errorResponse(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, { status })
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   }
 
   const verified = result.data.status === 'verified'
-  const scan = getLatestScanForDomain(claim.domain)
+  const scan = resolveScanForClaim(claim)
 
   return NextResponse.json({
     claimed: true,
