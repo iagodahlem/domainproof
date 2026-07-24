@@ -196,10 +196,10 @@ describe('createSandboxResolver', () => {
 
   describe('flaky journey', () => {
     it.each([
-      [29_000, { ok: true, records: [RECORD_VALUE] }],
-      [30_000, { ok: false, reason: 'timeout' }],
-      [59_000, { ok: false, reason: 'timeout' }],
-      [60_000, { ok: true, records: [RECORD_VALUE] }],
+      [29_000, { ok: false, reason: 'timeout' }],
+      [30_000, { ok: true, records: [RECORD_VALUE] }],
+      [59_000, { ok: true, records: [RECORD_VALUE] }],
+      [60_000, { ok: false, reason: 'timeout' }],
     ] satisfies Array<[number, unknown]>)(
       'at %ims elapsed resolves to %j',
       async (elapsedMs, expected) => {
@@ -286,7 +286,7 @@ describe('createSandboxResolver', () => {
       const second = await resolver.resolveTxt(challenge.recordHost)
       const third = await resolver.resolveTxt(challenge.recordHost)
 
-      expect(first).toEqual({ ok: false, reason: 'timeout' })
+      expect(first).toEqual({ ok: true, records: [RECORD_VALUE] })
       expect(second).toEqual(first)
       expect(third).toEqual(first)
     })
@@ -342,19 +342,19 @@ describe('checkTxt over a sandbox resolver (full outcome taxonomy from elapsed t
     })
   })
 
-  it('flaky: unreachable in odd windows, found in even windows', async () => {
+  it('flaky: unreachable in even windows, found in odd windows', async () => {
     const challenge = makeChallenge('flaky.test')
 
-    const oddWindow = createSandboxResolver(challenge, clockAt(30_000))
+    const evenWindow = createSandboxResolver(challenge, clockAt(0))
     expect(
-      await checkTxt(oddWindow, challenge.recordHost, TOKEN, BRAND_SLUG),
+      await checkTxt(evenWindow, challenge.recordHost, TOKEN, BRAND_SLUG),
     ).toEqual({
       outcome: 'unreachable',
     })
 
-    const evenWindow = createSandboxResolver(challenge, clockAt(60_000))
+    const oddWindow = createSandboxResolver(challenge, clockAt(30_000))
     expect(
-      await checkTxt(evenWindow, challenge.recordHost, TOKEN, BRAND_SLUG),
+      await checkTxt(oddWindow, challenge.recordHost, TOKEN, BRAND_SLUG),
     ).toEqual({ outcome: 'found' })
   })
 

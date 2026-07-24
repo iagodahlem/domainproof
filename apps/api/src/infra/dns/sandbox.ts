@@ -49,7 +49,7 @@ const WRONG_VALUE_TOKEN = 'wrongwrongwrongwrongwrongw'
  * | `pending-then-verified`  | nxdomain until 12s elapsed, then correct.     |
  * | `wrong-value`            | Always a valid-looking but wrong record.      |
  * | `nxdomain`               | nxdomain forever.                             |
- * | `flaky`                  | Alternates unreachable/correct every 30s.     |
+ * | `flaky`                  | Starts unreachable, alternates every 30s.     |
  * | `conflict`               | Correct record immediately, like `verified`.  |
  */
 export const SANDBOX_JOURNEYS = {
@@ -70,10 +70,10 @@ export const SANDBOX_JOURNEYS = {
   nxdomain:
     'nxdomain forever. Models a domain owner who never added the record.',
   flaky:
-    'Deterministic alternation by elapsed 30-second windows: unreachable ' +
-    '(a timeout) during odd-numbered windows, the correct record during ' +
-    'even-numbered windows. Drives the temporarily_failed grace-window ' +
-    'story and its recovery UX.',
+    'Deterministic alternation by elapsed 30-second windows: starts ' +
+    'unreachable (a timeout) during even-numbered windows, then the ' +
+    'correct record during odd-numbered windows. Drives the ' +
+    'temporarily_failed grace-window story and its recovery UX.',
   conflict:
     'Resolves the correct record immediately, exactly like verified — DNS ' +
     "has no notion of 'this domain is already claimed by another account'. " +
@@ -191,8 +191,8 @@ function resolveForJourney(
     case 'flaky': {
       const windowIndex = Math.floor(elapsedMs / FLAKY_WINDOW_MS)
       return windowIndex % 2 === 0
-        ? { ok: true, records: [challenge.recordValue] }
-        : { ok: false, reason: 'timeout' }
+        ? { ok: false, reason: 'timeout' }
+        : { ok: true, records: [challenge.recordValue] }
     }
 
     default:
