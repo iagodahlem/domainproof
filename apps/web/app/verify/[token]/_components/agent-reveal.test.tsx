@@ -27,9 +27,7 @@ describe('AgentReveal', () => {
     render(
       <AgentReveal domain="acme.co" records={RECORDS} provider="cloudflare" />,
     )
-    expect(
-      screen.getByText(/DNS for acme\.co is on Cloudflare/),
-    ).toBeTruthy()
+    expect(screen.getByText(/DNS for acme\.co is on Cloudflare/)).toBeTruthy()
     expect(
       screen.getByText(
         /https:\/\/domainproof\.dev\/docs\/add-txt-record-cloudflare/,
@@ -41,7 +39,9 @@ describe('AgentReveal', () => {
     render(
       <AgentReveal domain="acme.co" records={RECORDS} provider="unknown" />,
     )
-    expect(screen.getByText(/Use my DNS provider access to add it\./)).toBeTruthy()
+    expect(
+      screen.getByText(/Use my DNS provider access to add it\./),
+    ).toBeTruthy()
     expect(
       screen.getByText(/https:\/\/domainproof\.dev\/docs\/add-txt-record\b/),
     ).toBeTruthy()

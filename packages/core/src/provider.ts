@@ -5,7 +5,8 @@
  * both mean the same thing: don't offer a provider-specific one-click
  * integration for this domain.
  */
-export type Provider = 'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
+export type Provider =
+  'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
 
 /**
  * Cloudflare's authoritative nameservers always end in this suffix (e.g.
@@ -58,7 +59,9 @@ function matchesSuffix(nameserver: string, suffix: string): boolean {
  * function itself.
  */
 export function detectProvider(nameservers: readonly string[]): Provider {
-  if (nameservers.some((ns) => matchesSuffix(ns, CLOUDFLARE_NAMESERVER_SUFFIX))) {
+  if (
+    nameservers.some((ns) => matchesSuffix(ns, CLOUDFLARE_NAMESERVER_SUFFIX))
+  ) {
     return 'cloudflare'
   }
   if (nameservers.some((ns) => matchesSuffix(ns, GODADDY_NAMESERVER_SUFFIX))) {
@@ -67,7 +70,9 @@ export function detectProvider(nameservers: readonly string[]): Provider {
   if (nameservers.some((ns) => matchesSuffix(ns, VERCEL_NAMESERVER_SUFFIX))) {
     return 'vercel'
   }
-  if (nameservers.some((ns) => ROUTE53_NAMESERVER_PATTERN.test(ns.toLowerCase()))) {
+  if (
+    nameservers.some((ns) => ROUTE53_NAMESERVER_PATTERN.test(ns.toLowerCase()))
+  ) {
     return 'route53'
   }
   return 'unknown'

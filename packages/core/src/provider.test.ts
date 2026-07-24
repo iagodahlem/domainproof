@@ -30,9 +30,9 @@ describe('detectProvider', () => {
   })
 
   it('detects vercel from a matching nameserver suffix', () => {
-    expect(
-      detectProvider(['ns1.vercel-dns.com', 'ns2.vercel-dns.com']),
-    ).toBe('vercel')
+    expect(detectProvider(['ns1.vercel-dns.com', 'ns2.vercel-dns.com'])).toBe(
+      'vercel',
+    )
   })
 
   it('is case-insensitive for vercel', () => {

@@ -35,7 +35,8 @@ export interface DomainSummary {
 }
 
 /** DNS providers the dashboard can recognize and show in the domains table's Provider column — mirrors `@domainproof/core`'s `Provider`. `'unknown'` covers both a real but undetected provider and a `.test` sandbox domain (see `domain-provider.tsx`, which tells those apart from the domain name itself). */
-export type Provider = 'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
+export type Provider =
+  'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
 
 /** A domains-list row: `DomainSummary` plus the Provider column's own data — only the list route resolves this (a domain-detail fetch has no table cell to fill), so it's kept separate rather than added to `DomainSummary` itself. */
 export interface DomainListItem extends DomainSummary {
