@@ -32,9 +32,9 @@ apps/web/
         layout.tsx                        #   resolves active project, mounts <DashboardShell>
         loading.tsx                       #   Overview's own section skeleton (its page.tsx has no nested folder for a scoped loading.tsx)
         error.tsx                         #   shared error boundary for every route under [projectId] — a failed prefetch surfaces here once the client's useSuspenseQuery retries and throws
-        _components/                     #   overview-section.tsx, overview-skeleton.tsx, project-overview-view.tsx, overview-link-card.tsx
+        _components/                     #   overview-section.tsx, overview-skeleton.tsx, project-overview-view.tsx, overview-link-card.tsx (Overview's own view), plus the onboarding-tabs subsystem: onboarding-panel.tsx (tab shell), onboarding-api-path.tsx, onboarding-hosted-path.tsx, onboarding-components-path.tsx, onboarding-agents-path.tsx (per-path panels), onboarding-claim-step.tsx, onboarding-claim-code.tsx, onboarding-live-component.tsx, path-delegate.tsx, live-badge.tsx, setup-checklist.tsx, checklist-progress.ts, onboarding-constants.ts, onboarding-storage.ts
         domains/loading.tsx, domains/[domainId]/loading.tsx  #   each route's own section skeleton
-        domains/_components/             #   domains-page-client.tsx, domains-skeleton.tsx, domain-detail-client.tsx, domain-detail-skeleton.tsx, add-domain-form.tsx, delete-confirm.tsx, domain-empty-state.tsx, domain-provider.tsx, domain-status.ts, domain-status-steps.tsx, domain-check-outcome.ts, domain-event-log.ts, format-relative-time.ts
+        domains/_components/             #   domains-page-client.tsx, domains-skeleton.tsx, domain-detail-client.tsx, domain-detail-skeleton.tsx, domain-meta-rail.tsx, hosted-link-card.tsx, what-we-found.tsx, add-domain-form.tsx, delete-domain-dialog.tsx, domain-empty-state.tsx, domain-provider.tsx, domain-status-steps.tsx, domain-check-outcome.ts, domain-event-log.ts, use-bounded-poll.ts
         events/loading.tsx
         events/_components/                  #   events-view.tsx, events-skeleton.tsx, event-row.tsx
         settings/loading.tsx
@@ -48,19 +48,20 @@ apps/web/
     header/                            #   auth-cta.tsx, google-icon.tsx, marketing-actions.tsx, marketing-brand.tsx — the marketing Header's left/right-slot content
     footer/                            #   marketing-footer.tsx — rendered once by the (marketing) layout
     dashboard-shell/                   #   every dashboard route's chrome — shell/nav render instantly here and are never skeletoned; only route content skeletons (above)
-      shell.tsx, sidebar.tsx, topbar.tsx, user-menu.tsx, project-switcher.tsx,
-      sign-out-button.tsx, reload-button.tsx, nav-items.ts
+      shell.tsx, sidebar.tsx, topbar.tsx, topbar-slot.tsx, user-menu.tsx, project-switcher.tsx,
+      sign-out-button.tsx, reload-button.tsx, mode-switch.tsx, nav-items.ts
 
   lib/
     api/                              # thin fetch client — the only place that builds a request or parses the error envelope
       request.ts                        #   shared fetch wrapper + ApiError (unchanged)
       dashboard.ts                       #   dashboardApi — one method per /dashboard/* endpoint (unchanged)
+      frontend.ts                        #   frontendApi — one method per /frontend/* endpoint, used by /verify/[token] and the onboarding live-component path
     query/                            # the TanStack Query hook layer wrapping lib/api; the only thing client components call
       provider.tsx                       #   QueryProvider — the client QueryClient, mounted once from the (dashboard) group layout
       query-client.ts                    #   getQueryClient — the server-only, per-request QueryClient a page.tsx prefetches into before dehydrating
       errors.ts                          #   re-exports ApiError, so components never import lib/api just for instanceof checks
-      projects.ts, keys.ts, domains.ts, events.ts, webhooks.ts  #   one file per resource, mirroring lib/api/dashboard.ts's own grouping — each exports a `*QueryOptions` factory per query (shared between a page.tsx's server prefetch and its client `useSuspenseQuery`) alongside the mutation hooks
-    slug-preview.ts                   # pure util, no fetch — stays flat at lib root
+      projects.ts, keys.ts, domains.ts, events.ts, webhooks.ts, component-sessions.ts  #   one file per resource, mirroring lib/api/dashboard.ts's own grouping — each exports a `*QueryOptions` factory per query (shared between a page.tsx's server prefetch and its client `useSuspenseQuery`) alongside the mutation hooks
+    domain-status.ts, format-relative-time.ts, slug-preview.ts   # pure utils, no fetch — stay flat at lib root
 ```
 
 `Header` itself is a generic primitive in `packages/ui` (it takes arbitrary

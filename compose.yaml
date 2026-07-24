@@ -1,6 +1,7 @@
 # Local stack for full-container runs. Primary dev loop is still
 # `pnpm dev` (see README) — this is for testing the built API image
-# and, soon, wiring up the database.
+# against a real Postgres, migrations included (the api runs them at
+# boot, see apps/api/src/index.ts).
 services:
   api:
     build:
@@ -10,12 +11,13 @@ services:
       - '3101:3001'
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgres://domainproof:domainproof@db:5432/domainproof
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     # Relies on the HEALTHCHECK baked into apps/api/Dockerfile.
 
-  # Postgres for the database work landing this week. The API doesn't
-  # consume it yet — its env validation has no DATABASE_URL — so this
-  # is pre-wired but not connected to the api service above.
   db:
     image: postgres:17-alpine
     environment:

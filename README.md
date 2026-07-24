@@ -12,7 +12,8 @@ pnpm workspaces + Turborepo, `catalog:` version pins in the root
 - `apps/web` — Next.js 15 (App Router). Serves the landing page and project
   dashboard at the apex domain (project routes live at the root, e.g.
   `/<projectId>/...`, not under a `/dashboard` prefix), the hosted
-  verification portal at `/verify/[token]`, and docs (Fumadocs) at `/docs`
+  verification portal at `/verify/[token]`, and docs (hand-built on
+  `next-mdx-remote` + `remark-gfm`) at `/docs`
 - `apps/api` — Hono REST API on `api.domainproof.dev`
 - `packages/core` — pure domain logic: state machine, verification checks,
   DNS resolver interfaces. Consumed by `apps/api`
@@ -76,6 +77,7 @@ nothing breaks if the file doesn't exist):
 | `PORT`                                                                       | No        | Defaults to `3001`.                                                                                                                                                                                                                                                               |
 | `RESEND_API_KEY`                                                             | No        | Enables the email notification subscribers. Unset means they're never registered — the app boots and every request still works, just without emails sent.                                                                                                                         |
 | `EMAIL_FROM`                                                                 | No        | Defaults to `DomainProof <notifications@domainproof.dev>`.                                                                                                                                                                                                                        |
+| `LOG_LEVEL`                                                                  | No        | Verbosity for the api's pino logger — one of `fatal`, `error`, `warn`, `info`, `debug`, `trace`. Defaults to `info`; `debug` additionally logs sanitized request/response payloads.                                                                                               |
 | `WEBHOOK_MAX_ATTEMPTS`                                                       | No        | Total delivery attempts (including the first) before a webhook delivery is marked `failed` for good. Defaults to `5`.                                                                                                                                                             |
 | `RECHECK_ENABLED`                                                            | No        | Defaults to `true`. Set to `false` to disable the background recheck scheduler (see [API](#api) below).                                                                                                                                                                           |
 | `RECHECK_INTERVAL_MS`                                                        | No        | Defaults to `60000` (1 minute). How often the recheck scheduler ticks.                                                                                                                                                                                                            |
@@ -102,15 +104,22 @@ remains the primary dev loop.
 
 ### Web
 
-`apps/web` (`pnpm --filter web dev`, default <http://localhost:3000>) hosts
-the hosted verification page at `/verify/[token]` — the unauthenticated,
-token-scoped page a domain owner lands on from a claim's `verificationUrl`.
-It reads and polls the Frontend API plane directly from the browser (see
-[Frontend API](#frontend-api) below), never through a Next.js route
-handler, and has no auth context of its own. Set `NEXT_PUBLIC_FRONTEND_API_URL`
-(`apps/web/.env.example`) to that plane's base URL — it defaults to
-`http://localhost:3001` for local dev and should be set to
-`https://frontend.api.domainproof.dev` in production.
+`apps/web` (`pnpm --filter web dev`, default <http://localhost:3000>).
+`apps/web/.env.local` (`apps/web/.env.example` has the full annotated list):
+
+| Var                                                     | Required?   | For                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`                                   | Yes         | Dashboard API base URL. Local default matches `apps/api`'s default `PORT` (`http://localhost:3001`).                                                                                                                                                                                        |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Yes         | Clerk auth — must come from the same Clerk instance as `apps/api`'s `CLERK_JWKS_URL`/`CLERK_ISSUER` (see above).                                                                                                                                                                            |
+| `NEXT_PUBLIC_FRONTEND_API_URL`                          | No          | Base URL of the Frontend API plane the hosted verification page (`/verify/[token]`) calls directly from the browser — see below. Defaults to `http://localhost:3001`; production is `https://frontend.api.domainproof.dev`.                                                                 |
+| `DEMO_DOMAINPROOF_API_KEY`                              | For `/demo` | Server-only test-mode DomainProof API key the `/demo` (Sitegrade) app uses via `@domainproof/sdk`. Sign in to the dashboard, create a project, and copy its test key from Settings. Required for `POST /demo/api/claim` and `GET /demo/api/status`; `POST /demo/api/scan` works without it. |
+| `DEMO_DOMAINPROOF_BASE_URL`                             | No          | Overrides the SDK's production default for the `/demo` app — set for local dev/staging, e.g. `http://localhost:3001`.                                                                                                                                                                       |
+
+`apps/web` hosts the hosted verification page at `/verify/[token]` — the
+unauthenticated, token-scoped page a domain owner lands on from a claim's
+`verificationUrl`. It reads and polls the Frontend API plane directly from
+the browser (see [Frontend API](#frontend-api) below), never through a
+Next.js route handler, and has no auth context of its own.
 
 ## API
 
