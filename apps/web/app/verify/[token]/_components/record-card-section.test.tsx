@@ -56,7 +56,7 @@ describe('RecordCardSection', () => {
       />,
     )
     const link = screen.getByRole('link', {
-      name: 'how to add it on Cloudflare →',
+      name: 'How to add it on Cloudflare →',
     })
     expect(link.getAttribute('href')).toBe('/docs/add-txt-record-cloudflare')
   })
@@ -69,7 +69,7 @@ describe('RecordCardSection', () => {
         provider="unknown"
       />,
     )
-    const link = screen.getByRole('link', { name: 'how to add it →' })
+    const link = screen.getByRole('link', { name: 'How to add it →' })
     expect(link.getAttribute('href')).toBe('/docs/add-txt-record')
   })
 })
