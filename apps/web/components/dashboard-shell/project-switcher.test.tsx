@@ -15,15 +15,16 @@ function project(overrides: Partial<ProjectSummary>): ProjectSummary {
 }
 
 describe('ProjectSwitcher', () => {
-  it("lists each project's slug alongside its name in the dropdown", async () => {
+  it("doesn't show a project's slug when its name is unique in the list", async () => {
     const user = userEvent.setup()
     const acme = project({ id: 'proj_1', name: 'Acme', slug: 'acme' })
-    render(<ProjectSwitcher projects={[acme]} activeProject={acme} />)
+    const beta = project({ id: 'proj_2', name: 'Beta', slug: 'beta' })
+    render(<ProjectSwitcher projects={[acme, beta]} activeProject={acme} />)
 
     await user.click(screen.getByRole('button', { name: 'Acme' }))
 
-    const item = screen.getByRole('menuitem', { name: /Acme/ })
-    expect(item.textContent).toContain('acme')
+    const item = screen.getByRole('menuitem', { name: 'Acme' })
+    expect(item.textContent).not.toContain('acme')
   })
 
   it('distinguishes two projects sharing a display name by their slug', async () => {
@@ -56,5 +57,66 @@ describe('ProjectSwitcher', () => {
     )
     expect(plainSlugItem?.textContent).toContain('iagodahlem')
     expect(suffixedSlugItem?.textContent).toContain('iagodahlem-x7k9p2')
+  })
+
+  it('always shows the active project name, even when its name collides with another project', async () => {
+    const user = userEvent.setup()
+    const first = project({
+      id: 'proj_1',
+      name: 'iagodahlem',
+      slug: 'iagodahlem',
+    })
+    const second = project({
+      id: 'proj_2',
+      name: 'iagodahlem',
+      slug: 'iagodahlem-x7k9p2',
+    })
+    render(
+      <ProjectSwitcher projects={[first, second]} activeProject={second} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'iagodahlem' }))
+
+    const activeItem = screen
+      .getAllByRole('menuitem')
+      .find((item) => item.textContent?.includes('x7k9p2'))
+    // The name must render alongside the slug, not be replaced by it —
+    // exact match guards against the name silently dropping out.
+    expect(activeItem?.textContent).toBe('iagodahlemiagodahlem-x7k9p2')
+  })
+
+  it('only shows slugs for the colliding names, not the unique ones, in a mixed list', async () => {
+    const user = userEvent.setup()
+    const acmeOne = project({ id: 'proj_1', name: 'Acme', slug: 'acme' })
+    const acmeTwo = project({
+      id: 'proj_2',
+      name: 'Acme',
+      slug: 'acme-x7k9p2',
+    })
+    const sitegrade = project({
+      id: 'proj_3',
+      name: 'Sitegrade',
+      slug: 'sitegrade',
+    })
+    render(
+      <ProjectSwitcher
+        projects={[acmeOne, acmeTwo, sitegrade]}
+        activeProject={sitegrade}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Sitegrade' }))
+
+    const items = screen.getAllByRole('menuitem')
+    const sitegradeItem = items.find((item) =>
+      item.textContent?.startsWith('Sitegrade'),
+    )
+    expect(sitegradeItem?.textContent).not.toContain('sitegrade')
+
+    const acmeItems = items.filter((item) => item.textContent?.includes('Acme'))
+    expect(acmeItems).toHaveLength(2)
+    expect(
+      acmeItems.some((item) => item.textContent?.includes('acme-x7k9p2')),
+    ).toBe(true)
   })
 })

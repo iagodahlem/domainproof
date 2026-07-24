@@ -42,6 +42,11 @@ export interface ProjectSwitcherProps {
 /**
  * Current project name + a dropdown listing every project on the account,
  * "New project" pinned at the bottom (owner-approved board proposal).
+ *
+ * A project's slug only renders when its name collides with another
+ * project's — most accounts have no duplicate names, and showing the slug
+ * unconditionally there was pure noise (plus real crowding risk in the
+ * dropdown's fixed width, see `MenuItem`'s `secondary` prop).
  */
 export function ProjectSwitcher({
   projects,
@@ -49,6 +54,11 @@ export function ProjectSwitcher({
   className,
   compact = false,
 }: ProjectSwitcherProps) {
+  const nameCounts = new Map<string, number>()
+  for (const project of projects) {
+    nameCounts.set(project.name, (nameCounts.get(project.name) ?? 0) + 1)
+  }
+
   return (
     <Menu>
       <MenuTrigger
@@ -80,7 +90,9 @@ export function ProjectSwitcher({
             asChild
             active={project.id === activeProject.id}
             icon={<LayoutGrid aria-hidden="true" size={14} />}
-            secondary={project.slug}
+            secondary={
+              (nameCounts.get(project.name) ?? 0) > 1 ? project.slug : undefined
+            }
           >
             <Link href={`/${project.id}`}>{project.name}</Link>
           </MenuItem>

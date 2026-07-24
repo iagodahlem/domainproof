@@ -88,10 +88,12 @@ export interface MenuItemProps
     VariantProps<typeof menuItemVariants> {
   icon?: ReactNode
   /**
-   * Optional trailing text rendered as its own flex item after the main
-   * label, e.g. a slug that disambiguates two items sharing a label — kept
-   * outside the label's own truncating span so the label shrinks first and
-   * this stays fully visible.
+   * Optional secondary line stacked beneath the main label, e.g. a slug
+   * that disambiguates two items sharing a label. Stacked rather than
+   * placed beside the label so the two never compete for the same
+   * horizontal space — sharing a row let a fixed-width slug (plus the
+   * active check) crush the label down to zero width, hiding the name
+   * entirely on some rows.
    */
   secondary?: ReactNode
   /**
@@ -159,10 +161,25 @@ export const MenuItem = forwardRef<
     <Check aria-hidden="true" size={14} className="shrink-0 text-accent" />
   ) : null
   const secondaryEl = secondary ? (
-    <span className="max-w-[16ch] shrink-0 truncate font-mono text-xs text-faint-foreground">
+    <span className="truncate font-mono text-xs leading-none text-faint-foreground">
       {secondary}
     </span>
   ) : null
+
+  // No `secondary`: unchanged from before — a single truncating span.
+  // With `secondary`: stacked in its own column so the label always gets
+  // the row's full width on its own line, never sharing it with the slug
+  // (see the `secondary` doc comment above for why that sharing crushed
+  // the label).
+  const renderLabel = (label: ReactNode) =>
+    secondaryEl ? (
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate leading-none">{label}</span>
+        {secondaryEl}
+      </span>
+    ) : (
+      <span className="flex-1 truncate">{label}</span>
+    )
 
   // Radix's Slot (used under `asChild`) requires exactly one element
   // child — so the icon/label/check can't be siblings of that element
@@ -176,16 +193,14 @@ export const MenuItem = forwardRef<
       undefined,
       <>
         {iconEl}
-        <span className="flex-1 truncate">{children.props.children}</span>
-        {secondaryEl}
+        {renderLabel(children.props.children)}
         {checkEl}
       </>,
     )
   ) : (
     <>
       {iconEl}
-      <span className="flex-1 truncate">{children}</span>
-      {secondaryEl}
+      {renderLabel(children)}
       {checkEl}
     </>
   )

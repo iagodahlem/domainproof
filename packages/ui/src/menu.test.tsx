@@ -84,7 +84,7 @@ describe('Menu', () => {
     expect(link.getAttribute('href')).toBe('/projects/1')
   })
 
-  it('renders secondary text as its own element, alongside a truncating label rather than nested inside it', async () => {
+  it('stacks secondary text beneath the label rather than beside it, so the two never share a row', async () => {
     const user = userEvent.setup()
     render(
       <Menu>
@@ -98,7 +98,30 @@ describe('Menu', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Projects' }))
     const item = screen.getByRole('menuitem')
-    expect(item.textContent).toContain('Acme')
-    expect(item.textContent).toContain('acme-x7k9p2')
+    expect(item.textContent).toBe('Acmeacme-x7k9p2')
+
+    const label = screen.getByText('Acme')
+    const secondary = screen.getByText('acme-x7k9p2')
+    // Siblings inside a shared flex-col wrapper, not a shared flex row —
+    // the wrapper is what keeps the slug from crowding the label out.
+    expect(label.parentElement).toBe(secondary.parentElement)
+    expect(label.parentElement?.className).toContain('flex-col')
+  })
+
+  it("doesn't stack when no secondary text is given, keeping the plain single-line label", async () => {
+    const user = userEvent.setup()
+    render(
+      <Menu>
+        <MenuTrigger>Projects</MenuTrigger>
+        <MenuContent>
+          <MenuItem asChild>
+            <a href="/projects/2">Acme</a>
+          </MenuItem>
+        </MenuContent>
+      </Menu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Projects' }))
+    const label = screen.getByText('Acme')
+    expect(label.className).not.toContain('flex-col')
   })
 })
