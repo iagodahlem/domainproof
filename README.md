@@ -409,12 +409,14 @@ component retrying after a mistyped domain, not tuned for a bot.
 
 ### Cloudflare one-click DNS setup
 
-`GET /frontend/verifications/:token`'s `provider` field (`'cloudflare'` or
-`'unknown'`) is detected from the claim domain's nameservers — `'unknown'`
-for every domain that isn't Cloudflare-hosted, including every `.test`
-sandbox domain (which has no real DNS to inspect at all). The hosted page
-uses it to gate an "Add this record for me" button next to the manual
-instructions.
+`GET /frontend/verifications/:token`'s `provider` field (`'cloudflare'`,
+`'godaddy'`, `'vercel'`, `'route53'`, or `'unknown'`) is detected from the
+claim domain's nameservers — `'unknown'` for every domain without a
+detector match, including every `.test` sandbox domain (which has no real
+DNS to inspect at all). The hosted page uses it to gate an "Add this record
+for me" button next to the manual instructions (Cloudflare only) and to link
+to a matching DNS setup guide (every detected provider, plus a generic
+guide for `'unknown'`).
 
 Clicking it starts a PKCE OAuth flow against a private Cloudflare OAuth
 client (self-managed OAuth, authorizable only by the Cloudflare account

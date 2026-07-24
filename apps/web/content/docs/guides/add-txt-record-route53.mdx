@@ -1,0 +1,42 @@
+---
+title: Add a TXT record on AWS Route 53
+description: Publish DomainProof's TXT record from the Route 53 console, including the quoting Route 53 needs for TXT values.
+section: Guides
+order: 11
+---
+
+# Add a TXT record on AWS Route 53
+
+If DomainProof detected Route 53 as your domain's DNS provider, here's how to publish its TXT record from the Route 53 console.
+
+The record DomainProof asks for is two values shown on the [hosted verification page](/docs/hosted-verification-page):
+
+- **Host** — something like `_acme-challenge.example.com`.
+- **Value** — something like `acme-verify=abc123`.
+
+## 1. Open the domain's hosted zone
+
+Sign in to the [Route 53 console](https://console.aws.amazon.com/route53/), choose **Hosted zones** in the navigation pane, then choose the hosted zone matching your domain.
+
+## 2. Create a record
+
+Choose **Create record**.
+
+## 3. Enter the record name, type, and value
+
+- **Record name** — the prefix only, not the full hostname: drop the trailing `.example.com` that DomainProof's Host value ends with. For a host of `_acme-challenge.example.com`, enter `_acme-challenge`.
+- **Record type** — `TXT`.
+- **Value** — wrap the Value DomainProof shows you in double quotes, e.g. `"acme-verify=abc123"`. Route 53 requires TXT values to be quoted; leaving the quotes off is the most common reason a Route 53 TXT record doesn't verify.
+- **TTL** — leave the default, or use 300 seconds.
+- **Routing policy** — leave as **Simple routing**.
+
+Choose **Create records**.
+
+## 4. Recheck
+
+Route 53 changes typically propagate to its own nameservers within about a minute. Back on DomainProof's hosted verification page, click **Recheck**, or wait for its automatic poll (every 20 seconds).
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — what the record card and recheck button are part of.
+- [Add a TXT record (any provider)](/docs/add-txt-record) — the same steps in general terms, if your domain isn't on Route 53.

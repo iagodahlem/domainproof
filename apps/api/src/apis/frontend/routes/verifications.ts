@@ -204,7 +204,7 @@ export const verificationResponseDoc = z
     mode: z.enum(['test', 'live']),
     status: z.enum(DOMAIN_STATUSES),
     projectName: z.string(),
-    provider: z.enum(['cloudflare', 'unknown']),
+    provider: z.enum(['cloudflare', 'godaddy', 'vercel', 'route53', 'unknown']),
     records: z.array(frontendRecordDoc),
     check: frontendCheckDoc,
     updatedAt: z.iso.datetime(),

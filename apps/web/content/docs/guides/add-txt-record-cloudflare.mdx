@@ -1,0 +1,42 @@
+---
+title: Add a TXT record on Cloudflare
+description: Publish DomainProof's TXT record from Cloudflare's DNS dashboard — or use the one-click "Add this record for me" button instead.
+section: Guides
+order: 8
+---
+
+# Add a TXT record on Cloudflare
+
+If DomainProof detected Cloudflare as your domain's DNS provider, the [hosted verification page](/docs/hosted-verification-page) offers a one-click **Add this record for me** button that writes the record for you — see [Cloudflare one-click DNS setup](/docs/hosted-verification-page#cloudflare-one-click-dns-setup). The steps below are for adding it by hand instead.
+
+The record DomainProof asks for is two values shown on that page:
+
+- **Host** — something like `_acme-challenge.example.com`.
+- **Value** — something like `acme-verify=abc123`.
+
+## 1. Open the domain's DNS records
+
+Sign in to the [Cloudflare dashboard](https://dash.cloudflare.com), select the domain (Cloudflare calls it a "website" or "zone"), then open the **DNS** section from the left sidebar.
+
+## 2. Add a new record
+
+Click **Add record**. Set the **Type** dropdown to `TXT`.
+
+## 3. Enter the name and content
+
+- **Name** — paste the Host value DomainProof gave you. Cloudflare accepts either the full hostname (`_acme-challenge.example.com`) or just the prefix (`_acme-challenge`) — it strips the zone's own domain automatically either way.
+- **Content** — paste the Value exactly as shown.
+- **TTL** — leave it at `Auto`.
+
+TXT records aren't proxyable, so there's no orange/grey cloud toggle to worry about here.
+
+Click **Save**.
+
+## 4. Recheck
+
+Back on DomainProof's hosted verification page, click **Recheck**, or just wait for its automatic poll (every 20 seconds). Cloudflare's own DNS updates are usually visible within seconds.
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — the one-click button and manual record card this guide complements.
+- [Add a TXT record (any provider)](/docs/add-txt-record) — the same steps in general terms, if your DNS ever moves off Cloudflare.

@@ -162,8 +162,16 @@ export function VerificationPageClient({
                   </div>
                 </>
               ) : null}
-              <RecordCardSection domain={data.domain} records={data.records} />
-              <AgentReveal domain={data.domain} records={data.records} />
+              <RecordCardSection
+                domain={data.domain}
+                records={data.records}
+                provider={data.provider}
+              />
+              <AgentReveal
+                domain={data.domain}
+                records={data.records}
+                provider={data.provider}
+              />
             </>
           ) : null}
         </div>

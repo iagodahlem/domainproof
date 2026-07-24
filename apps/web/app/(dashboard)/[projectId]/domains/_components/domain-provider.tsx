@@ -16,11 +16,12 @@ function isSandboxDomain(domain: string): boolean {
 /**
  * The domains table's Provider column: a muted iconless "Sandbox" label for
  * `.test` domains, a Cloudflare icon+name when detected, or `null` (letting
- * `DomainTableRow`'s own em-dash fallback render) for everything else —
- * detection only tells Cloudflare apart from "everything else" today (see
- * `ProviderForDomain`/`Provider` in `lib/api/dashboard.ts`), so a real
- * domain on GoDaddy/Route 53/etc. also falls through to the em-dash until
- * the backend grows a detector for it.
+ * `DomainTableRow`'s own em-dash fallback render) for everything else — this
+ * badge only has an icon+name pairing for Cloudflare today (see
+ * `ProviderForDomain`/`Provider` in `lib/api/dashboard.ts` for the full set
+ * the backend can detect), so a real domain on GoDaddy/Vercel/Route 53/etc.
+ * still falls through to the em-dash until this component grows a badge
+ * for it too.
  */
 export function domainProviderBadge(
   domain: string,

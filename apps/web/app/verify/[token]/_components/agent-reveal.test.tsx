@@ -12,17 +12,45 @@ const RECORDS = [
 
 describe('AgentReveal', () => {
   it('bakes the real host and value into a copy-ready prompt, no MCP setup step', () => {
-    render(<AgentReveal domain="acme.co" records={RECORDS} />)
+    render(
+      <AgentReveal domain="acme.co" records={RECORDS} provider="unknown" />,
+    )
     expect(
       screen.getByText(
-        /Add this TXT record to acme\.co: host _acme-challenge\.acme\.co, value acme-verify=abc123 — use my DNS provider access\./,
+        /host _acme-challenge\.acme\.co, value acme-verify=abc123/,
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/mcp/i)).toBeNull()
   })
 
+  it('names the detected provider and links its setup guide', () => {
+    render(
+      <AgentReveal domain="acme.co" records={RECORDS} provider="cloudflare" />,
+    )
+    expect(screen.getByText(/DNS for acme\.co is on Cloudflare/)).toBeTruthy()
+    expect(
+      screen.getByText(
+        /https:\/\/domainproof\.dev\/docs\/add-txt-record-cloudflare/,
+      ),
+    ).toBeTruthy()
+  })
+
+  it('falls back to the generic guide and no provider name when unknown', () => {
+    render(
+      <AgentReveal domain="acme.co" records={RECORDS} provider="unknown" />,
+    )
+    expect(
+      screen.getByText(/Use my DNS provider access to add it\./),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/https:\/\/domainproof\.dev\/docs\/add-txt-record\b/),
+    ).toBeTruthy()
+  })
+
   it('renders nothing when there is no record to compose a prompt from', () => {
-    const { container } = render(<AgentReveal domain="acme.co" records={[]} />)
+    const { container } = render(
+      <AgentReveal domain="acme.co" records={[]} provider="unknown" />,
+    )
     expect(container.firstChild).toBeNull()
   })
 })

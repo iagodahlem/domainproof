@@ -477,7 +477,7 @@ export interface components {
         'not_started' | 'pending' | 'verified' | 'temporarily_failed' | 'failed'
       projectName: string
       /** @enum {string} */
-      provider: 'cloudflare' | 'unknown'
+      provider: 'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
       records: {
         label: string
         type: string
@@ -517,7 +517,7 @@ export interface components {
         'not_started' | 'pending' | 'verified' | 'temporarily_failed' | 'failed'
       projectName: string
       /** @enum {string} */
-      provider: 'cloudflare' | 'unknown'
+      provider: 'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
       records: {
         label: string
         type: string

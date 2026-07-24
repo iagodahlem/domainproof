@@ -19,8 +19,9 @@
 export type DomainStatus =
   'not_started' | 'pending' | 'verified' | 'temporarily_failed' | 'failed'
 
-/** The DNS provider detected for a claimed domain, from its nameservers — `'unknown'` for every provider that isn't Cloudflare, including every `.test` sandbox domain. */
-export type Provider = 'cloudflare' | 'unknown'
+/** The DNS provider detected for a claimed domain, from its nameservers — `'unknown'` for every provider without a detector, including every `.test` sandbox domain. */
+export type Provider =
+  'cloudflare' | 'godaddy' | 'vercel' | 'route53' | 'unknown'
 
 /** One instruction for the record to publish — currently always a `TXT` record. */
 export interface VerificationRecord {

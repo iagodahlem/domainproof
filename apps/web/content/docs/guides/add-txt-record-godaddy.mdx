@@ -1,0 +1,40 @@
+---
+title: Add a TXT record on GoDaddy
+description: Publish DomainProof's TXT record from GoDaddy's DNS management page.
+section: Guides
+order: 9
+---
+
+# Add a TXT record on GoDaddy
+
+If DomainProof detected GoDaddy as your domain's DNS provider, here's how to publish its TXT record from GoDaddy's dashboard.
+
+The record DomainProof asks for is two values shown on the [hosted verification page](/docs/hosted-verification-page):
+
+- **Host** — something like `_acme-challenge.example.com`.
+- **Value** — something like `acme-verify=abc123`.
+
+## 1. Open the domain's DNS records
+
+Sign in to your [GoDaddy account](https://www.godaddy.com), go to your Domain Portfolio, and select the domain to open its Domain Settings. From there, open **DNS** to view its DNS records.
+
+## 2. Add a new record, type TXT
+
+Select **Add New Record** (GoDaddy's exact label has shifted between redesigns — look for an "Add" action on the DNS records list if this one doesn't match what you see). Choose `TXT` from the Type menu.
+
+## 3. Enter the name and value
+
+- **Name** — GoDaddy's Name field wants only the prefix, not the full hostname: drop the trailing `.example.com` that DomainProof's Host value ends with. For a host of `_acme-challenge.example.com`, enter `_acme-challenge`.
+- **Value** — paste the Value exactly as DomainProof shows it.
+- **TTL** — leave the default (1 hour).
+
+Click **Save**.
+
+## 4. Recheck
+
+New records can take a little while to propagate depending on the TTL. Back on DomainProof's hosted verification page, click **Recheck**, or wait for its automatic poll (every 20 seconds) — it's safe to leave the tab open and let it retry on its own.
+
+## Where to next
+
+- [The hosted verification page](/docs/hosted-verification-page) — what the record card and recheck button are part of.
+- [Add a TXT record (any provider)](/docs/add-txt-record) — the same steps in general terms, if your DNS ever moves off GoDaddy.
