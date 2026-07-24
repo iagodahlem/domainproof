@@ -28,10 +28,10 @@ export interface WebhooksViewProps {
 
 /**
  * Endpoints table (no outer card, per the board) plus the add-endpoint
- * inline panel and the show-once signing-secret reveal a successful
- * create produces. All endpoint mutations (enable/disable/delete) are
- * owned by `EndpointRow`, which reports the result back up here so this
- * component only ever holds the flat list.
+ * drawer and the show-once signing-secret reveal a successful create
+ * produces. All endpoint mutations (enable/disable/delete) are owned by
+ * `EndpointRow`, which reports the result back up here so this component
+ * only ever holds the flat list.
  */
 export function WebhooksView({
   projectId,
@@ -61,12 +61,8 @@ export function WebhooksView({
 
   useTopbarSlot({
     action: (
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={() => setShowForm((value) => !value)}
-      >
-        {showForm ? 'Cancel' : '+ Add endpoint'}
+      <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+        + Add endpoint
       </Button>
     ),
   })
@@ -108,36 +104,29 @@ export function WebhooksView({
         </div>
       ) : null}
 
-      {showForm ? (
-        <CreateEndpointForm
-          projectId={projectId}
-          onCreated={handleCreated}
-          onCancel={() => setShowForm(false)}
-        />
-      ) : null}
+      <CreateEndpointForm
+        projectId={projectId}
+        open={showForm}
+        onOpenChange={setShowForm}
+        onCreated={handleCreated}
+      />
 
       {endpoints.length === 0 ? (
-        showForm ? null : (
-          <div className="rounded-lg border border-border p-12 text-center">
-            <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
-              <Zap aria-hidden="true" size={18} />
-            </div>
-            <h3 className="mb-2 text-lg font-heading text-foreground">
-              No endpoints yet
-            </h3>
-            <p className="mx-auto mb-5 max-w-[44ch] text-sm text-muted-foreground">
-              Add an endpoint to start receiving domain.verified and other
-              state-change events.
-            </p>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowForm(true)}
-            >
-              + Add endpoint
-            </Button>
+        <div className="rounded-lg border border-border p-12 text-center">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Zap aria-hidden="true" size={18} />
           </div>
-        )
+          <h3 className="mb-2 text-lg font-heading text-foreground">
+            No endpoints yet
+          </h3>
+          <p className="mx-auto mb-5 max-w-[44ch] text-sm text-muted-foreground">
+            Add an endpoint to start receiving domain.verified and other
+            state-change events.
+          </p>
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
+            + Add endpoint
+          </Button>
+        </div>
       ) : (
         <Table>
           <TableBody>

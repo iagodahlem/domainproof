@@ -46,8 +46,16 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
 
   // --- Domain 1: pending-then-verified.test (stays pending ~45s) ---
   await page.getByRole('button', { name: 'Add domain' }).click()
-  await page.getByLabel('Domain').fill('pending-then-verified.test')
-  await page.getByRole('button', { name: 'Add domain' }).click()
+  await page
+    .getByLabel('Domain', { exact: true })
+    .fill('pending-then-verified.test')
+  // Scoped to the drawer: the topbar's own "Add domain" trigger stays
+  // mounted (and matches the same accessible name) while the drawer is
+  // open, so an unscoped lookup here is ambiguous.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Add domain' })
+    .click()
   await expect(page).toHaveURL(/\/domains\/[^/]+$/)
   const pendingUrl = page.url()
 
@@ -129,8 +137,11 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
   await page.goto('/dashboard')
   await page.getByRole('link', { name: 'Domains', exact: true }).click()
   await page.getByRole('button', { name: 'Add domain' }).click()
-  await page.getByLabel('Domain').fill('wrong-value.test')
-  await page.getByRole('button', { name: 'Add domain' }).click()
+  await page.getByLabel('Domain', { exact: true }).fill('wrong-value.test')
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Add domain' })
+    .click()
   await expect(page).toHaveURL(/\/domains\/[^/]+$/)
 
   // A delay on the verify request gives the "Check now" button's loading
@@ -235,7 +246,10 @@ test('domain detail redesign — pending, verified, failed, delete dialogs, both
     .getByRole('button', { name: '+ Add endpoint' })
     .click()
   await page.getByLabel('Endpoint URL').fill('https://example.com/hook')
-  await page.getByRole('button', { name: 'Add endpoint' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Add endpoint' })
+    .click()
   await expect(page.getByText('Save this now.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Done' }).click()
   await page.getByRole('button').filter({ hasText: 'example.com' }).click()
