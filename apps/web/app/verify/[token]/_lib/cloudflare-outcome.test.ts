@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  describeCloudflareOutcome,
-  isCloudflareOutcomeStale,
-} from './cloudflare-outcome'
+import { describeCloudflareOutcome } from './cloudflare-outcome'
 
 describe('describeCloudflareOutcome', () => {
   it('renders an accent, in-progress message for success', () => {
@@ -26,20 +23,4 @@ describe('describeCloudflareOutcome', () => {
     expect(view.tone).toBe('neutral')
     expect(view.message.length).toBeGreaterThan(0)
   })
-})
-
-describe('isCloudflareOutcomeStale', () => {
-  it.each(['verified', 'failed'] as const)(
-    'is stale once the domain is %s — StatusSection narrates that on its own',
-    (status) => {
-      expect(isCloudflareOutcomeStale(status)).toBe(true)
-    },
-  )
-
-  it.each(['not_started', 'pending', 'temporarily_failed'] as const)(
-    'is not stale while %s — nothing has narrated a resolution yet',
-    (status) => {
-      expect(isCloudflareOutcomeStale(status)).toBe(false)
-    },
-  )
 })

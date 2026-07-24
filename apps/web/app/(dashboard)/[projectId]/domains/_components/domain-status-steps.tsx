@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react'
 import type { StepperStep } from '@domainproof/ui'
 import type { DomainDetail } from '@/lib/api/dashboard'
 import { formatRelativeTime } from '@/lib/format-relative-time'
@@ -21,7 +20,7 @@ export function domainStatusSteps(domain: DomainDetail): StepperStep[] {
   const verifyingStatus = everVerified
     ? 'done'
     : neverVerifiedTerminal
-      ? 'upcoming'
+      ? 'failed'
       : 'current'
   const verifiedStatus = everVerified
     ? recovering
@@ -33,30 +32,17 @@ export function domainStatusSteps(domain: DomainDetail): StepperStep[] {
     {
       id: 'claimed',
       status: 'done',
-      node: <Check aria-hidden="true" size={10} />,
       label: 'Claimed',
       time: formatRelativeTime(domain.createdAt),
     },
     {
       id: 'verifying',
       status: verifyingStatus,
-      node:
-        verifyingStatus === 'done' ? (
-          <Check aria-hidden="true" size={10} />
-        ) : (
-          '2'
-        ),
       label: 'Verifying',
     },
     {
       id: 'verified',
       status: verifiedStatus,
-      node:
-        verifiedStatus === 'done' ? (
-          <Check aria-hidden="true" size={10} />
-        ) : (
-          '3'
-        ),
       label: 'Verified',
       time: domain.verifiedAt
         ? formatRelativeTime(domain.verifiedAt)

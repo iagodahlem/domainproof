@@ -1,4 +1,3 @@
-import type { DomainStatus } from '@domainproof/core'
 import type { CalloutTone } from '@domainproof/ui'
 
 /**
@@ -75,22 +74,4 @@ export function describeCloudflareOutcome(
           'Something unexpected happened setting up Cloudflare. Add the record manually below.',
       }
   }
-}
-
-/** Every status the domain can settle into with no further action possible on this page (mirrors `page-client.tsx`'s own `TERMINAL_STATUSES`). */
-const RESOLVED_STATUSES: ReadonlySet<DomainStatus> = new Set([
-  'verified',
-  'failed',
-])
-
-/**
- * Every `?cloudflare=` outcome — success's "checking now…" as much as
- * denied/no_matching_zone/etc.'s "add it manually, or try again" — narrates
- * a situation that's still open: a check in flight, or guidance toward a
- * result that hasn't happened yet. Once the domain reaches a resolved
- * status, `StatusSection` already narrates that outcome on its own, so the
- * callout would just be stale or contradictory leftover guidance.
- */
-export function isCloudflareOutcomeStale(status: DomainStatus): boolean {
-  return RESOLVED_STATUSES.has(status)
 }

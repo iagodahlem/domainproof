@@ -59,8 +59,8 @@ const menuItemVariants = cva(
         true: 'bg-surface-2 text-foreground',
         false: '',
       },
-      // Compact square button instead of a full-width row — for controls
-      // (like the theme toggle) that carry no visible label. Still a real
+      // Compact square item for icon-only controls; currently unused, kept
+      // for the planned account-menu redesign. Still a real
       // DropdownMenuPrimitive.Item under the hood, so it stays in Radix's
       // roving-focus/arrow-key collection rather than becoming an
       // unreachable orphan (the menu swallows Tab).

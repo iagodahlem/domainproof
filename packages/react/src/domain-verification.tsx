@@ -99,7 +99,7 @@ function verificationSteps(status: DomainStatus): StepperStep[] {
   const verifyingStatus: StepperStepStatus = everVerified
     ? 'done'
     : neverVerifiedTerminal
-      ? 'upcoming'
+      ? 'failed'
       : 'current'
   const verifiedStatus: StepperStepStatus = everVerified
     ? recovering
@@ -108,34 +108,9 @@ function verificationSteps(status: DomainStatus): StepperStep[] {
     : 'upcoming'
 
   return [
-    {
-      id: 'claimed',
-      status: 'done',
-      node: <Check aria-hidden="true" size={10} />,
-      label: 'Claimed',
-    },
-    {
-      id: 'verifying',
-      status: verifyingStatus,
-      node:
-        verifyingStatus === 'done' ? (
-          <Check aria-hidden="true" size={10} />
-        ) : (
-          '2'
-        ),
-      label: 'Verifying',
-    },
-    {
-      id: 'verified',
-      status: verifiedStatus,
-      node:
-        verifiedStatus === 'done' ? (
-          <Check aria-hidden="true" size={10} />
-        ) : (
-          '3'
-        ),
-      label: 'Verified',
-    },
+    { id: 'claimed', status: 'done', label: 'Claimed' },
+    { id: 'verifying', status: verifyingStatus, label: 'Verifying' },
+    { id: 'verified', status: verifiedStatus, label: 'Verified' },
   ]
 }
 

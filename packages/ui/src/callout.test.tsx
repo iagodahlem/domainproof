@@ -38,6 +38,13 @@ describe('Callout', () => {
     ).toContain('bg-danger-soft')
   })
 
+  it('applies the success tone fill', () => {
+    render(<Callout tone="success">Domain verified</Callout>)
+    expect(screen.getByText('Domain verified').className).toContain(
+      'bg-success-soft',
+    )
+  })
+
   it('switches to the dashed emphasis with no fill', () => {
     render(<Callout emphasis="dashed">What's happening under the hood</Callout>)
     const el = screen.getByText("What's happening under the hood")

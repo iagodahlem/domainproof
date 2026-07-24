@@ -7,24 +7,21 @@ const STEPS = [
   {
     id: 'claimed',
     status: 'done' as const,
-    node: '✓',
     label: 'Claimed',
     time: '09:41',
   },
   {
     id: 'record',
     status: 'done' as const,
-    node: '✓',
     label: 'Record added',
     time: '09:52',
   },
   {
     id: 'propagated',
     status: 'current' as const,
-    node: '3',
     label: 'Propagated',
   },
-  { id: 'verified', status: 'upcoming' as const, node: '4', label: 'Verified' },
+  { id: 'verified', status: 'upcoming' as const, label: 'Verified' },
 ]
 
 describe('Stepper', () => {
@@ -51,6 +48,27 @@ describe('Stepper', () => {
     expect(screen.getByText('Claimed').closest('div')?.className).toContain(
       'shrink-0',
     )
+  })
+
+  it('gives the current step a pulsing dot and a failed step a distinct danger mark', () => {
+    const { container } = render(
+      <Stepper
+        steps={[
+          { id: 'claimed', status: 'done', label: 'Claimed' },
+          { id: 'record', status: 'failed', label: 'Record added' },
+          { id: 'propagated', status: 'upcoming', label: 'Propagated' },
+          { id: 'verified', status: 'upcoming', label: 'Verified' },
+        ]}
+      />,
+    )
+    expect(container.querySelector('.animate-dp-pulse')).toBeNull()
+    expect(container.querySelector('.text-danger')).toBeTruthy()
+  })
+
+  it('pulses the current step alone, live-not-stuck', () => {
+    const { container } = render(<Stepper steps={STEPS} />)
+    const pulses = container.querySelectorAll('.animate-dp-pulse')
+    expect(pulses).toHaveLength(1)
   })
 })
 

@@ -1,18 +1,24 @@
 import { Fragment } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cva } from 'class-variance-authority'
+import { Check, X } from 'lucide-react'
 import { cn } from './cn'
 
-export type StepperStepStatus = 'done' | 'current' | 'upcoming'
+export type StepperStepStatus = 'done' | 'current' | 'upcoming' | 'failed'
 
+// Numbers dropped from the circles on purpose — the connector line already
+// carries the order and the label carries the name, so the circle only
+// needs to say *how* a step stands: done, being checked right now, not
+// there yet, or blocked.
 const stepNodeVariants = cva(
-  'flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full border-2 font-sans text-2xs leading-none font-heading',
+  'flex h-5.5 w-5.5 flex-shrink-0 items-center justify-center rounded-full border-2',
   {
     variants: {
       status: {
         done: 'border-success bg-success text-success-foreground',
-        current: 'border-accent bg-surface text-accent shadow-current',
-        upcoming: 'border-border-strong bg-surface text-faint-foreground',
+        current: 'border-accent bg-surface shadow-current',
+        upcoming: 'border-transparent bg-transparent',
+        failed: 'border-danger bg-danger-soft text-danger',
       },
     },
   },
@@ -26,6 +32,7 @@ const stepLabelVariants = cva(
         done: '',
         current: 'text-accent',
         upcoming: '',
+        failed: 'text-danger',
       },
     },
   },
@@ -39,15 +46,33 @@ const stepConnectorVariants = cva(
         done: 'bg-success',
         current: '',
         upcoming: '',
+        failed: '',
       },
     },
   },
 )
 
+/** The active step means "we're checking this right now" — the pulse says live-not-stuck. */
+function StepNode({ status }: { status: StepperStepStatus }) {
+  switch (status) {
+    case 'done':
+      return <Check aria-hidden="true" size={10} />
+    case 'failed':
+      return <X aria-hidden="true" size={10} />
+    case 'current':
+      return (
+        <span className="h-2 w-2 rounded-full bg-accent animate-dp-pulse" />
+      )
+    case 'upcoming':
+      return (
+        <span className="h-1.5 w-1.5 rounded-full border border-border-strong" />
+      )
+  }
+}
+
 export interface StepperStep {
   id: string
   status: StepperStepStatus
-  node: ReactNode
   label: ReactNode
   time?: ReactNode
 }
@@ -69,7 +94,7 @@ export function Stepper({ steps, className, ...props }: StepperProps) {
         <Fragment key={step.id}>
           <div className="flex shrink-0 flex-col items-center gap-2">
             <span className={stepNodeVariants({ status: step.status })}>
-              {step.node}
+              <StepNode status={step.status} />
             </span>
             <span className={stepLabelVariants({ status: step.status })}>
               {step.label}

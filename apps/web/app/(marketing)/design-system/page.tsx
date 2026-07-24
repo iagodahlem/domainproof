@@ -910,28 +910,24 @@ export default function DesignSystemPage() {
                           {
                             id: 'claimed',
                             status: 'done',
-                            node: <CheckIcon size={10} />,
                             label: 'Claimed',
                             time: '09:41',
                           },
                           {
                             id: 'added',
                             status: 'done',
-                            node: <CheckIcon size={10} />,
                             label: 'Record added',
                             time: '09:52',
                           },
                           {
                             id: 'propagated',
                             status: 'done',
-                            node: <CheckIcon size={10} />,
                             label: 'Propagated',
                             time: '09:58',
                           },
                           {
                             id: 'verified',
                             status: 'done',
-                            node: <CheckIcon size={10} />,
                             label: 'Verified',
                             time: '09:58',
                           },
@@ -948,26 +944,54 @@ export default function DesignSystemPage() {
                           {
                             id: 'claimed',
                             status: 'done',
-                            node: <CheckIcon size={10} />,
                             label: 'Claimed',
                             time: '09:41',
                           },
                           {
                             id: 'added',
                             status: 'current',
-                            node: '2',
                             label: 'Record added',
                           },
                           {
                             id: 'propagated',
                             status: 'upcoming',
-                            node: '3',
                             label: 'Propagated',
                           },
                           {
                             id: 'verified',
                             status: 'upcoming',
-                            node: '4',
+                            label: 'Verified',
+                          },
+                        ]}
+                      />
+                    </CardBody>
+                  </Card>
+                </Example>
+                <Example label="stepper — blocked on a failed step">
+                  <Card className="w-full max-w-xl">
+                    <CardBody>
+                      <Stepper
+                        steps={[
+                          {
+                            id: 'claimed',
+                            status: 'done',
+                            label: 'Claimed',
+                            time: '09:41',
+                          },
+                          {
+                            id: 'added',
+                            status: 'done',
+                            label: 'Record added',
+                            time: '09:52',
+                          },
+                          {
+                            id: 'propagated',
+                            status: 'failed',
+                            label: 'Propagated',
+                          },
+                          {
+                            id: 'verified',
+                            status: 'upcoming',
                             label: 'Verified',
                           },
                         ]}
