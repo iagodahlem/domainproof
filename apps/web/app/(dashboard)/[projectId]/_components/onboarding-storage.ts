@@ -58,30 +58,28 @@ export function useOnboardingTab(
 
 /**
  * Whether the "Get started" checklist shows as the full card or the
- * collapsed strip. Defaults to `autoCollapse` (true once the required
- * steps are done — see `deriveChecklistProgress`), but a builder can
- * expand or collapse it by hand at any point, and that explicit choice is
- * what gets persisted from then on, overriding the data-derived default.
+ * collapsed strip. Always starts expanded — it never auto-collapses just
+ * because the required steps finished (a domain verifying mid-onboarding
+ * used to close the card out from under whoever was reading it); a builder
+ * has to dismiss it by hand via the card's own collapse control, and that
+ * explicit choice is what gets persisted from then on.
  */
 export function useChecklistCollapsed(
   projectId: string,
-  autoCollapse: boolean,
 ): [boolean, (next: boolean) => void] {
-  const [override, setOverride] = useState<boolean | null>(null)
+  const [collapsed, setCollapsedState] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(collapsedStorageKey(projectId))
-    if (stored === 'true') setOverride(true)
-    else if (stored === 'false') setOverride(false)
-    else setOverride(null)
+    setCollapsedState(stored === 'true')
   }, [projectId])
 
   function setCollapsed(next: boolean) {
-    setOverride(next)
+    setCollapsedState(next)
     window.localStorage.setItem(collapsedStorageKey(projectId), String(next))
   }
 
-  return [override ?? autoCollapse, setCollapsed]
+  return [collapsed, setCollapsed]
 }
 
 /**
@@ -90,8 +88,8 @@ export function useChecklistCollapsed(
  * prop) — a client-only poll noticing a domain reach `verified` has no
  * other way to tell that computation to re-run. `router.refresh()` re-runs
  * the server component tree on the current route without discarding this
- * client tree's state (tab selection, claimed-domain state), so the
- * checklist advances — and, once both required steps are done, collapses —
+ * client tree's state (tab selection, claimed-domain state, whether the
+ * checklist card is expanded), so the checklist's step advances to `done`
  * without the visitor needing to reload by hand. Fires once per
  * newly-observed `verified` status, not on every render a poll happens to
  * still see it.
