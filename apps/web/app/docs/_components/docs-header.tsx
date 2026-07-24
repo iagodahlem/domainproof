@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
-import { Header, Logo } from '@domainproof/ui'
+import { Header, ThemeToggle } from '@domainproof/ui'
 import { AuthCta } from '@/components/header/auth-cta'
+import { MarketingBrand } from '@/components/header/marketing-brand'
 
 /**
  * The real Header, variant="glass" — same instance the marketing pages and
@@ -10,16 +10,17 @@ import { AuthCta } from '@/components/header/auth-cta'
  * shared chrome does define on its own, rather than lining up with one the
  * caller defines) so the logo and Dashboard button sit flush against the
  * true screen edges, matching the sidebar and TOC rails below it rather
- * than a centered column. Right slot omits the board's search pill per the
- * one directed exception — everything else here is unchanged from the
- * board.
+ * than a centered column.
  *
- * Right slot is the same AuthCta the marketing header uses — signed-in
- * "Dashboard" / signed-out "Continue with Google", both resolving to
- * `/app` — resolved here via its own `auth()` call rather than threading
- * it down from the marketing layout, since docs pages aren't under that
- * layout. `variant="default"` and `showIcon={false}` keep it pixel-identical
- * to this button's pre-AuthCta look: a plain bordered text button, no icon.
+ * Left slot is `MarketingBrand` with `docsActive` — the same "DomainProof ·
+ * Docs" lockup the marketing header links out with, except "Docs" is the
+ * current page here rather than a link back to itself. Right slot pairs the
+ * same icon `ThemeToggle` the marketing header's actions cluster uses with
+ * this page's own AuthCta — resolved here via its own `auth()` call rather
+ * than threading it down from the marketing layout, since docs pages
+ * aren't under that layout. `variant="default"` and `showIcon={false}` keep
+ * the CTA pixel-identical to this button's pre-AuthCta look: a plain
+ * bordered text button, no icon.
  */
 export async function DocsHeader() {
   const { userId } = await auth()
@@ -27,23 +28,17 @@ export async function DocsHeader() {
   return (
     <Header
       contentClassName="max-w-none gap-4 px-6"
-      left={
-        <div className="flex items-center gap-3">
-          <Link href="/docs">
-            <Logo />
-          </Link>
-          <span className="border-l border-border-strong pl-3 font-mono text-2xs text-faint-foreground">
-            docs
-          </span>
-        </div>
-      }
+      left={<MarketingBrand docsActive />}
       right={
-        <AuthCta
-          size="sm"
-          variant="default"
-          showIcon={false}
-          initialIsSignedIn={Boolean(userId)}
-        />
+        <div className="flex items-center gap-3">
+          <ThemeToggle variant="icon" className="shrink-0" />
+          <AuthCta
+            size="sm"
+            variant="default"
+            showIcon={false}
+            initialIsSignedIn={Boolean(userId)}
+          />
+        </div>
       }
     />
   )
