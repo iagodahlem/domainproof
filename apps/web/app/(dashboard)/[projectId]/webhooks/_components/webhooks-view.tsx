@@ -11,14 +11,12 @@ import {
   RecordField,
   Table,
   TableBody,
-  TableHeader,
-  cn,
 } from '@domainproof/ui'
 import type { CreateWebhookEndpointResult, Mode } from '@/lib/api/dashboard'
 import { useTopbarSlot } from '@/components/dashboard-shell/topbar-slot'
 import { useWebhookEndpoints, webhookEndpointsKey } from '@/lib/query/webhooks'
 import { CreateEndpointForm } from './create-endpoint-form'
-import { EndpointRow, ENDPOINT_GRID_COLS } from './endpoint-row'
+import { EndpointRow, EndpointTableHead } from './endpoint-row'
 
 export interface WebhooksViewProps {
   projectId: string
@@ -122,15 +120,7 @@ export function WebhooksView({ projectId, mode }: WebhooksViewProps) {
       ) : (
         <Table>
           <TableBody>
-            <TableHeader
-              className={cn(ENDPOINT_GRID_COLS, 'max-[760px]:hidden')}
-            >
-              <span />
-              <span>Endpoint URL</span>
-              <span>Events</span>
-              <span>Status</span>
-              <span />
-            </TableHeader>
+            <EndpointTableHead />
             {endpoints.map((endpoint) => (
               <EndpointRow
                 key={endpoint.id}

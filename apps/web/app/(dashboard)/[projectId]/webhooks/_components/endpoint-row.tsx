@@ -8,7 +8,9 @@ import {
   Button,
   Callout,
   ConfirmDialog,
+  Skeleton,
   TableCell,
+  TableHeader,
   TableRow,
   cn,
   dotVariants,
@@ -197,5 +199,41 @@ export function EndpointRow({ projectId, endpoint }: EndpointRowProps) {
         </div>
       ) : null}
     </>
+  )
+}
+
+/** `EndpointRow`'s real 5-column head — same grid, shared by `WebhooksView` and `WebhooksSkeleton` so the two can never structurally drift apart. */
+export function EndpointTableHead() {
+  return (
+    <TableHeader className={cn(ENDPOINT_GRID_COLS, 'max-[760px]:hidden')}>
+      <span />
+      <span>Endpoint URL</span>
+      <span>Events</span>
+      <span>Status</span>
+      <span />
+    </TableHeader>
+  )
+}
+
+/** `EndpointRow`'s own skeleton, matching its 5-column shape and `py-2.5` row height exactly. */
+export function EndpointRowSkeleton() {
+  return (
+    <TableRow className={cn(ENDPOINT_GRID_COLS, 'py-2.5')}>
+      <TableCell className="flex items-center">
+        <Skeleton className="h-2 w-2 rounded-full" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-2/3" />
+      </TableCell>
+      <TableCell className="flex items-center">
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5.5 w-16 rounded-full" />
+      </TableCell>
+      <TableCell className="justify-self-end">
+        <Skeleton className="h-4 w-4" />
+      </TableCell>
+    </TableRow>
   )
 }

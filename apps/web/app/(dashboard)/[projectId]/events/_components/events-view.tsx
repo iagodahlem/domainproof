@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Activity } from 'lucide-react'
-import {
-  Button,
-  Callout,
-  Table,
-  TableBody,
-  TableHeader,
-  cn,
-} from '@domainproof/ui'
+import { Button, Callout, Table, TableBody } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import type { Mode } from '@/lib/api/dashboard'
 import {
@@ -19,7 +12,7 @@ import {
   useProjectEvents,
 } from '@/lib/query/events'
 import type { ProjectEventsPage } from '@/lib/query/events'
-import { EventRow, EVENT_GRID_COLS } from './event-row'
+import { EventRow, EventTableHead } from './event-row'
 
 export interface EventsViewProps {
   projectId: string
@@ -85,13 +78,7 @@ export function EventsView({ projectId, mode }: EventsViewProps) {
     <div className="flex flex-col gap-4">
       <Table>
         <TableBody>
-          <TableHeader className={cn(EVENT_GRID_COLS, 'max-[760px]:hidden')}>
-            <span>Type</span>
-            <span>Domain</span>
-            <span>Mode</span>
-            <span>Timestamp</span>
-            <span />
-          </TableHeader>
+          <EventTableHead />
           {events.map((event) => (
             <EventRow key={event.id} event={event} />
           ))}
