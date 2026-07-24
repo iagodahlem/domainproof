@@ -208,20 +208,16 @@ export function SitegradeApp() {
         ) : null}
 
         {phase === 'scanning' && scanning ? (
-          <div className="mx-auto max-w-xl">
-            <ScanningState domain={scanning.domain} />
-          </div>
+          <ScanningState domain={scanning.domain} />
         ) : null}
 
         {phase === 'unreachable' && unreachable ? (
-          <div className="mx-auto max-w-xl">
-            <UnreachableState
-              domain={unreachable.domain}
-              reasons={unreachable.reasons}
-              onRetry={() => void runScan(unreachable.domain)}
-              onScanDifferent={handleReset}
-            />
-          </div>
+          <UnreachableState
+            domain={unreachable.domain}
+            reasons={unreachable.reasons}
+            onRetry={() => void runScan(unreachable.domain)}
+            onScanDifferent={handleReset}
+          />
         ) : null}
 
         {phase === 'report' && scanResult ? (

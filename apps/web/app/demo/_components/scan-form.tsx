@@ -25,7 +25,7 @@ export function ScanForm({
   errorMessage,
 }: ScanFormProps) {
   return (
-    <div className="mx-auto max-w-xl">
+    <>
       <div className="mb-2.5 font-sg-body text-2xs font-bold uppercase tracking-wide text-sg-ink-faint">
         Free &middot; instant &middot; no signup
       </div>
@@ -86,6 +86,6 @@ export function ScanForm({
           </span>
         ))}
       </div>
-    </div>
+    </>
   )
 }
