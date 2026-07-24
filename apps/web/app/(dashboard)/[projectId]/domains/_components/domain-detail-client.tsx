@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { notFound } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, CircleDashed, RefreshCw } from 'lucide-react'
 import {
@@ -14,7 +15,7 @@ import {
 } from '@domainproof/ui'
 import { ApiError } from '@/lib/query/errors'
 import { hostedVerificationUrl } from '@/lib/hosted-verification-url'
-import type { DomainCheck } from '@/lib/api/dashboard'
+import type { DomainCheck, DomainDetail } from '@/lib/api/dashboard'
 import {
   domainEventsKey,
   domainKey,
@@ -51,7 +52,23 @@ export function DomainDetailClient({
   domainId,
 }: DomainDetailClientProps) {
   const queryClient = useQueryClient()
-  const { data: domain } = useDomain(projectId, domainId)
+
+  // `useSuspenseQuery` throws its error synchronously here rather than
+  // returning it — this is the client-side equivalent of the old server
+  // component's `catch (error) { if (error.status === 404) notFound() }`,
+  // moved here now that the server only prefetches (never awaits) this
+  // query and so can't know up front whether the domain exists.
+  let domainQuery: { data: DomainDetail }
+  try {
+    domainQuery = useDomain(projectId, domainId)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound()
+    }
+    throw error
+  }
+  const { data: domain } = domainQuery
+
   const { data: eventsPage } = useDomainEvents(projectId, domainId)
   const { events, nextCursor: eventsNextCursor } = eventsPage
 

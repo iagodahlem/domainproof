@@ -1,11 +1,9 @@
 import type { Metadata } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { Callout } from '@domainproof/ui'
-import { ApiError } from '@/lib/api/request'
+import { HydrationBoundary } from '@tanstack/react-query'
 import type { DomainMode } from '@/lib/api/dashboard'
 import { domainsListQueryOptions } from '@/lib/query/domains'
-import { getQueryClient } from '@/lib/query/query-client'
+import { dehydrateStreaming, getQueryClient } from '@/lib/query/query-client'
 import { DomainsPageClient } from './_components/domains-page-client'
 
 export const metadata: Metadata = {
@@ -16,6 +14,7 @@ function resolveMode(value: string | string[] | undefined): DomainMode {
   return value === 'live' ? 'live' : 'test'
 }
 
+/** Prefetched (never awaited) into the query cache and streamed down — see `dehydrateStreaming`. A failed fetch surfaces through `[projectId]/error.tsx` once the client's own `useSuspenseQuery` retries and throws. */
 export default async function DomainsPage({
   params,
   searchParams,
@@ -29,22 +28,12 @@ export default async function DomainsPage({
   const { getToken } = await auth()
 
   const queryClient = getQueryClient()
-  try {
-    await queryClient.fetchQuery(
-      domainsListQueryOptions(projectId, mode, getToken),
-    )
-  } catch (error) {
-    return (
-      <Callout tone="warning">
-        {error instanceof ApiError
-          ? error.message
-          : "We couldn't load your domains. Please try again."}
-      </Callout>
-    )
-  }
+  void queryClient.prefetchQuery(
+    domainsListQueryOptions(projectId, mode, getToken),
+  )
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
+    <HydrationBoundary state={dehydrateStreaming(queryClient)}>
       {/* Remounts on mode change (see DomainsPageClient's own
           `useSuspenseQuery`, keyed per mode) so a toggle-driven `?mode=`
           navigation actually replaces the table instead of leaving the

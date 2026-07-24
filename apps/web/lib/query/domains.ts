@@ -108,12 +108,23 @@ export function domainQueryOptions(
 /**
  * Hydrated from the server prefetch on first render (no loading flash),
  * then polls on the schedule above while the domain hasn't reached a
- * terminal status yet.
+ * terminal status yet. `initialData` is for the one caller with no
+ * server prefetch of its own to hydrate from — the onboarding
+ * walkthrough's `ClaimedDomainWalkthrough`, seeded from a plain prop
+ * (either the create-domain mutation's own response, or the overview
+ * page's `initialClaimedDomain`) — without it, that component would call
+ * `queryFn` on its very first render, including during SSR, where
+ * `useAuth()`'s `getToken` isn't safely callable yet.
  */
-export function useDomain(projectId: string, domainId: string) {
+export function useDomain(
+  projectId: string,
+  domainId: string,
+  initialData?: DomainDetail,
+) {
   const { getToken } = useAuth()
   return useSuspenseQuery({
     ...domainQueryOptions(projectId, domainId, getToken),
+    initialData,
     refetchInterval: (query) => boundedPollInterval(query.state),
   })
 }
@@ -242,29 +253,65 @@ export function useDomainsList(projectId: string, mode: DomainMode) {
 // pagination — the max page size the dashboard API allows in one call.
 const OVERVIEW_DOMAINS_LIMIT = 100
 
-/** Wraps `GET /dashboard/projects/:id/domains` (unfiltered, up to `OVERVIEW_DOMAINS_LIMIT`) — the overview page's primary query. */
-export function overviewDomainsQueryOptions(
+export interface OverviewSnapshot {
+  domains: DomainListItem[]
+  truncated: boolean
+  /** Whether this project has registered at least one webhook endpoint, in any mode — the checklist's third step. */
+  anyWebhookRegistered: boolean
+  /** The First-run walkthrough's sandbox domain, in full, if it's already been claimed — its source of truth so its state survives a remount. */
+  initialClaimedDomain: DomainDetail | null
+}
+
+/**
+ * The overview page's whole health-check snapshot — the domains list, the
+ * any-webhook-registered flag, and the claimed sandbox domain (if any) —
+ * as one query rather than three separate ones. All three used to be
+ * independent `await`ed calls in the server component itself; bundling
+ * them into a single `queryFn` keeps that same one-round-trip shape while
+ * letting the *query* (not the route) do the awaiting, so the route can
+ * `prefetchQuery` this without blocking and the client suspends on one
+ * skeleton for the whole snapshot instead of three.
+ */
+export function overviewSnapshotQueryOptions(
   projectId: string,
   getToken: GetToken,
+  sandboxDomain: string,
 ) {
   return queryOptions({
     queryKey: overviewDomainsKey(projectId),
-    queryFn: async () => {
+    queryFn: async (): Promise<OverviewSnapshot> => {
       const token = await getToken()
-      const { domains, nextCursor } = await dashboardApi.listDomains(
-        token,
-        projectId,
-        { limit: OVERVIEW_DOMAINS_LIMIT },
+      const [{ domains, nextCursor }, { endpoints }] = await Promise.all([
+        dashboardApi.listDomains(token, projectId, {
+          limit: OVERVIEW_DOMAINS_LIMIT,
+        }),
+        // No `mode` filter — the checklist only cares whether *any*
+        // endpoint exists, in either mode.
+        dashboardApi.listWebhookEndpoints(token, projectId),
+      ])
+      const sandboxSummary = domains.find(
+        (domain) => domain.mode === 'test' && domain.domain === sandboxDomain,
       )
-      return { domains, truncated: nextCursor !== null }
+      const initialClaimedDomain = sandboxSummary
+        ? (await dashboardApi.getDomain(token, projectId, sandboxSummary.id))
+            .domain
+        : null
+      return {
+        domains,
+        truncated: nextCursor !== null,
+        anyWebhookRegistered: endpoints.length > 0,
+        initialClaimedDomain,
+      }
     },
   })
 }
 
-/** Hydrated from the server prefetch on first render — see `overviewDomainsQueryOptions`. */
-export function useOverviewDomains(projectId: string) {
+/** Hydrated from the server prefetch on first render — see `overviewSnapshotQueryOptions`. */
+export function useOverviewSnapshot(projectId: string, sandboxDomain: string) {
   const { getToken } = useAuth()
-  return useSuspenseQuery(overviewDomainsQueryOptions(projectId, getToken))
+  return useSuspenseQuery(
+    overviewSnapshotQueryOptions(projectId, getToken, sandboxDomain),
+  )
 }
 
 /** Wraps `POST /dashboard/projects/:id/domains` — the add-domain panel's submit handler. */

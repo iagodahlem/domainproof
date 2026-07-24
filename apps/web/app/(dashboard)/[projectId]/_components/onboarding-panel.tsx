@@ -234,7 +234,12 @@ interface ClaimedDomainWalkthroughProps {
  * id), so `useDomain`/`useVerifyDomain` — which need a real id — can be
  * called unconditionally here instead of the parent, which doesn't always
  * have one yet. Reuses the exact same bounded-poll domain query and
- * verify mutation the domain detail page uses.
+ * verify mutation the domain detail page uses, seeded with `initialDomain`
+ * (the create mutation's own response, or the overview page's
+ * `initialClaimedDomain`) — there's no server prefetch for this one to
+ * hydrate from, and without a seed it would call `queryFn` on its very
+ * first render, including during SSR, where `useAuth()`'s `getToken`
+ * isn't safely callable yet.
  */
 function ClaimedDomainWalkthrough({
   projectId,
