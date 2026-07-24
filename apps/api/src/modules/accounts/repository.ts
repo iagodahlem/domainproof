@@ -40,6 +40,14 @@ export interface AccountsRepository {
    * the send, log why.
    */
   findEmailByProjectId(projectId: string): Promise<string | undefined>
+
+  /**
+   * Sets `accountId`'s email — used only to backfill an account that
+   * bootstrapped with no email (see `service.ts`'s `ensureAccount`), never
+   * to overwrite one that already has an email. Unconditional at this
+   * layer: the fill-when-empty rule is the caller's job, not this method's.
+   */
+  updateEmail(accountId: string, email: string): Promise<void>
 }
 
 export function createAccountsRepository(db: Database): AccountsRepository {
@@ -71,6 +79,10 @@ export function createAccountsRepository(db: Database): AccountsRepository {
         .where(eq(projects.id, projectId))
         .limit(1)
       return row?.email ?? undefined
+    },
+
+    async updateEmail(accountId, email) {
+      await db.update(accounts).set({ email }).where(eq(accounts.id, accountId))
     },
   }
 }

@@ -370,4 +370,41 @@ describe('account bootstrap notifications', () => {
     const res = await asUser(app, clerkUserId, '/dashboard/projects')
     expect(res.status).toBe(200)
   })
+
+  it('backfills an account bootstrapped before its session carried an email, without re-sending the welcome email', async () => {
+    const clerkUserId = freshClerkUserId()
+
+    // Bootstraps with no email claim, like this repo's Clerk instance
+    // today — matches the pre-fix accounts this backfill targets.
+    const bootstrapApp = createApp({ db, sessionVerifier: fakeSessionVerifier })
+    const first = await asUser(bootstrapApp, clerkUserId, '/dashboard/projects')
+    expect(first.status).toBe(200)
+
+    const [beforeBackfill] = await db
+      .select({ email: accounts.email })
+      .from(accounts)
+      .where(eq(accounts.clerkUserId, clerkUserId))
+    expect(beforeBackfill?.email).toBeNull()
+
+    // Same user, now with an email claim — the Clerk instance was fixed.
+    const sent: { to: string; subject: string }[] = []
+    const backfillApp = createApp({
+      db,
+      sessionVerifier: fakeSessionVerifierWithEmail,
+      emailSender: {
+        async send(message) {
+          sent.push(message)
+        },
+      },
+    })
+    const second = await asUser(backfillApp, clerkUserId, '/dashboard/projects')
+    expect(second.status).toBe(200)
+
+    const [afterBackfill] = await db
+      .select({ email: accounts.email })
+      .from(accounts)
+      .where(eq(accounts.clerkUserId, clerkUserId))
+    expect(afterBackfill?.email).toBe('builder@example.com')
+    expect(sent).toHaveLength(0) // backfill isn't a create — no welcome email
+  })
 })

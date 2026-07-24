@@ -22,9 +22,15 @@ export interface AccountsService {
    * `emailHint` is the email from the caller's already-verified session
    * claims, if the Clerk instance happens to include one (see
    * `SessionClaims.email`) — passed through so a create doesn't need a
-   * second round trip for something the caller already has. Only consulted
-   * when actually creating a new account: an existing account's email was
-   * already decided at its own bootstrap time and isn't overwritten here.
+   * second round trip for something the caller already has. For an
+   * existing account with no email on file (bootstrapped before this
+   * instance's Clerk session tokens carried the claim), `emailHint`
+   * backfills it — fill-when-empty only, never overwriting an existing
+   * email with a different hint, since reconciling a changed email is a
+   * separate sync concern, not bootstrap's job. A backfill doesn't publish
+   * `account.created` — that event means "this account was just created",
+   * and firing it again here would re-trigger the welcome email for an
+   * account that's had one for a while.
    *
    * Upsert semantics via the repository's insert-with-conflict-handling,
    * not a check-then-insert: two requests racing to bootstrap the same
@@ -68,6 +74,15 @@ export function createAccountsService(
       // indexed lookup, unlike a Clerk backend API call would be.
       const existing = await repository.findByClerkUserId(clerkUserId)
       if (existing) {
+        // Fill-when-empty: a pre-fix account (bootstrapped while the Clerk
+        // session token carried no email claim) gets backfilled the first
+        // time a caller shows up with one. The common path — an account
+        // that already has an email — never writes, matching the
+        // early-return this replaces.
+        if (!existing.email && emailHint) {
+          await repository.updateEmail(existing.id, emailHint)
+          return { accountId: existing.id, created: false, email: emailHint }
+        }
         return { accountId: existing.id, created: false, email: existing.email }
       }
 
