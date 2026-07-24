@@ -103,31 +103,54 @@ export async function POST(req: NextRequest) {
     client.componentSessions.create({ externalId: visitorId }),
   ])
 
+  let domainData
   if (claimResult.error) {
-    return errorResponse(
-      statusFromSdkError(claimResult.error.status),
-      claimResult.error.code,
-      claimResult.error.message,
-    )
+    if (claimResult.error.code !== 'domain_already_claimed') {
+      return errorResponse(
+        statusFromSdkError(claimResult.error.status),
+        claimResult.error.code,
+        claimResult.error.message,
+      )
+    }
+
+    // This single-project demo re-claims the exact domain it already holds
+    // a claim on every time a visitor re-enters it (a fresh visitor cookie,
+    // or the same one after a refresh) — the (project, domain, mode)
+    // uniqueness `conflict()` (apis/v1/routes/domains.ts) protects against
+    // is a real integrator's *different* projects, not this. Look the claim
+    // up instead of failing: it's the same claim every other visitor of
+    // this domain already sees.
+    const existing = await client.domains.list({ domain, limit: 1 })
+    const found = existing.data?.domains[0]
+    if (!found) {
+      return errorResponse(
+        statusFromSdkError(claimResult.error.status),
+        claimResult.error.code,
+        claimResult.error.message,
+      )
+    }
+    domainData = found
+  } else {
+    domainData = claimResult.data
   }
 
   const frontendToken = frontendTokenFromVerificationUrl(
-    claimResult.data.verificationUrl,
+    domainData.verificationUrl,
   )
 
   saveClaim(visitorId, {
     domain,
-    domainId: claimResult.data.id,
-    verificationUrl: claimResult.data.verificationUrl,
+    domainId: domainData.id,
+    verificationUrl: domainData.verificationUrl,
     scanId: scanId ?? undefined,
     frontendToken,
   })
 
   const res = NextResponse.json({
-    domainId: claimResult.data.id,
+    domainId: domainData.id,
     domain,
-    records: claimResult.data.records,
-    hostedUrl: claimResult.data.verificationUrl,
+    records: domainData.records,
+    hostedUrl: domainData.verificationUrl,
     // The claim already made above — lets the embedded widget render
     // already bound to it (see verify-gate.tsx) instead of asking the
     // visitor to claim the same domain a second time.

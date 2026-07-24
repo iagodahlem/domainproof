@@ -182,3 +182,43 @@ test('demo: embedded widget binds to the domain claimed at scan time', async ({
     fullPage: true,
   })
 })
+
+// --- Round 2: refresh restores the report; re-entering the same domain
+// still resolves to the existing claim instead of failing ---
+test('demo: report survives a refresh and re-entering the same domain', async ({
+  page,
+}) => {
+  const domain = 'stripe.com'
+  const gateHeading = page.getByRole('heading', {
+    name: `Own ${domain}? Verify to unlock the full report.`,
+  })
+  const boundStatusText = page.getByText(
+    'Live status for the domain we just claimed above',
+  )
+
+  await page.goto('/demo')
+  await page.getByLabel('Domain to scan').fill(domain)
+  await page.getByRole('button', { name: 'Scan for free' }).click()
+  await expect(gateHeading).toBeVisible({ timeout: 15_000 })
+  await expect(boundStatusText).toBeVisible({ timeout: 15_000 })
+  await expect(page).toHaveURL(/\?scan=/)
+
+  // --- The report is client state only — a refresh must restore it from
+  // the URL's own `?scan=` param rather than losing it back to the form.
+  await page.reload()
+  await expect(gateHeading).toBeVisible({ timeout: 15_000 })
+  await expect(boundStatusText).toBeVisible({ timeout: 15_000 })
+  await page.screenshot({
+    path: path.join(ARTIFACTS, 'demo-report-restored-after-refresh.png'),
+    fullPage: true,
+  })
+
+  // --- Re-entering the same domain from a clean URL (the owner's exact
+  // repro) must still bind to the widget, not fail on a domain this same
+  // project already claimed.
+  await page.goto('/demo')
+  await page.getByLabel('Domain to scan').fill(domain)
+  await page.getByRole('button', { name: 'Scan for free' }).click()
+  await expect(gateHeading).toBeVisible({ timeout: 15_000 })
+  await expect(boundStatusText).toBeVisible({ timeout: 15_000 })
+})
