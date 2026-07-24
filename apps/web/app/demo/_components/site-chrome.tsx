@@ -29,7 +29,6 @@ export function SiteNav() {
     <div className="mb-7 flex items-center justify-between">
       <SitegradeWordmark />
       <div className="hidden gap-5 font-sg-body text-xs font-semibold text-sg-ink-soft sm:flex">
-        <span>How it works</span>
         <span>For developers</span>
       </div>
     </div>

@@ -195,18 +195,16 @@ export function SitegradeApp() {
 
   return (
     <div className="min-h-screen bg-sg-paper-2">
-      <div className="mx-auto max-w-3xl px-6 py-16 sm:px-10">
+      <div className="mx-auto max-w-3xl px-6 py-7 sm:px-10">
         <SiteNav />
 
         {phase === 'idle' ? (
-          <div className="mx-auto max-w-xl">
-            <ScanForm
-              domain={domainInput}
-              onDomainChange={setDomainInput}
-              onSubmit={handleScanSubmit}
-              errorMessage={scanErrorMessage}
-            />
-          </div>
+          <ScanForm
+            domain={domainInput}
+            onDomainChange={setDomainInput}
+            onSubmit={handleScanSubmit}
+            errorMessage={scanErrorMessage}
+          />
         ) : null}
 
         {phase === 'scanning' && scanning ? (

@@ -25,7 +25,7 @@ export function ScanForm({
   errorMessage,
 }: ScanFormProps) {
   return (
-    <div>
+    <div className="mx-auto max-w-xl">
       <div className="mb-2.5 font-sg-body text-2xs font-bold uppercase tracking-wide text-sg-ink-faint">
         Free &middot; instant &middot; no signup
       </div>
@@ -42,7 +42,7 @@ export function ScanForm({
           event.preventDefault()
           onSubmit()
         }}
-        className="mb-3.5 flex items-center gap-2.5 rounded-full border-2 border-sg-line-strong bg-sg-paper py-1.5 pr-1.5 pl-5"
+        className="mb-3.5 flex items-center gap-2.5 rounded-full border-2 border-sg-line-strong bg-sg-paper py-1.5 pr-1.5 pl-5 focus-within:focus-ring focus-within:[--focus-ring-color:var(--color-sg-violet)]"
       >
         <input
           value={domain}
@@ -54,9 +54,13 @@ export function ScanForm({
           spellCheck={false}
           placeholder="yoursite.com"
           aria-label="Domain to scan"
-          className="min-w-0 flex-1 bg-transparent font-sg-mono text-sm text-sg-ink placeholder:text-sg-ink-faint focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent font-sg-mono text-sm text-sg-ink placeholder:text-sg-ink-faint focus:outline-none focus-visible:[--focus-ring-color:transparent]"
         />
-        <SgButton type="submit" disabled={!domain.trim()}>
+        <SgButton
+          type="submit"
+          disabled={!domain.trim()}
+          className="focus-visible:[--focus-ring-color:transparent]"
+        >
           Scan for free
           <ArrowRight aria-hidden="true" size={14} />
         </SgButton>

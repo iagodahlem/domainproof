@@ -57,7 +57,7 @@ export function LockedCheckList() {
 
 export function CheckSectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-5.5 mb-1 font-sg-body text-2xs font-bold tracking-wide text-sg-ink-faint uppercase first:mt-0">
+    <div className="mt-5.5 mb-3 font-sg-body text-2xs font-bold tracking-wide text-sg-ink-faint uppercase first:mt-0">
       {children}
     </div>
   )
