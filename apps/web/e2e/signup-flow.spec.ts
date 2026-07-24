@@ -115,12 +115,13 @@ test('fresh signup reaches the dashboard shell with a named project', async ({
 /**
  * A signed-out visitor never reaches a resolved project: the landing CTA
  * stays "Continue with Google" and a direct hit on the protected `/app`
- * resolver bounces to sign-in via middleware — the same
- * `auth.protect()`-to-Clerk's-hosted-sign-in behavior every other
- * protected route (`/new`, `/[projectId]`) already has, unchanged by this
- * route existing.
+ * resolver bounces back to the landing page via middleware — never to
+ * Clerk's hosted sign-in, since that should only ever be reached by
+ * clicking the CTA — the same `auth.protect()`-redirect-to-`/` behavior
+ * every other protected route (`/new`, `/[projectId]`) already has,
+ * unchanged by this route existing.
  */
-test('signed-out visitors see the sign-in CTA and /app bounces to sign-in', async ({
+test('signed-out visitors see the sign-in CTA and /app bounces to the landing page', async ({
   page,
 }) => {
   await page.goto('/')
@@ -134,5 +135,5 @@ test('signed-out visitors see the sign-in CTA and /app bounces to sign-in', asyn
   ).toHaveCount(0)
 
   await page.goto('/app')
-  await expect(page).toHaveURL(/\/sign-in/)
+  await expect(page).toHaveURL(/\/\?redirect_url=%2Fapp$/)
 })
