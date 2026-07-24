@@ -2,6 +2,27 @@ import { DomainProof } from '@domainproof/sdk'
 
 let cached: DomainProof | null = null
 
+const DEV_DOMAINPROOF_BASE_URL = 'http://localhost:3001'
+
+/**
+ * Resolves the demo SDK client's base URL. An explicit
+ * `DEMO_DOMAINPROOF_BASE_URL` always wins. Otherwise: Vercel preview and
+ * production builds both run with `NODE_ENV=production`, and preview
+ * already sets this var explicitly, so unset there falls through to the
+ * SDK's own production default — only local `next dev` (`NODE_ENV`
+ * `development`) is affected, where unset instead defaults to this repo's
+ * local api port, so a local run never claims a domain against production
+ * by accident.
+ */
+export function resolveDemoBaseUrl(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  return (
+    env.DEMO_DOMAINPROOF_BASE_URL ??
+    (env.NODE_ENV === 'development' ? DEV_DOMAINPROOF_BASE_URL : undefined)
+  )
+}
+
 /**
  * One process-lifetime client, built from `DEMO_DOMAINPROOF_API_KEY` (see
  * apps/web/.env.example) — a test-mode key from a real DomainProof project,
@@ -23,7 +44,7 @@ export function getDemoDomainProofClient(): DomainProof {
 
   cached = new DomainProof({
     apiKey,
-    baseUrl: process.env.DEMO_DOMAINPROOF_BASE_URL,
+    baseUrl: resolveDemoBaseUrl(),
   })
   return cached
 }

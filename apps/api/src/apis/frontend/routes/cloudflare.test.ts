@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { generateToken } from '@domainproof/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp, type AppDependencies } from '../../../app'
+import { env } from '../../../env'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
@@ -255,7 +256,9 @@ describe('Cloudflare one-click DNS setup', () => {
 
       expect(res.status).toBe(302)
       const location = res.headers.get('Location') ?? ''
-      expect(location).toContain(`https://domainproof.dev/verify/${token}`)
+      // Built from `env.VERIFICATION_BASE_URL` rather than a hardcoded
+      // host, since its default is NODE_ENV-aware.
+      expect(location).toContain(`${env.VERIFICATION_BASE_URL}/${token}`)
       expect(outcomeFromRedirect(res)).toBe('success')
 
       expect(createTxtRecordArgs).toMatchObject({

@@ -11,7 +11,10 @@ const bareHostname = z
   .min(1)
   .regex(bareHostnamePattern, 'must be a bare hostname, not a URL')
 
-const envSchema = z.object({
+const PROD_VERIFICATION_BASE_URL = 'https://domainproof.dev/verify'
+const DEV_VERIFICATION_BASE_URL = 'http://localhost:3000/verify'
+
+const rawEnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -36,10 +39,13 @@ const envSchema = z.object({
   MCP_API_HOST: bareHostname.optional(),
   // Optional. Base URL the hosted MCP endpoint's per-request
   // `@domainproof/sdk` client sends tool-call requests to — this same
-  // service's own public `/v1` plane. Unset defaults to the SDK's own
-  // production default (`https://api.domainproof.dev`), correct for this
-  // service's production deploy; override for local dev/staging, where
-  // this service doesn't answer on that hostname yet.
+  // service's own public `/v1` plane. In production, unset falls through to
+  // the SDK's own production default (`https://api.domainproof.dev`),
+  // correct for this service's production deploy. In development/test,
+  // unset instead defaults to this service's own local `/v1` plane (see the
+  // NODE_ENV-aware default applied below) — otherwise a local hosted-MCP
+  // call would silently hit production. Explicitly setting this always
+  // wins, e.g. for staging.
   DOMAINPROOF_BASE_URL: z.string().url().optional(),
   // Optional: the dashboard web app's origin, for the dashboard plane's
   // CORS policy (see apis/dashboard/router.ts) — the only plane a browser
@@ -51,16 +57,16 @@ const envSchema = z.object({
   // against — the public v1 API's `verificationUrl`, the Cloudflare
   // one-click callback's redirect, and anywhere else this service builds
   // an absolute link to `/verify/:token` (see `shared/verification-url.ts`).
-  // Includes the `/verify` path itself, not just the origin. Defaults to
-  // this service's production hosted page; staging/preview deploys point
-  // it at their own web app's `/verify` path instead. The dashboard plane
-  // doesn't use this — it returns the raw `frontendToken` and the
-  // session-authenticated web app builds the link from its own origin,
-  // since the api has no way to know which origin a browser is on.
-  VERIFICATION_BASE_URL: z
-    .string()
-    .url()
-    .default('https://domainproof.dev/verify'),
+  // Includes the `/verify` path itself, not just the origin. Unset defaults
+  // to this service's production hosted page in production, and to the web
+  // app's local dev server in development/test (see the NODE_ENV-aware
+  // default applied below) — so a local dev run never mints a link
+  // pointing at the production web app. Staging/preview deploys set this
+  // explicitly to point at their own web app's `/verify` path. The
+  // dashboard plane doesn't use this — it returns the raw `frontendToken`
+  // and the session-authenticated web app builds the link from its own
+  // origin, since the api has no way to know which origin a browser is on.
+  VERIFICATION_BASE_URL: z.string().url().optional(),
   // Optional: unset means the email notification subscribers aren't
   // registered at all (see `app.ts`) — a clean log-and-skip, not a crash,
   // since dev/test environments won't have this configured. See
@@ -108,6 +114,28 @@ const envSchema = z.object({
   CLOUDFLARE_OAUTH_REDIRECT_URI: z.string().url().optional(),
   CLOUDFLARE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
 })
+
+// `VERIFICATION_BASE_URL` and `DOMAINPROOF_BASE_URL` both default
+// differently depending on `NODE_ENV`, which zod's per-field `.default()`
+// can't see (it has no visibility into sibling fields while parsing) — so
+// both defaults are resolved here instead, once the whole object (and
+// `NODE_ENV` with it) has been parsed. Prod stays zero-config (both fall
+// through to their production defaults, the second via the SDK's own
+// default rather than one set here); dev/test never mints a link or MCP
+// base URL pointing at production.
+const envSchema = rawEnvSchema.transform((data) => ({
+  ...data,
+  VERIFICATION_BASE_URL:
+    data.VERIFICATION_BASE_URL ??
+    (data.NODE_ENV === 'production'
+      ? PROD_VERIFICATION_BASE_URL
+      : DEV_VERIFICATION_BASE_URL),
+  DOMAINPROOF_BASE_URL:
+    data.DOMAINPROOF_BASE_URL ??
+    (data.NODE_ENV === 'production'
+      ? undefined
+      : `http://localhost:${data.PORT}`),
+}))
 
 export type Env = z.infer<typeof envSchema>
 

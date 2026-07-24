@@ -7,6 +7,7 @@ import {
 } from '@domainproof/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../../app'
+import { env } from '../../../env'
 import { createDb, type Database } from '@infra/db/client'
 import { accounts, apiKeys, projects } from '@infra/db/schema'
 import { generateKeyId } from '@modules/keys/domain/encoding'
@@ -165,10 +166,12 @@ describe('/v1/domains', () => {
     expect(body.domain.status).toBe('pending')
     // Embeds the domain's Frontend API token, not its internal id — see
     // `infra/db/schema.ts`'s `frontendToken` doc comment for why the two
-    // are deliberately different values.
-    expect(body.domain.verificationUrl).toMatch(
-      /^https:\/\/domainproof\.dev\/verify\/[a-z2-7]{26}$/,
-    )
+    // are deliberately different values. Built from `env.VERIFICATION_BASE_URL`
+    // rather than a hardcoded host, since its default is NODE_ENV-aware.
+    expect(
+      body.domain.verificationUrl.startsWith(env.VERIFICATION_BASE_URL),
+    ).toBe(true)
+    expect(body.domain.verificationUrl).toMatch(/\/[a-z2-7]{26}$/)
     expect(body.domain.verificationUrl).not.toContain(body.domain.id)
 
     expect(body.domain.records).toHaveLength(1)
