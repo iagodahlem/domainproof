@@ -2,25 +2,11 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  Check,
-  ChevronDown,
-  CircleDashed,
-  Copy,
-  MoreVertical,
-  RefreshCw,
-  RotateCw,
-  Trash2,
-} from 'lucide-react'
+import { Check, ChevronDown, CircleDashed, RefreshCw } from 'lucide-react'
 import {
   Badge,
   Button,
   Callout,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
   RecordCard,
   RecordField,
   StatusSummary,
@@ -203,53 +189,15 @@ export function DomainDetailClient({
       </div>
     ),
     action: (
-      <div className="flex flex-nowrap items-center gap-2">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleVerify}
-          loading={verifyDomain.isPending}
-          icon={<RefreshCw aria-hidden="true" size={13} />}
-        >
-          Check now
-        </Button>
-        <Menu>
-          <MenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<MoreVertical aria-hidden="true" size={15} />}
-            >
-              Actions
-            </Button>
-          </MenuTrigger>
-          <MenuContent align="end">
-            <MenuItem
-              icon={<Copy aria-hidden="true" size={14} />}
-              onSelect={() => {
-                void navigator.clipboard.writeText(verificationUrl)
-              }}
-            >
-              Copy verification link
-            </MenuItem>
-            <MenuItem
-              icon={<RotateCw aria-hidden="true" size={14} />}
-              disabled={regenerateDomain.isPending}
-              onSelect={handleRegenerate}
-            >
-              Regenerate challenge
-            </MenuItem>
-            <MenuSeparator />
-            <MenuItem
-              tone="danger"
-              icon={<Trash2 aria-hidden="true" size={14} />}
-              onSelect={() => setDeleteDialogOpen(true)}
-            >
-              Delete domain
-            </MenuItem>
-          </MenuContent>
-        </Menu>
-      </div>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={handleVerify}
+        loading={verifyDomain.isPending}
+        icon={<RefreshCw aria-hidden="true" size={13} />}
+      >
+        Check now
+      </Button>
     ),
   })
 
@@ -365,6 +313,10 @@ export function DomainDetailClient({
           createdAt={domain.createdAt}
           updatedAt={domain.updatedAt}
           nextCheck={nextCheck}
+          verificationUrl={verificationUrl}
+          onRegenerate={handleRegenerate}
+          regenerating={regenerateDomain.isPending}
+          onDeleteRequest={() => setDeleteDialogOpen(true)}
         />
       </div>
 
