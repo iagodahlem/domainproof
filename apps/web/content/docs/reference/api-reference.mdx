@@ -7,7 +7,7 @@ order: 1
 
 # API reference
 
-Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://frontend.api.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below. This document is generated from the api's own OpenAPI 3.1 schema (`GET /v1/openapi.json`); the summary tables below link out to a full parameters + response breakdown for each endpoint.
+Base URL for the Public API: `https://api.domainproof.dev`. Base URL for the Frontend API: `https://frontend.api.domainproof.dev`. Every non-2xx response from either plane follows the same shape — see [Errors](#errors) below. This document is hand-maintained alongside the api's own OpenAPI 3.1 schema (`GET /v1/openapi.json`), which covers the same two planes machine-readably; the summary tables below link out to a full parameters + response breakdown for each endpoint.
 
 ## Public API (`/v1/*`)
 
@@ -230,7 +230,7 @@ No session, no API key — each domain claim carries its own unguessable `fronte
 | `mode`        | `string`         | `test` or `live`.                                                                                                                                                            |
 | `status`      | `string`         | One of `not_started`, `pending`, `verified`, `temporarily_failed`, `failed`.                                                                                                 |
 | `projectName` | `string`         | The claiming project's display name.                                                                                                                                         |
-| `provider`    | `string`         | `cloudflare` or `unknown` — the DNS provider detected from the domain's nameservers; gates the one-click setup button.                                                       |
+| `provider`    | `string`         | `cloudflare`, `godaddy`, `vercel`, `route53`, or `unknown` — the DNS provider detected from the domain's nameservers; `cloudflare` gates the one-click setup button.         |
 | `records`     | `array`          | `{ label, type, value }[]` — the DNS record(s) to add.                                                                                                                       |
 | `check`       | `object \| null` | `null` until the first check ever runs; otherwise `{ outcome, checkedAt, expected?, detected? }` — the same outcomes as the Public API's `Check`, but without `explanation`. |
 | `updatedAt`   | `string`         | ISO 8601 timestamp.                                                                                                                                                          |

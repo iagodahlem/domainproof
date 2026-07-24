@@ -1,9 +1,10 @@
 # DomainProof
 
 Domain-ownership verification as an API-first product — prove control of a
-domain via DNS TXT (primary) or an HTTP well-known file (secondary), with a
-web dashboard, a public API, a typed SDK, a CLI, and an MCP server for
-agent-driven verification.
+domain via a DNS TXT record, with a web dashboard, a public API, a typed
+SDK, a CLI, and an MCP server for agent-driven verification. An HTTP
+well-known-file check exists in `packages/core` but isn't wired to any
+challenge yet — every claim issues a DNS TXT challenge today.
 
 ## Monorepo map
 
