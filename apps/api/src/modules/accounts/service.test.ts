@@ -35,6 +35,13 @@ function fakeRepository(
     async findEmailByProjectId(projectId) {
       return emailsByProjectId.get(projectId)
     },
+    async updateEmail(accountId, email) {
+      for (const [clerkUserId, row] of state) {
+        if (row.id === accountId) {
+          state.set(clerkUserId, { ...row, email })
+        }
+      }
+    },
   }
 }
 
@@ -93,6 +100,7 @@ describe('ensureAccount', () => {
       async findEmailByProjectId() {
         return undefined
       },
+      async updateEmail() {},
     }
     const service = createAccountsService(
       repository,
@@ -186,6 +194,95 @@ describe('ensureAccount', () => {
     await service.ensureAccount('user_123')
 
     expect(resolveEmail).not.toHaveBeenCalled()
+  })
+
+  it('backfills an existing account with no email when a hint is now available', async () => {
+    const eventBus = fakeEventBus()
+    const repository = fakeRepository({
+      user_123: { id: 'account_1', email: null },
+    })
+    const service = createAccountsService(
+      repository,
+      eventBus,
+      undefined,
+      createFakeLogger(),
+    )
+
+    const result = await service.ensureAccount(
+      'user_123',
+      'backfilled@example.com',
+    )
+
+    expect(result).toEqual({
+      accountId: 'account_1',
+      created: false,
+      email: 'backfilled@example.com',
+    })
+    expect(await repository.findByClerkUserId('user_123')).toMatchObject({
+      email: 'backfilled@example.com',
+    })
+  })
+
+  it('does not publish account.created when backfilling an existing account', async () => {
+    const eventBus = fakeEventBus()
+    const repository = fakeRepository({
+      user_123: { id: 'account_1', email: null },
+    })
+    const service = createAccountsService(
+      repository,
+      eventBus,
+      undefined,
+      createFakeLogger(),
+    )
+
+    await service.ensureAccount('user_123', 'backfilled@example.com')
+
+    expect(eventBus.published).toHaveLength(0)
+  })
+
+  it('never overwrites an existing email with a different hint', async () => {
+    const repository = fakeRepository({
+      user_123: { id: 'account_1', email: 'original@example.com' },
+    })
+    const service = createAccountsService(
+      repository,
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
+
+    const result = await service.ensureAccount(
+      'user_123',
+      'different@example.com',
+    )
+
+    expect(result.email).toBe('original@example.com')
+    expect(await repository.findByClerkUserId('user_123')).toMatchObject({
+      email: 'original@example.com',
+    })
+  })
+
+  it('leaves an existing emailless account unchanged when there is no hint', async () => {
+    const repository = fakeRepository({
+      user_123: { id: 'account_1', email: null },
+    })
+    const service = createAccountsService(
+      repository,
+      undefined,
+      undefined,
+      createFakeLogger(),
+    )
+
+    const result = await service.ensureAccount('user_123')
+
+    expect(result).toEqual({
+      accountId: 'account_1',
+      created: false,
+      email: null,
+    })
+    expect(await repository.findByClerkUserId('user_123')).toMatchObject({
+      email: null,
+    })
   })
 })
 

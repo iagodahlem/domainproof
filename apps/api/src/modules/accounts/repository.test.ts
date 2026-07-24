@@ -103,6 +103,30 @@ describe('findByClerkUserId', () => {
   })
 })
 
+describe('updateEmail', () => {
+  it('sets the email on the account row', async () => {
+    const clerkUserId = freshClerkUserId()
+    const created = await repository.create(clerkUserId, null)
+    if (!created) throw new Error('setup failed')
+
+    await repository.updateEmail(created.id, 'backfilled@example.com')
+
+    const found = await repository.findByClerkUserId(clerkUserId)
+    expect(found?.email).toBe('backfilled@example.com')
+  })
+
+  it('overwrites a previous email when called again', async () => {
+    const clerkUserId = freshClerkUserId()
+    const created = await repository.create(clerkUserId, 'first@example.com')
+    if (!created) throw new Error('setup failed')
+
+    await repository.updateEmail(created.id, 'second@example.com')
+
+    const found = await repository.findByClerkUserId(clerkUserId)
+    expect(found?.email).toBe('second@example.com')
+  })
+})
+
 describe('findEmailByProjectId', () => {
   it("returns the owning account's email", async () => {
     const clerkUserId = freshClerkUserId()
