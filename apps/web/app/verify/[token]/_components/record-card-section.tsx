@@ -19,17 +19,7 @@ export function RecordCardSection({
   return (
     <RecordCard
       title="Add this DNS record"
-      sub={
-        <>
-          {`Add this where you manage DNS for ${domain} — `}
-          <Link
-            href={`/docs/${guide.slug}`}
-            className="whitespace-nowrap text-accent underline-offset-4 hover:underline"
-          >
-            {`how to add it${guide.name ? ` on ${guide.name}` : ''} →`}
-          </Link>
-        </>
-      }
+      sub={`Add this where you manage DNS for ${domain}`}
       trailing={
         records[0] ? <Badge tone="accent">{records[0].type}</Badge> : null
       }
@@ -50,11 +40,17 @@ export function RecordCardSection({
           />
         </div>
       ))}
-      <CardRow>
+      <CardRow className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-sm text-faint-foreground">
           Paste the value exactly as shown — some DNS providers add a trailing
           dot automatically. If verification keeps failing, check for one.
         </p>
+        <Link
+          href={`/docs/${guide.slug}`}
+          className="whitespace-nowrap text-sm text-accent underline-offset-4 hover:underline"
+        >
+          {`how to add it${guide.name ? ` on ${guide.name}` : ''} →`}
+        </Link>
       </CardRow>
     </RecordCard>
   )
