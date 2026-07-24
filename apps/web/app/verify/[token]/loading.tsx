@@ -2,7 +2,7 @@ export default function VerifyTokenLoading() {
   return (
     <main
       aria-hidden="true"
-      className="mx-auto flex max-w-140 flex-col gap-8 px-6 pb-12 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:pb-8"
+      className="mx-auto flex max-w-140 flex-col gap-8 px-6 pb-8 max-[480px]:gap-6 max-[480px]:px-4 max-[480px]:pb-8"
     >
       <div className="flex flex-col">
         <div className="py-6">

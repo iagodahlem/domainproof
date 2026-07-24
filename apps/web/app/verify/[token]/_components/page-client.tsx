@@ -115,7 +115,7 @@ export function VerificationPageClient({
         : 'active'
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-140 flex-col px-6 pb-12 max-[480px]:px-4 max-[480px]:pb-8">
+    <main className="mx-auto flex min-h-dvh max-w-140 flex-col px-6 pb-8 max-[480px]:px-4 max-[480px]:pb-8">
       <div className="flex flex-1 flex-col gap-8 max-[480px]:gap-6">
         <VerifyHeader
           domain={data.domain}
@@ -169,9 +169,9 @@ export function VerificationPageClient({
         </div>
       </div>
 
-      {/* Matches `pb-12`/`max-[480px]:pb-8` below exactly, so "Secured by
+      {/* Matches `pb-8`/`max-[480px]:pb-8` below exactly, so "Secured by
           DomainProof" sits centered between two equal gaps. */}
-      <p className="mt-12 text-center text-xs text-faint-foreground max-[480px]:mt-8">
+      <p className="mt-8 text-center text-xs text-faint-foreground max-[480px]:mt-8">
         Secured by DomainProof
       </p>
     </main>
