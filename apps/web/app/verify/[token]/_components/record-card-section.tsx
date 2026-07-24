@@ -49,7 +49,7 @@ export function RecordCardSection({
           href={`/docs/${guide.slug}`}
           className="whitespace-nowrap text-sm text-accent underline-offset-4 hover:underline"
         >
-          {`how to add it${guide.name ? ` on ${guide.name}` : ''} →`}
+          {`How to add it${guide.name ? ` on ${guide.name}` : ''} →`}
         </Link>
       </CardRow>
     </RecordCard>
