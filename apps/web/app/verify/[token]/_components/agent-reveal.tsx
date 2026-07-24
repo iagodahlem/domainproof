@@ -1,26 +1,34 @@
 import { ChevronDown, Sparkles } from 'lucide-react'
+import type { Provider } from '@domainproof/core'
 import { CopyButton } from '@domainproof/ui'
 import type { VerificationRecord } from '@/lib/api/frontend'
+import { absoluteGuideUrl, guideForProvider } from '../_lib/provider-guide'
 
 export interface AgentRevealProps {
   domain: string
   records: VerificationRecord[]
+  provider: Provider
 }
 
 /**
  * A collapsible "have an AI agent do it" reveal — deliberately MCP-free.
  * This audience has no DomainProof account or API key to hand an agent, and
  * our MCP server can't write DNS on anyone's behalf, so the only honest
- * on-ramp is a copy-ready prompt with this claim's real record values baked
- * in, for an agent that already has the visitor's own DNS provider access.
- * Native `<details>`/`<summary>` needs no JS to open and is keyboard-operable
- * out of the box.
+ * on-ramp is a copy-ready prompt with this claim's real record values, its
+ * detected DNS provider, and that provider's own setup guide baked in — for
+ * an agent that already has the visitor's own DNS provider access, so it has
+ * everything it needs without a back-and-forth. Native `<details>`/`<summary>`
+ * needs no JS to open and is keyboard-operable out of the box.
  */
-export function AgentReveal({ domain, records }: AgentRevealProps) {
+export function AgentReveal({ domain, records, provider }: AgentRevealProps) {
   const record = records[0]
   if (!record) return null
 
-  const prompt = `Add this TXT record to ${domain}: host ${record.label}, value ${record.value} — use my DNS provider access.`
+  const guide = guideForProvider(provider)
+  const providerNote = guide.name
+    ? ` DNS for ${domain} is on ${guide.name} — use my ${guide.name} access to add it.`
+    : ' Use my DNS provider access to add it.'
+  const prompt = `Add this TXT record to ${domain} to verify domain ownership: host ${record.label}, value ${record.value}.${providerNote} Steps: ${absoluteGuideUrl(guide)}`
 
   return (
     <details className="group overflow-hidden rounded-lg border border-border bg-surface">
