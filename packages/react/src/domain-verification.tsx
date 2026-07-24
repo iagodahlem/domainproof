@@ -2,25 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import { Check } from 'lucide-react'
 import {
-  Badge,
   Button,
   Callout,
   Card,
   CardBody,
-  CardRow,
-  RecordCard,
-  RecordField,
-  StatusPill,
-  StatusSummary,
   TextField,
+  VerificationView,
   cn,
 } from '@domainproof/ui'
-import type { StepperStep, StepperStepStatus, Tone } from '@domainproof/ui'
 import { useClaimDomain } from './use-claim-domain'
 import { useVerification } from './use-verification'
-import type { DomainStatus, Verification } from './types'
+import { describeStatus } from './status-view'
+import { verificationSteps } from './verification-steps'
+import { absoluteGuideUrl, guideForProvider } from './provider-guide'
+import type { Verification } from './types'
 
 export interface DomainVerificationProps {
   /** A single-use session token minted server-side via `@domainproof/sdk`'s `componentSessions.create`. */
@@ -43,77 +39,6 @@ export interface DomainVerificationProps {
   theme?: 'light' | 'dark'
 }
 
-type StatusTone = 'pending' | 'success' | 'warning' | 'danger'
-
-const STATUS_PRESENTATION: Record<
-  DomainStatus,
-  { label: string; tone: StatusTone; body: string }
-> = {
-  not_started: {
-    label: 'Not started',
-    tone: 'pending',
-    body: 'Add the DNS record below at your DNS provider, then check again.',
-  },
-  pending: {
-    label: 'Pending',
-    tone: 'pending',
-    body: "We haven't found the record yet. DNS changes can take a few minutes to propagate — add the record below if you haven't yet.",
-  },
-  temporarily_failed: {
-    label: 'Needs attention',
-    tone: 'warning',
-    body: 'This domain was verified, but the record is now missing or has changed. Restore it to keep verification active.',
-  },
-  failed: {
-    label: 'Failed',
-    tone: 'danger',
-    body: 'Verification failed. Ask for a new verification link to try again.',
-  },
-  verified: {
-    label: 'Verified',
-    tone: 'success',
-    body: 'This domain is verified. The DNS record can be removed at any time.',
-  },
-}
-
-const BADGE_TONE_BY_STATUS_TONE: Record<StatusTone, Tone> = {
-  pending: 'warning',
-  success: 'success',
-  warning: 'warning',
-  danger: 'danger',
-}
-
-/**
- * The claim/verifying/verified progression as a 3-step `Stepper` — the
- * same collapsing the dashboard's own `domainStatusSteps` does (4 board
- * steps down to the 3 this data model can actually date-stamp), minus the
- * relative-timestamp `time` field: this package's wire type only carries
- * `updatedAt`, not the dashboard's `createdAt`/`verifiedAt` pair, so there's
- * nothing honest to put there.
- */
-function verificationSteps(status: DomainStatus): StepperStep[] {
-  const everVerified = status === 'verified' || status === 'temporarily_failed'
-  const recovering = status === 'temporarily_failed'
-  const neverVerifiedTerminal = status === 'failed'
-
-  const verifyingStatus: StepperStepStatus = everVerified
-    ? 'done'
-    : neverVerifiedTerminal
-      ? 'failed'
-      : 'current'
-  const verifiedStatus: StepperStepStatus = everVerified
-    ? recovering
-      ? 'current'
-      : 'done'
-    : 'upcoming'
-
-  return [
-    { id: 'claimed', status: 'done', label: 'Claimed' },
-    { id: 'verifying', status: verifyingStatus, label: 'Verifying' },
-    { id: 'verified', status: verifiedStatus, label: 'Verified' },
-  ]
-}
-
 /**
  * A single-use component session is consumed the moment a claim attempt
  * runs — successfully or not (see `modules/component-sessions/service.ts`'s
@@ -132,14 +57,13 @@ function isClaimRetryable(
 
 /**
  * Drop-in verification card: composes {@link useClaimDomain} and
- * {@link useVerification} into DomainProof's own design system — the same
- * `RecordCard`/`RecordField`/`StatusSummary` components the hosted
- * verification page and dashboard render — for a domain input, TXT record
- * display (with per-field copy), a status stepper, bounded auto-checking,
- * and verified/failed outcome states. Ships with a compiled stylesheet
- * (`@domainproof/react/styles.css`, import once) rather than a runtime
- * Tailwind build — for full control over markup and styling instead,
- * compose the two hooks directly.
+ * {@link useVerification} with `@domainproof/ui`'s `VerificationView` — the
+ * same steps/status header, record-card section, and outcome card the
+ * hosted verification page renders — for a domain input, TXT record
+ * display (with per-field copy), and bounded auto-checking. Ships with a
+ * compiled stylesheet (`@domainproof/react/styles.css`, import once)
+ * rather than a runtime Tailwind build — for full control over markup and
+ * styling instead, compose the two hooks directly.
  */
 export function DomainVerification({
   sessionToken,
@@ -249,50 +173,50 @@ export function DomainVerification({
   }
 
   const currentStatus = verification?.status ?? claimData.status
-  const view = STATUS_PRESENTATION[currentStatus]
+  const check = verification?.check ?? claimData.check
   const records = verification?.records ?? claimData.records
+  const provider = verification?.provider ?? claimData.provider
+  const projectName = verification?.projectName ?? claimData.projectName
   const isTerminal = currentStatus === 'verified' || currentStatus === 'failed'
-  const isVerified = currentStatus === 'verified'
+
+  const view = describeStatus({
+    status: currentStatus,
+    check,
+    domain: claimData.domain,
+    projectName,
+  })
+  const outcomeTone = view.tone === 'pending' ? null : view.tone
+  const guide = view.showRecheck ? guideForProvider(provider) : null
 
   return (
     <div className={rootClassName} style={style} data-theme={theme}>
-      <RecordCard
-        className="mb-6"
-        step={isVerified ? <Check aria-hidden="true" size={10} /> : 1}
-        stepTone={isVerified ? 'success' : 'accent'}
-        title={claimData.domain}
-        trailing={
-          records[0] ? <Badge tone="accent">{records[0].type}</Badge> : null
+      <VerificationView
+        steps={verificationSteps({ status: currentStatus, check })}
+        tone={view.tone}
+        badgeLabel={view.badgeLabel}
+        meta={isPolling ? 'Checking automatically…' : null}
+        unreachableNote={view.unreachableNote}
+        outcome={
+          outcomeTone
+            ? {
+                tone: outcomeTone,
+                heading: view.heading,
+                body: view.body,
+                check: view.showDiff ? check : null,
+              }
+            : null
         }
-      >
-        {records.map((record) => (
-          <div key={record.label}>
-            <RecordField label="Host" value={record.label} copyable />
-            <RecordField label="Value" value={record.value} copyable />
-          </div>
-        ))}
-        <CardRow>
-          <Callout tone="warning" className="text-sm">
-            Paste the value exactly as shown — some DNS providers add a trailing
-            dot automatically. If verification keeps failing, check for one.
-          </Callout>
-        </CardRow>
-      </RecordCard>
-
-      <StatusSummary
-        statusBadge={
-          <StatusPill
-            tone={BADGE_TONE_BY_STATUS_TONE[view.tone]}
-            size="default"
-            pulse={view.tone === 'pending'}
-          >
-            {view.label}
-          </StatusPill>
+        record={
+          guide
+            ? {
+                domain: claimData.domain,
+                records,
+                guideUrl: absoluteGuideUrl(guide),
+                guideLabel: guide.name,
+              }
+            : null
         }
-        steps={verificationSteps(currentStatus)}
       />
-
-      <p className="text-sm leading-body text-muted-foreground">{view.body}</p>
 
       {verificationError ? (
         <Callout tone="warning" className="mt-4">
