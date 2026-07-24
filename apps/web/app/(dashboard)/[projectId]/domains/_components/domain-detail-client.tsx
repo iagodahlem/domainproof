@@ -227,7 +227,7 @@ export function DomainDetailClient({
             <MenuItem
               icon={<Copy aria-hidden="true" size={14} />}
               onSelect={() => {
-                void navigator.clipboard.writeText(domain.verificationUrl)
+                void navigator.clipboard.writeText(verificationUrl)
               }}
             >
               Copy verification link
